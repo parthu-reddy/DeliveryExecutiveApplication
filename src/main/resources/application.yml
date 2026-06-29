@@ -7,7 +7,7 @@ spring:
     resources:
       add-mappings: false
   datasource:
-    url: jdbc:postgresql://localhost:5432/food_delivery
+    url: jdbc:postgresql://localhost:5432/delivery_db
     username: postgres
     password: password
     driver-class-name: org.postgresql.Driver
