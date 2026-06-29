@@ -18,10 +18,11 @@ public class OrderEventConsumer {
     private final LogisticsDispatchService logisticsDispatchService;
 
     @KafkaListener(topics = "order-events", groupId = "delivery-service-group")
-    public void consumeOrderEvent(String message) {
+    public void consumeOrderEvent(String message, @org.springframework.messaging.handler.annotation.Header(value = "eventType", required = false) String headerEventType) {
         try {
             JsonNode root = objectMapper.readTree(message);
-            String eventType = root.path("eventType").asText();
+            String jsonEventType = root.path("eventType").asText(null);
+            String eventType = headerEventType != null ? headerEventType : jsonEventType;
             
             if ("ORDER_ACCEPTED".equals(eventType)) {
                 UUID orderId = UUID.fromString(root.path("orderId").asText());

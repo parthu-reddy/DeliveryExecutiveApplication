@@ -9,7 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import com.fooddelivery.order.enums.OrderStatus;
+import com.fooddelivery.common.enums.OrderStatus;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;

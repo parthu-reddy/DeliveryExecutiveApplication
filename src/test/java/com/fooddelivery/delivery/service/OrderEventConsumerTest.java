@@ -35,7 +35,7 @@ class OrderEventConsumerTest {
         String message = String.format("{\"eventType\":\"ORDER_ACCEPTED\", \"orderId\":\"%s\", \"restaurantLat\":%f, \"restaurantLng\":%f}", 
                 orderId, lat, lng);
 
-        orderEventConsumer.consumeOrderEvent(message);
+        orderEventConsumer.consumeOrderEvent(message, null);
 
         verify(logisticsDispatchService).dispatchNearestDriver(lat, lng, orderId);
     }
@@ -46,7 +46,7 @@ class OrderEventConsumerTest {
         
         String message = String.format("{\"eventType\":\"ORDER_ACCEPTED\", \"orderId\":\"%s\"}", orderId);
 
-        orderEventConsumer.consumeOrderEvent(message);
+        orderEventConsumer.consumeOrderEvent(message, null);
 
         verify(logisticsDispatchService, never()).dispatchNearestDriver(anyDouble(), anyDouble(), any(UUID.class));
     }
@@ -57,7 +57,7 @@ class OrderEventConsumerTest {
         
         String message = String.format("{\"eventType\":\"ORDER_CREATED\", \"orderId\":\"%s\"}", orderId);
 
-        orderEventConsumer.consumeOrderEvent(message);
+        orderEventConsumer.consumeOrderEvent(message, null);
 
         verify(logisticsDispatchService, never()).dispatchNearestDriver(anyDouble(), anyDouble(), any(UUID.class));
     }

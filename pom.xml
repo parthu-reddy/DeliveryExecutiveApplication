@@ -24,6 +24,11 @@
     </properties>
 
     <dependencies>
+        <dependency> 
+            <groupId>com.fooddelivery</groupId> 
+            <artifactId>common-library</artifactId> 
+            <version>1.0-SNAPSHOT</version> 
+        </dependency>
         <!-- Spring Boot Starters -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
