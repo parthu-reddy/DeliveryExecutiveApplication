@@ -1,34 +1,31 @@
-# Delivery Executive Application (Logistics & Tracking)
+# Delivery Executive Application
 
-The Delivery Executive Application is a specialized microservice designed to manage the logistics of food delivery. It handles driver tracking, real-time location streaming via WebSockets, and the dispatch algorithms that assign drivers to orders.
+The Delivery Executive Application manages the logistics side of the platform, tracking driver locations, availability, and dispatching.
 
-## Key Responsibilities
+## Responsibilities
 
-1. **Logistics Dispatch**: 
-   - Listens for accepted orders (`ORDER_ACCEPTED`) and uses the `LogisticsDispatchService` to find nearby drivers.
-2. **Real-Time Location Tracking**: 
-   - Provides WebSocket endpoints for drivers to stream their live GPS coordinates into the `delivery_db`.
-3. **Delivery Lifecycle**:
-   - Exposes APIs for drivers to accept pings, pick up orders, and mark them as delivered.
-   - Broadcasts driver assignment and delivery completion back to the central orchestrator.
+1. **Driver Management**: Tracking active delivery executives and their locations (`PostGIS` spatial indexing).
+2. **Dispatch Logic**: Listens for `ORDER_ACCEPTED` events from Kafka (which indicate the restaurant has begun preparing the food) and executes assignment algorithms to find the nearest available driver.
+3. **Fulfillment Events**: Publishes `DRIVER_ASSIGNED` and `ORDER_DELIVERED` events back to Kafka, closing out the order lifecycle.
 
-## Architecture & Integrations
+## Flow Diagram
 
-- **Database**: PostgreSQL (`delivery_db`). Fully isolated.
-- **Message Broker**: Apache Kafka.
-- **Events Published**: 
-  - `DRIVER_ASSIGNED` -> `order-events` (Consumed by Customer App)
-  - `ORDER_DELIVERED` -> `order-events` (Consumed by Customer App for ledger payouts)
-  - `DISPATCH_REQUEST` -> `logistics-dispatch` (Consumed by Maps Integration)
-- **Events Consumed**:
-  - `ORDER_ACCEPTED` (From `order-events` - contains restaurant coordinates for routing)
+```mermaid
+sequenceDiagram
+    participant K as Kafka (order-events)
+    participant Consumer as OrderEventConsumer
+    participant API as Delivery API
+    participant DB as Delivery DB
 
-## Running Locally
-
-```bash
-# Start required infrastructure (Kafka, Zookeeper, PostgreSQL)
-docker-compose up -d
-
-# Run the application
-./mvnw spring-boot:run
+    K->>Consumer: ORDER_ACCEPTED
+    Consumer->>DB: Find nearest available Driver
+    Consumer->>DB: Assign Driver to Order
+    Consumer->>K: Publish DRIVER_ASSIGNED
+    
+    note over API,DB: Driver completes delivery
+    API->>K: Publish ORDER_DELIVERED
 ```
+
+## Setup
+
+Requires PostgreSQL (`delivery_db` with PostGIS extension enabled) and Kafka. Run `mvn spring-boot:run`.
