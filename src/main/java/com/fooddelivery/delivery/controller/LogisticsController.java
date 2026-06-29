@@ -18,14 +18,17 @@ public class LogisticsController {
 
     private final RestTemplate restTemplate;
 
+    @org.springframework.beans.factory.annotation.Value("${maps-service.base-url:http://localhost:8083}")
+    private String mapsServiceBaseUrl;
+
     @GetMapping("/route")
     public ResponseEntity<?> getRoute(
             @RequestParam double sourceLat, @RequestParam double sourceLng,
             @RequestParam double destLat, @RequestParam double destLng) {
         
         try {
-            String mapsServiceUrl = String.format("http://localhost:8083/api/logistics/route?origin=%f,%f&destination=%f,%f",
-                    sourceLat, sourceLng, destLat, destLng);
+            String mapsServiceUrl = String.format("%s/api/logistics/route?origin=%f,%f&destination=%f,%f",
+                    mapsServiceBaseUrl, sourceLat, sourceLng, destLat, destLng);
             
             ResponseEntity<Map> response = restTemplate.getForEntity(mapsServiceUrl, Map.class);
             return ResponseEntity.status(response.getStatusCode()).body(response.getBody());

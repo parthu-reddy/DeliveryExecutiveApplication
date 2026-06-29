@@ -44,11 +44,14 @@ public class LogisticsDispatchService {
         }
     }
 
+    @org.springframework.beans.factory.annotation.Value("${maps-service.base-url:http://localhost:8083}")
+    private String mapsServiceBaseUrl;
+
     public void releaseDriverLock(String driverId) {
         log.info("Requesting driver lock release for driver {} via MapsIntegration service", driverId);
         try {
             org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
-            String url = "http://localhost:8083/api/fleet/availability";
+            String url = mapsServiceBaseUrl + "/api/fleet/availability";
             Map<String, Object> request = Map.of(
                 "cityId", "BLR", // default cityId
                 "driverId", driverId,
