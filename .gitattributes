@@ -1,0 +1,24 @@
+# Auto detect text files and perform LF normalization
+* text=auto eol=lf
+
+# Custom for specific languages
+*.java text diff=java
+*.dart text diff=dart
+*.yaml text
+*.yml text
+*.sql text
+*.xml text
+*.md text diff=markdown
+*.json text
+
+# Binaries and images
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.mp4 binary
+*.jar binary
+*.sqlite binary
+*.db binary

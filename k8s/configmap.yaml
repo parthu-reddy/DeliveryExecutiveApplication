@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: food-delivery-config
+  namespace: food-delivery-prod
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  DB_HOST: "jdbc:postgresql://managed-rds-endpoint.aws.com:5432/food_delivery"
+  DB_USERNAME: "postgres"
+  REDIS_HOST: "managed-redis.aws.com"
+  REDIS_PORT: "6379"
+  KAFKA_BOOTSTRAP_SERVERS: "managed-msk.aws.com:9092"
+  OLA_MAPS_API_URL: "https://api.olamaps.io"
