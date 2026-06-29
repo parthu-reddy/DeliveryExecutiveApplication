@@ -36,6 +36,15 @@ public class OrderEventConsumer {
                 } else {
                     log.warn("Missing restaurant location in ORDER_ACCEPTED event for order {}. Cannot dispatch driver.", orderId);
                 }
+            } else if ("ORDER_CANCELLED".equals(eventType) || "DELIVERY_FAILED".equals(eventType)) {
+                UUID orderId = UUID.fromString(root.path("orderId").asText());
+                String driverId = root.path("driverId").asText(null);
+                log.info("Delivery Application received {} for order {}.", eventType, orderId);
+                if (driverId != null && !driverId.isEmpty()) {
+                    logisticsDispatchService.releaseDriverLock(driverId);
+                } else {
+                    log.warn("No driverId provided in {} event for order {}. Cannot release lock.", eventType, orderId);
+                }
             }
         } catch (Exception e) {
             log.error("Failed to process order event in DeliveryExecutiveApplication", e);

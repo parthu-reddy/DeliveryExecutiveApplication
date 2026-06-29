@@ -58,6 +58,7 @@ public class LogisticsDispatchService {
             log.info("Successfully requested driver lock release for driver {}", driverId);
         } catch (Exception e) {
             log.error("Failed to release driver lock for driver {}", driverId, e);
+            throw new RuntimeException("Failed to release driver lock", e);
         }
     }
 }
