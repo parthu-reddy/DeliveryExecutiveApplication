@@ -17,13 +17,16 @@ class OrderEventConsumerTest {
     @Mock
     private LogisticsDispatchService logisticsDispatchService;
 
+    @Mock
+    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+
     private ObjectMapper objectMapper;
     private OrderEventConsumer orderEventConsumer;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        orderEventConsumer = new OrderEventConsumer(objectMapper, logisticsDispatchService);
+        orderEventConsumer = new OrderEventConsumer(objectMapper, logisticsDispatchService, redisTemplate);
     }
 
     @Test
