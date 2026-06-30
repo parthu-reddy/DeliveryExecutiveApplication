@@ -3,6 +3,7 @@ package com.fooddelivery.delivery.service;
 import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import com.fooddelivery.delivery.enums.DeliveryExecutiveStatus;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
+import com.fooddelivery.delivery.repository.IOutboxEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -44,7 +45,7 @@ public class DeliveryService {
         return repository.save(executive);
     }
 
-    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final IOutboxEventRepository outboxEventRepository;
     private final LogisticsDispatchService logisticsDispatchService;
     private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
     private static final String TOPIC = "order-events";
@@ -61,7 +62,17 @@ public class DeliveryService {
         
         // Emitting event to CustomerApplication
         String payload = "{\"eventType\":\"DRIVER_ASSIGNED\", \"orderId\":\"" + orderId + "\", \"driverId\":\"" + driverId + "\"}";
-        kafkaTemplate.send(TOPIC, orderId.toString(), payload);
+        
+        com.fooddelivery.delivery.entity.OutboxEventEntity outboxEvent = com.fooddelivery.delivery.entity.OutboxEventEntity.builder()
+                .id(UUID.randomUUID())
+                .aggregateType("Order")
+                .aggregateId(orderId.toString())
+                .eventType("DRIVER_ASSIGNED")
+                .payload(payload)
+                .createdAt(java.time.LocalDateTime.now())
+                .status("UNPROCESSED")
+                .build();
+        outboxEventRepository.save(outboxEvent);
         
         DeliveryExecutive executive = repository.findById(driverId).orElseThrow();
         executive.setStatus(DeliveryExecutiveStatus.ON_DELIVERY);
@@ -77,7 +88,17 @@ public class DeliveryService {
         logisticsDispatchService.releaseDriverLock(driverId.toString());
         
         String payload = "{\"eventType\":\"ORDER_DRIVER_REJECTED\", \"orderId\":\"" + orderId + "\", \"driverId\":\"" + driverId + "\"}";
-        kafkaTemplate.send(TOPIC, orderId.toString(), payload);
+        
+        com.fooddelivery.delivery.entity.OutboxEventEntity outboxEvent = com.fooddelivery.delivery.entity.OutboxEventEntity.builder()
+                .id(UUID.randomUUID())
+                .aggregateType("Order")
+                .aggregateId(orderId.toString())
+                .eventType("ORDER_DRIVER_REJECTED")
+                .payload(payload)
+                .createdAt(java.time.LocalDateTime.now())
+                .status("UNPROCESSED")
+                .build();
+        outboxEventRepository.save(outboxEvent);
     }
 
     @Transactional
@@ -86,7 +107,17 @@ public class DeliveryService {
         
         String eventType = "DELIVERED".equals(status) ? "ORDER_DELIVERED" : "ORDER_STATUS_UPDATED";
         String payload = "{\"eventType\":\"" + eventType + "\", \"orderId\":\"" + orderId + "\", \"status\":\"" + status + "\"}";
-        kafkaTemplate.send(TOPIC, orderId.toString(), payload);
+        
+        com.fooddelivery.delivery.entity.OutboxEventEntity outboxEvent = com.fooddelivery.delivery.entity.OutboxEventEntity.builder()
+                .id(UUID.randomUUID())
+                .aggregateType("Order")
+                .aggregateId(orderId.toString())
+                .eventType(eventType)
+                .payload(payload)
+                .createdAt(java.time.LocalDateTime.now())
+                .status("UNPROCESSED")
+                .build();
+        outboxEventRepository.save(outboxEvent);
         
         if ("DELIVERED".equals(status) || "DELIVERY_FAILED".equals(status)) {
             DeliveryExecutive executive = repository.findById(driverId).orElseThrow();
@@ -106,6 +137,16 @@ public class DeliveryService {
         logisticsDispatchService.releaseDriverLock(driverId.toString());
         
         String payload = "{\"eventType\":\"ORDER_DRIVER_REJECTED\", \"orderId\":\"" + orderId + "\", \"driverId\":\"" + driverId + "\"}";
-        kafkaTemplate.send(TOPIC, orderId.toString(), payload);
+        
+        com.fooddelivery.delivery.entity.OutboxEventEntity outboxEvent = com.fooddelivery.delivery.entity.OutboxEventEntity.builder()
+                .id(UUID.randomUUID())
+                .aggregateType("Order")
+                .aggregateId(orderId.toString())
+                .eventType("ORDER_DRIVER_REJECTED")
+                .payload(payload)
+                .createdAt(java.time.LocalDateTime.now())
+                .status("UNPROCESSED")
+                .build();
+        outboxEventRepository.save(outboxEvent);
     }
 }

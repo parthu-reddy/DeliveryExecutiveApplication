@@ -3,6 +3,7 @@ package com.fooddelivery.delivery.service;
 import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import com.fooddelivery.delivery.enums.DeliveryExecutiveStatus;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
+import com.fooddelivery.delivery.repository.IOutboxEventRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,7 +29,7 @@ class DeliveryServiceTest {
     private IDeliveryExecutiveRepository repository;
 
     @Mock
-    private KafkaTemplate<String, String> kafkaTemplate;
+    private IOutboxEventRepository outboxEventRepository;
 
     @Mock
     private LogisticsDispatchService logisticsDispatchService;
@@ -63,10 +64,10 @@ class DeliveryServiceTest {
 
         deliveryService.acceptOrderPing(driverId, orderId);
 
-        ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
-        verify(kafkaTemplate).send(eq("order-events"), eq(orderId.toString()), payloadCaptor.capture());
+        ArgumentCaptor<com.fooddelivery.delivery.entity.OutboxEventEntity> outboxCaptor = ArgumentCaptor.forClass(com.fooddelivery.delivery.entity.OutboxEventEntity.class);
+        verify(outboxEventRepository).save(outboxCaptor.capture());
 
-        assertThat(payloadCaptor.getValue()).contains("DRIVER_ASSIGNED");
+        assertThat(outboxCaptor.getValue().getPayload()).contains("DRIVER_ASSIGNED");
         assertThat(executive.getStatus()).isEqualTo(DeliveryExecutiveStatus.ON_DELIVERY);
         verify(repository).save(executive);
     }
@@ -77,10 +78,10 @@ class DeliveryServiceTest {
 
         verify(logisticsDispatchService).releaseDriverLock(driverId.toString());
 
-        ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
-        verify(kafkaTemplate).send(eq("order-events"), eq(orderId.toString()), payloadCaptor.capture());
+        ArgumentCaptor<com.fooddelivery.delivery.entity.OutboxEventEntity> outboxCaptor = ArgumentCaptor.forClass(com.fooddelivery.delivery.entity.OutboxEventEntity.class);
+        verify(outboxEventRepository).save(outboxCaptor.capture());
 
-        assertThat(payloadCaptor.getValue()).contains("ORDER_DRIVER_REJECTED");
+        assertThat(outboxCaptor.getValue().getPayload()).contains("ORDER_DRIVER_REJECTED");
     }
 
     @Test
@@ -90,10 +91,10 @@ class DeliveryServiceTest {
 
         deliveryService.updateOrderStatus(driverId, orderId, "DELIVERED");
 
-        ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
-        verify(kafkaTemplate).send(eq("order-events"), eq(orderId.toString()), payloadCaptor.capture());
+        ArgumentCaptor<com.fooddelivery.delivery.entity.OutboxEventEntity> outboxCaptor = ArgumentCaptor.forClass(com.fooddelivery.delivery.entity.OutboxEventEntity.class);
+        verify(outboxEventRepository).save(outboxCaptor.capture());
 
-        assertThat(payloadCaptor.getValue()).contains("ORDER_DELIVERED");
+        assertThat(outboxCaptor.getValue().getPayload()).contains("ORDER_DELIVERED");
         assertThat(executive.getStatus()).isEqualTo(DeliveryExecutiveStatus.ONLINE);
         verify(repository).save(executive);
         verify(logisticsDispatchService).releaseDriverLock(driverId.toString());
