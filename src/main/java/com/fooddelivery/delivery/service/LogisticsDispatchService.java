@@ -50,7 +50,12 @@ public class LogisticsDispatchService {
     public void releaseDriverLock(String driverId) {
         log.info("Requesting driver lock release for driver {} via MapsIntegration service", driverId);
         try {
-            org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
+            org.springframework.boot.web.client.RestTemplateBuilder builder = new org.springframework.boot.web.client.RestTemplateBuilder();
+            org.springframework.web.client.RestTemplate restTemplate = builder
+                    .setConnectTimeout(java.time.Duration.ofSeconds(3))
+                    .setReadTimeout(java.time.Duration.ofSeconds(3))
+                    .build();
+            
             String url = mapsServiceBaseUrl + "/api/fleet/availability";
             Map<String, Object> request = Map.of(
                 "cityId", "BLR", // default cityId

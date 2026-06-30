@@ -33,6 +33,12 @@ class DeliveryServiceTest {
     @Mock
     private LogisticsDispatchService logisticsDispatchService;
 
+    @Mock
+    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+
+    @Mock
+    private org.springframework.data.redis.core.ValueOperations<String, String> valueOperations;
+
     @InjectMocks
     private DeliveryService deliveryService;
 
@@ -51,6 +57,8 @@ class DeliveryServiceTest {
 
     @Test
     void acceptOrderPing_ShouldPublishEventAndUpdateStatus() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.setIfAbsent(eq("order:driver:lock:" + orderId), eq(driverId.toString()), org.mockito.ArgumentMatchers.any())).thenReturn(true);
         when(repository.findById(driverId)).thenReturn(Optional.of(executive));
 
         deliveryService.acceptOrderPing(driverId, orderId);

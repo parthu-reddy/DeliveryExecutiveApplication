@@ -46,11 +46,18 @@ public class DeliveryService {
 
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final LogisticsDispatchService logisticsDispatchService;
+    private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
     private static final String TOPIC = "order-events";
 
     @Transactional
     public void acceptOrderPing(UUID driverId, UUID orderId) {
         log.info("Driver {} attempting to accept order {}", driverId, orderId);
+        
+        Boolean acquired = redisTemplate.opsForValue().setIfAbsent("order:driver:lock:" + orderId, driverId.toString(), java.time.Duration.ofMinutes(60));
+        if (Boolean.FALSE.equals(acquired)) {
+            log.warn("Order {} was already accepted by another driver. Driver {} ping rejected.", orderId, driverId);
+            throw new IllegalStateException("Order is no longer available.");
+        }
         
         // Emitting event to CustomerApplication
         String payload = "{\"eventType\":\"DRIVER_ASSIGNED\", \"orderId\":\"" + orderId + "\", \"driverId\":\"" + driverId + "\"}";

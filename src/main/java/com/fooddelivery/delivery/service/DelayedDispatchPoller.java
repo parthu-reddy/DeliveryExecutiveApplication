@@ -39,9 +39,6 @@ public class DelayedDispatchPoller {
                             log.info("Delayed dispatch triggered for order {}. Dispatching nearest driver...", orderIdStr);
                             logisticsDispatchService.dispatchNearestDriver(lat, lng, UUID.fromString(orderIdStr));
                         }
-                        
-                        // Cleanup
-                        redisTemplate.delete("order:dispatchPayload:" + orderIdStr);
                     }
                     redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderIdStr);
                 } catch (Exception e) {
