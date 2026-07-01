@@ -1,15 +1,17 @@
 #!/bin/bash
 set -e
 
-echo "1. Creating Restaurant..."
-REST_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d '{"name": "E2E Burger", "fssaiLicenseNumber": "1234567890", "gstin": "123456789012345", "pan": "ABCDE1234F", "cin": "U12345MH2023PTC123456", "lat": 12.9716, "lng": 77.5946}' http://localhost:8092/api/v1/restaurants/onboard)
-echo $REST_RESPONSE
-REST_ID=$(echo $REST_RESPONSE | jq -r '.data.id')
-echo "Restaurant ID: $REST_ID"
+echo "1. Creating Brand..."
+BRAND_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d '{"name": "E2E Brand", "gstin": "123456789012345", "pan": "ABCDE1234F", "cin": "U12345MH2023PTC123456", "bankAccountNumber": "1234567890", "ifscCode": "HDFC0001234"}' http://localhost:8094/api/v1/brands)
+BRAND_ID=$(echo $BRAND_RESPONSE | jq -r '.data.id')
 
-echo "2. Adding Menu Item..."
-MENU_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d '{"name": "Veggie Burger", "price": 150.00, "isAvailable": true}' http://localhost:8092/api/v1/restaurants/$REST_ID/catalog/items)
-echo $MENU_RESPONSE
+echo "1.5 Creating Outlet..."
+REST_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d '{"name": "E2E Burger", "fssaiLicenseNumber": "1234567890", "lat": 12.9716, "lng": 77.5946}' http://localhost:8094/api/v1/brands/$BRAND_ID/outlets)
+REST_ID=$(echo $REST_RESPONSE | jq -r '.data.id')
+echo "Restaurant (Outlet) ID: $REST_ID"
+
+echo "2. Adding Master Menu Item..."
+MENU_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d '{"name": "Veggie Burger", "basePrice": 150.00, "defaultPrepTimeMinutes": 15}' http://localhost:8094/api/v1/brands/$BRAND_ID/master-menu)
 MENU_ID=$(echo $MENU_RESPONSE | jq -r '.data.id')
 echo "Menu Item ID: $MENU_ID"
 
@@ -22,14 +24,14 @@ echo "Customer ID: $CUST_ID, Phone: $CUST_PHONE"
 
 echo "4. Creating Delivery Executive in DB..."
 DEL_PHONE="888$(printf "%07d" $RANDOM$RANDOM | cut -c1-7)"
-DEL_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d "{\"name\": \"Test Exec\", \"phoneNumber\": \"$DEL_PHONE\", \"vehicleNumber\": \"KA01AB1234\"}" http://localhost:8092/api/delivery/onboard)
+DEL_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d "{\"name\": \"Test Exec\", \"phoneNumber\": \"$DEL_PHONE\", \"vehicleNumber\": \"KA01AB1234\"}" http://localhost:8095/api/delivery/onboard)
 echo $DEL_RESPONSE
 DEL_EXEC_ID=$(echo $DEL_RESPONSE | jq -r '.data.id')
 echo "Delivery Executive ID: $DEL_EXEC_ID, Phone: $DEL_PHONE"
 
 echo "4.5. Making Delivery Executive ONLINE and Setting Location..."
-curl -s -X POST -H "Content-Type: application/json" -d "{\"driverId\": \"$DEL_EXEC_ID\", \"available\": true}" http://localhost:8092/api/delivery/status
-curl -s -X POST -H "Content-Type: application/json" -d "[{\"driverId\": \"$DEL_EXEC_ID\", \"lat\": 12.9716, \"lng\": 77.5946, \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}]" http://localhost:8092/api/v1/delivery/telemetry/batch
+curl -s -X POST -H "Content-Type: application/json" -d "{\"driverId\": \"$DEL_EXEC_ID\", \"available\": true}" http://localhost:8095/api/delivery/status
+curl -s -X POST -H "Content-Type: application/json" -d "[{\"driverId\": \"$DEL_EXEC_ID\", \"lat\": 12.9716, \"lng\": 77.5946, \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}]" http://localhost:8095/api/v1/delivery/telemetry/batch
 echo ""
 
 echo "5. Creating Order..."
@@ -50,7 +52,7 @@ echo "Order ID: $ORDER_ID"
 echo "6. Simulating Payment Webhook..."
 PAYLOAD="{\"event\": \"payment.success\",\"payload\": {\"payment\": {\"entity\": {\"order_id\": \"$ORDER_ID\",\"status\": \"captured\",\"amount\": 300.00}}}}"
 SIG=$(python3 -c "import hmac, hashlib, base64; print(base64.b64encode(hmac.new(b'test_secret', b'$PAYLOAD', hashlib.sha256).digest()).decode())")
-WEBHOOK_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -H "X-Vyapar-Signature: $SIG" -d "$PAYLOAD" http://localhost:8092/api/v1/webhooks/vyapar)
+WEBHOOK_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -H "X-Vyapar-Signature: $SIG" -d "$PAYLOAD" http://localhost:8085/api/v1/webhooks/vyapar)
 echo $WEBHOOK_RESPONSE
 
 echo "7. Waiting for Payment to be processed by Saga..."
@@ -73,7 +75,7 @@ if [ "$ORDER_STATUS" != "PAID" ]; then
 fi
 
 echo "8. Simulating Restaurant Acceptance..."
-ACCEPT_RESPONSE=$(curl -s -X POST http://localhost:8092/api/v1/restaurants/$REST_ID/fulfillment/orders/$ORDER_ID/accept)
+ACCEPT_RESPONSE=$(curl -s -X POST http://localhost:8094/api/v1/restaurants/$REST_ID/fulfillment/orders/$ORDER_ID/accept)
 echo $ACCEPT_RESPONSE
 
 echo "9. Waiting for Saga to dispatch driver..."

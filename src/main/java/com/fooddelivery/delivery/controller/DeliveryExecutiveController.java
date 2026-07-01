@@ -42,21 +42,21 @@ public class DeliveryExecutiveController {
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/accept")
     public ResponseEntity<ApiResponse<Void>> acceptOrder(
-            @PathVariable UUID driverId, @PathVariable UUID orderId) {
+            @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
         deliveryService.acceptOrderPing(driverId, orderId);
         return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order accepted by driver").build());
     }
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/reject")
     public ResponseEntity<ApiResponse<Void>> rejectOrder(
-            @PathVariable UUID driverId, @PathVariable UUID orderId) {
+            @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
         deliveryService.rejectOrderPing(driverId, orderId);
         return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order rejected").build());
     }
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/status")
     public ResponseEntity<ApiResponse<Void>> updateOrderStatus(
-            @PathVariable UUID driverId, @PathVariable UUID orderId, @RequestBody Map<String, String> request) {
+            @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId, @RequestBody Map<String, String> request) {
         String status = request.get("status");
         deliveryService.updateOrderStatus(driverId, orderId, status);
         return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order status updated").build());
@@ -64,7 +64,7 @@ public class DeliveryExecutiveController {
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/timeout")
     public ResponseEntity<ApiResponse<Void>> timeoutDriver(
-            @PathVariable UUID driverId, @PathVariable UUID orderId) {
+            @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
         deliveryService.timeoutDriverPing(driverId, orderId);
         return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Driver ping timed out").build());
     }

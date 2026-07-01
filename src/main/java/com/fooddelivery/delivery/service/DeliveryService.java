@@ -12,7 +12,9 @@ import com.fooddelivery.common.constants.EventType;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +24,7 @@ public class DeliveryService {
     private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
 
     private final IDeliveryExecutiveRepository repository;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public DeliveryExecutive onboard(String name, String phoneNumber, String vehicleNumber) {
@@ -45,6 +48,13 @@ public class DeliveryService {
         executive.setStatus(isOnline ? DeliveryExecutiveStatus.ONLINE : DeliveryExecutiveStatus.OFFLINE);
         log.info("Driver {} is now {}", driverId, executive.getStatus());
         
+        String key = "drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
+        if (isOnline) {
+            redisTemplate.opsForSet().add(key, driverId.toString());
+        } else {
+            redisTemplate.opsForSet().remove(key, driverId.toString());
+        }
+        
         return repository.save(executive);
     }
 
@@ -64,7 +74,16 @@ public class DeliveryService {
         }
         
         // Emitting event to CustomerApplication
-        String payload = "{\"eventType\":\"DRIVER_ASSIGNED\", \"orderId\":\"" + orderId + "\", \"driverId\":\"" + driverId + "\"}";
+        com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
+        payloadNode.put("eventType", "DRIVER_ASSIGNED");
+        payloadNode.put("orderId", orderId.toString());
+        payloadNode.put("driverId", driverId.toString());
+        String payload;
+        try {
+            payload = objectMapper.writeValueAsString(payloadNode);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize DRIVER_ASSIGNED payload", e);
+        }
         
         com.fooddelivery.delivery.entity.OutboxEventEntity outboxEvent = com.fooddelivery.delivery.entity.OutboxEventEntity.builder()
                 .id(UUID.randomUUID())
@@ -88,7 +107,16 @@ public class DeliveryService {
         log.info("Driver {} rejected order ping {}", driverId, orderId);
         
         transactionTemplate.execute(status -> {
-            String payload = "{\"eventType\":\"ORDER_DRIVER_REJECTED\", \"orderId\":\"" + orderId + "\", \"driverId\":\"" + driverId + "\"}";
+            com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
+            payloadNode.put("eventType", "ORDER_DRIVER_REJECTED");
+            payloadNode.put("orderId", orderId.toString());
+            payloadNode.put("driverId", driverId.toString());
+            String payload;
+            try {
+                payload = objectMapper.writeValueAsString(payloadNode);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to serialize ORDER_DRIVER_REJECTED payload", e);
+            }
             
             com.fooddelivery.delivery.entity.OutboxEventEntity outboxEvent = com.fooddelivery.delivery.entity.OutboxEventEntity.builder()
                     .id(UUID.randomUUID())
@@ -111,7 +139,16 @@ public class DeliveryService {
         
         transactionTemplate.execute(txStatus -> {
             String eventType = "DELIVERED".equals(status) ? EventType.ORDER_DELIVERED : EventType.ORDER_STATUS_UPDATED;
-            String payload = "{\"eventType\":\"" + eventType + "\", \"orderId\":\"" + orderId + "\", \"status\":\"" + status + "\"}";
+            com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
+            payloadNode.put("eventType", eventType);
+            payloadNode.put("orderId", orderId.toString());
+            payloadNode.put("status", status);
+            String payload;
+            try {
+                payload = objectMapper.writeValueAsString(payloadNode);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to serialize status update payload", e);
+            }
             
             com.fooddelivery.delivery.entity.OutboxEventEntity outboxEvent = com.fooddelivery.delivery.entity.OutboxEventEntity.builder()
                     .id(UUID.randomUUID())
@@ -143,7 +180,16 @@ public class DeliveryService {
         log.info("Driver {} ping timed out for order {}", driverId, orderId);
         
         transactionTemplate.execute(status -> {
-            String payload = "{\"eventType\":\"ORDER_DRIVER_REJECTED\", \"orderId\":\"" + orderId + "\", \"driverId\":\"" + driverId + "\"}";
+            com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
+            payloadNode.put("eventType", "ORDER_DRIVER_REJECTED");
+            payloadNode.put("orderId", orderId.toString());
+            payloadNode.put("driverId", driverId.toString());
+            String payload;
+            try {
+                payload = objectMapper.writeValueAsString(payloadNode);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to serialize ORDER_DRIVER_REJECTED payload", e);
+            }
             
             com.fooddelivery.delivery.entity.OutboxEventEntity outboxEvent = com.fooddelivery.delivery.entity.OutboxEventEntity.builder()
                     .id(UUID.randomUUID())

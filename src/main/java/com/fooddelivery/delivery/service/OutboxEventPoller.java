@@ -18,7 +18,7 @@ import java.util.List;
 public class OutboxEventPoller {
 
     private final IOutboxEventRepository outboxEventRepository;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final KafkaTemplate<String, String> kafkaTemplate;
     private static final String TOPIC = com.fooddelivery.common.constants.KafkaConstants.TOPIC_ORDER_EVENTS;
 
     @Scheduled(fixedDelay = 5000)

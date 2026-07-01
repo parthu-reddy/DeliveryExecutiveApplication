@@ -22,7 +22,7 @@ public class DeliveryTelemetryController {
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
-    private static final String DRIVER_LOCATION_KEY = "driver_locations";
+    private static final String DRIVER_LOCATION_KEY = "drivers:geo:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
 
     @PostMapping("/batch")
     public ResponseEntity<String> processBatchTelemetry(@RequestBody List<Map<String, Object>> telemetryBatch) {
