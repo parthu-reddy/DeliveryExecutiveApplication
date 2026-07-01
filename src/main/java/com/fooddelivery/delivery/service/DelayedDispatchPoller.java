@@ -34,10 +34,13 @@ public class DelayedDispatchPoller {
                         JsonNode root = objectMapper.readTree(payload);
                         double lat = root.path("restaurantLat").asDouble(0.0);
                         double lng = root.path("restaurantLng").asDouble(0.0);
+                        double deliveryLat = root.path("deliveryLat").asDouble(0.0);
+                        double deliveryLng = root.path("deliveryLng").asDouble(0.0);
+                        String deliveryAddress = root.path("deliveryAddress").asText("");
                         
                         if (lat != 0.0 && lng != 0.0) {
                             log.info("Delayed dispatch triggered for order {}. Dispatching nearest driver...", orderIdStr);
-                            logisticsDispatchService.dispatchNearestDriver(lat, lng, UUID.fromString(orderIdStr));
+                            logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, UUID.fromString(orderIdStr));
                         }
                     }
                     redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderIdStr);

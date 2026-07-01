@@ -20,13 +20,16 @@ class OrderEventConsumerTest {
     @Mock
     private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
 
+    @Mock
+    private com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository deliveryExecutiveRepository;
+
     private ObjectMapper objectMapper;
     private OrderEventConsumer orderEventConsumer;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        orderEventConsumer = new OrderEventConsumer(objectMapper, logisticsDispatchService, redisTemplate);
+        orderEventConsumer = new OrderEventConsumer(objectMapper, logisticsDispatchService, redisTemplate, deliveryExecutiveRepository);
     }
 
     @Test
@@ -38,9 +41,11 @@ class OrderEventConsumerTest {
         String message = String.format("{\"eventType\":\"ORDER_ACCEPTED\", \"orderId\":\"%s\", \"restaurantLat\":%f, \"restaurantLng\":%f}", 
                 orderId, lat, lng);
 
+        when(redisTemplate.opsForValue()).thenReturn(mock(org.springframework.data.redis.core.ValueOperations.class));
+        when(redisTemplate.opsForValue().setIfAbsent(anyString(), anyString(), any())).thenReturn(true);
         orderEventConsumer.consumeOrderEvent(message, null);
-
-        verify(logisticsDispatchService).dispatchNearestDriver(lat, lng, orderId);
+        
+        verify(logisticsDispatchService).dispatchNearestDriver(eq(12.9716), eq(77.5946), eq(0.0), eq(0.0), eq(""), eq(orderId));
     }
 
     @Test
@@ -51,7 +56,7 @@ class OrderEventConsumerTest {
 
         orderEventConsumer.consumeOrderEvent(message, null);
 
-        verify(logisticsDispatchService, never()).dispatchNearestDriver(anyDouble(), anyDouble(), any(UUID.class));
+        verify(logisticsDispatchService, never()).dispatchNearestDriver(anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyString(), any(UUID.class));
     }
 
     @Test
@@ -62,6 +67,6 @@ class OrderEventConsumerTest {
 
         orderEventConsumer.consumeOrderEvent(message, null);
 
-        verify(logisticsDispatchService, never()).dispatchNearestDriver(anyDouble(), anyDouble(), any(UUID.class));
+        verify(logisticsDispatchService, never()).dispatchNearestDriver(anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyString(), any(UUID.class));
     }
 }

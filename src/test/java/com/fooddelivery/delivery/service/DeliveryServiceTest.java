@@ -40,6 +40,9 @@ class DeliveryServiceTest {
     @Mock
     private org.springframework.data.redis.core.ValueOperations<String, String> valueOperations;
 
+    @Mock
+    private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
+
     @InjectMocks
     private DeliveryService deliveryService;
 
@@ -54,6 +57,11 @@ class DeliveryServiceTest {
         executive = new DeliveryExecutive();
         executive.setId(driverId);
         executive.setStatus(DeliveryExecutiveStatus.ONLINE);
+        
+        org.mockito.Mockito.lenient().when(transactionTemplate.execute(org.mockito.ArgumentMatchers.any())).thenAnswer(invocation -> {
+            org.springframework.transaction.support.TransactionCallback<?> callback = invocation.getArgument(0);
+            return callback.doInTransaction(new org.springframework.transaction.support.SimpleTransactionStatus());
+        });
     }
 
     @Test
@@ -67,7 +75,7 @@ class DeliveryServiceTest {
         ArgumentCaptor<com.fooddelivery.delivery.entity.OutboxEventEntity> outboxCaptor = ArgumentCaptor.forClass(com.fooddelivery.delivery.entity.OutboxEventEntity.class);
         verify(outboxEventRepository).save(outboxCaptor.capture());
 
-        assertThat(outboxCaptor.getValue().getPayload()).contains("DRIVER_ASSIGNED");
+        assertThat(outboxCaptor.getValue().getPayload()).contains(com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED);
         assertThat(executive.getStatus()).isEqualTo(DeliveryExecutiveStatus.ON_DELIVERY);
         verify(repository).save(executive);
     }
@@ -81,7 +89,7 @@ class DeliveryServiceTest {
         ArgumentCaptor<com.fooddelivery.delivery.entity.OutboxEventEntity> outboxCaptor = ArgumentCaptor.forClass(com.fooddelivery.delivery.entity.OutboxEventEntity.class);
         verify(outboxEventRepository).save(outboxCaptor.capture());
 
-        assertThat(outboxCaptor.getValue().getPayload()).contains("ORDER_DRIVER_REJECTED");
+        assertThat(outboxCaptor.getValue().getPayload()).contains(com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED);
     }
 
     @Test
@@ -94,7 +102,7 @@ class DeliveryServiceTest {
         ArgumentCaptor<com.fooddelivery.delivery.entity.OutboxEventEntity> outboxCaptor = ArgumentCaptor.forClass(com.fooddelivery.delivery.entity.OutboxEventEntity.class);
         verify(outboxEventRepository).save(outboxCaptor.capture());
 
-        assertThat(outboxCaptor.getValue().getPayload()).contains("ORDER_DELIVERED");
+        assertThat(outboxCaptor.getValue().getPayload()).contains(com.fooddelivery.common.constants.EventType.ORDER_DELIVERED);
         assertThat(executive.getStatus()).isEqualTo(DeliveryExecutiveStatus.ONLINE);
         verify(repository).save(executive);
         verify(logisticsDispatchService).releaseDriverLock(driverId.toString());

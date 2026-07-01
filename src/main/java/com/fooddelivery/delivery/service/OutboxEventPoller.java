@@ -19,23 +19,23 @@ public class OutboxEventPoller {
 
     private final IOutboxEventRepository outboxEventRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
-    private static final String TOPIC = "order-events";
+    private static final String TOPIC = com.fooddelivery.common.constants.KafkaConstants.TOPIC_ORDER_EVENTS;
 
     @Scheduled(fixedDelay = 5000)
     @Transactional
     public void pollOutboxEvents() {
-        List<OutboxEventEntity> unprocessedEvents = outboxEventRepository.findByStatusOrderByCreatedAtAsc("UNPROCESSED");
+        List<OutboxEventEntity> unprocessedEvents = outboxEventRepository.findUnprocessedEventsAndLock(List.of(com.fooddelivery.common.constants.AppConstants.OUTBOX_STATUS_UNPROCESSED, com.fooddelivery.common.constants.AppConstants.OUTBOX_STATUS_FAILED));
         
         for (OutboxEventEntity event : unprocessedEvents) {
             try {
-                kafkaTemplate.send(TOPIC, event.getAggregateId(), event.getPayload());
+                kafkaTemplate.send(TOPIC, event.getAggregateId(), event.getPayload()).get(3, java.util.concurrent.TimeUnit.SECONDS);
                 
-                event.setStatus("PROCESSED");
+                event.setStatus(com.fooddelivery.common.constants.AppConstants.OUTBOX_STATUS_PROCESSED);
                 event.setProcessedAt(LocalDateTime.now());
                 outboxEventRepository.save(event);
             } catch (Exception e) {
                 log.error("Failed to publish outbox event ID: {}", event.getId(), e);
-                event.setStatus("FAILED");
+                event.setStatus(com.fooddelivery.common.constants.AppConstants.OUTBOX_STATUS_FAILED);
                 event.setErrorMessage(e.getMessage());
                 outboxEventRepository.save(event);
             }

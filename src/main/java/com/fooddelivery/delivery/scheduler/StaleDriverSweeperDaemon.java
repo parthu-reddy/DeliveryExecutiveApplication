@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
 import java.util.UUID;
@@ -26,7 +25,6 @@ public class StaleDriverSweeperDaemon {
     private static final long STALE_THRESHOLD_MS = 60_000; // 60 seconds
 
     @Scheduled(fixedRate = 60_000)
-    @Transactional
     public void sweepStaleDrivers() {
         log.info("Starting StaleDriverSweeperDaemon sweep...");
         long thresholdTimestamp = System.currentTimeMillis() - STALE_THRESHOLD_MS;
@@ -51,21 +49,32 @@ public class StaleDriverSweeperDaemon {
 
     private void processStaleDriver(String driverIdStr) {
         try {
-            // 1. Remove from the Redis geospatial index
-            redisTemplate.opsForGeo().remove(DRIVER_LOCATION_KEY, driverIdStr);
-
-            // 2. Remove from the Redis ZSET
-            redisTemplate.opsForZSet().remove(DRIVER_LAST_PING_KEY, driverIdStr);
-
-            // 3. Update the database status to OFFLINE
             UUID driverId = UUID.fromString(driverIdStr);
-            deliveryExecutiveRepository.findById(driverId).ifPresent(driver -> {
-                if (driver.getStatus() != DeliveryExecutiveStatus.OFFLINE) {
-                    driver.setStatus(DeliveryExecutiveStatus.OFFLINE);
-                    deliveryExecutiveRepository.save(driver);
-                    log.info("Marked driver {} as OFFLINE due to inactivity", driverIdStr);
-                }
-            });
+
+            // Step 1: Update the database FIRST. Only proceed to Redis cleanup
+            // if the DB write succeeds. This prevents the dual-write inconsistency
+            // where Redis is cleaned but the DB still shows ONLINE.
+            boolean dbUpdateSucceeded = false;
+            try {
+                deliveryExecutiveRepository.findById(driverId).ifPresent(driver -> {
+                    if (driver.getStatus() != DeliveryExecutiveStatus.OFFLINE) {
+                        driver.setStatus(DeliveryExecutiveStatus.OFFLINE);
+                        deliveryExecutiveRepository.save(driver);
+                        log.info("Marked driver {} as OFFLINE due to inactivity", driverIdStr);
+                    }
+                });
+                dbUpdateSucceeded = true;
+            } catch (Exception dbEx) {
+                log.error("DUAL_WRITE_PREVENTION: DB update failed for driver {}. " +
+                        "Skipping Redis cleanup to maintain consistency. Driver remains in Redis " +
+                        "and will be retried on the next sweep cycle.", driverIdStr, dbEx);
+            }
+
+            // Step 2: Only remove from Redis AFTER the DB update has committed successfully.
+            if (dbUpdateSucceeded) {
+                redisTemplate.opsForGeo().remove(DRIVER_LOCATION_KEY, driverIdStr);
+                redisTemplate.opsForZSet().remove(DRIVER_LAST_PING_KEY, driverIdStr);
+            }
         } catch (IllegalArgumentException e) {
             log.error("Invalid UUID format for driverId: {}", driverIdStr, e);
             // Clean up invalid ID from Redis to prevent infinite loop of errors

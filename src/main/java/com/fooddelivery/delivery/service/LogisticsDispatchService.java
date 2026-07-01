@@ -19,28 +19,27 @@ public class LogisticsDispatchService {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
 
-    public void dispatchNearestDriver(double restaurantLat, double restaurantLng, UUID orderId) {
+    public void dispatchNearestDriver(double restaurantLat, double restaurantLng, double deliveryLat, double deliveryLng, String deliveryAddress, UUID orderId) {
         log.info("Requesting driver dispatch for order {} via MapsIntegration service", orderId);
         
         try {
             Map<String, Object> dispatchRequest = Map.of(
                 "orderId", orderId.toString(),
                 "restaurantLat", restaurantLat,
-                "restaurantLng", restaurantLng
+                "restaurantLng", restaurantLng,
+                "deliveryLat", deliveryLat,
+                "deliveryLng", deliveryLng,
+                "deliveryAddress", deliveryAddress
             );
             
             String payload = objectMapper.writeValueAsString(dispatchRequest);
             
             kafkaTemplate.send(KafkaConstants.TOPIC_LOGISTICS_DISPATCH, orderId.toString(), payload)
-                .whenComplete((result, ex) -> {
-                    if (ex == null) {
-                        log.info("Successfully published dispatch request for order {}", orderId);
-                    } else {
-                        log.error("Failed to publish dispatch request for order {}", orderId, ex);
-                    }
-                });
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize dispatch request for order {}", orderId, e);
+                .get(3, java.util.concurrent.TimeUnit.SECONDS);
+            log.info("Successfully published dispatch request for order {}", orderId);
+        } catch (Exception e) {
+            log.error("Failed to serialize or publish dispatch request for order {}", orderId, e);
+            throw new RuntimeException("Failed to publish dispatch request", e);
         }
     }
 
@@ -58,7 +57,7 @@ public class LogisticsDispatchService {
             
             String url = mapsServiceBaseUrl + "/api/fleet/availability";
             Map<String, Object> request = Map.of(
-                "cityId", "BLR", // default cityId
+                "cityId", com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID,
                 "driverId", driverId,
                 "available", true
             );

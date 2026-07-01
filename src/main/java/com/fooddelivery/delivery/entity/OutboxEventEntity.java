@@ -32,7 +32,7 @@ public class OutboxEventEntity {
     private LocalDateTime createdAt;
     
     @Builder.Default
-    private String status = "UNPROCESSED";
+    private String status = com.fooddelivery.common.constants.AppConstants.OUTBOX_STATUS_UNPROCESSED;
     private LocalDateTime processedAt;
     private String errorMessage;
 }
