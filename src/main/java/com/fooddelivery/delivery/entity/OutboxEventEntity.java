@@ -12,7 +12,7 @@ import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-@Entity
+@Entity(name = "DeliveryOutboxEventEntity")
 @Table(name = "outbox_events")
 @Data
 @Builder

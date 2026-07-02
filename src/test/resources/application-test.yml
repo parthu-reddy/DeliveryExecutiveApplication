@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:tc:postgis:16-3.4:///delivery_db
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+  flyway:
+    enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect

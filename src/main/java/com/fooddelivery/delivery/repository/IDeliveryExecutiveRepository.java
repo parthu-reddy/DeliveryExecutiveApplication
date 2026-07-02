@@ -8,4 +8,7 @@ import java.util.UUID;
 
 @Repository
 public interface IDeliveryExecutiveRepository extends JpaRepository<DeliveryExecutive, UUID> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("SELECT d FROM DeliveryExecutive d WHERE d.id = :id")
+    java.util.Optional<DeliveryExecutive> findLockedById(@org.springframework.data.repository.query.Param("id") UUID id);
 }

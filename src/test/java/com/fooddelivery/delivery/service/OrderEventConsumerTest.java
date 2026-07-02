@@ -5,7 +5,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy;
 
 import java.util.UUID;
 
@@ -14,59 +16,42 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class OrderEventConsumerTest {
 
-    @Mock
-    private LogisticsDispatchService logisticsDispatchService;
-
-    @Mock
-    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
-
-    @Mock
-    private com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository deliveryExecutiveRepository;
-
     private ObjectMapper objectMapper;
     private OrderEventConsumer orderEventConsumer;
 
+    @Mock
+    private DeliveryEventStrategy mockAcceptedStrategy;
+
     @BeforeEach
     void setUp() {
+        MockitoAnnotations.openMocks(this);
         objectMapper = new ObjectMapper();
-        orderEventConsumer = new OrderEventConsumer(objectMapper, logisticsDispatchService, redisTemplate, deliveryExecutiveRepository);
+        
+        when(mockAcceptedStrategy.getEventTypes()).thenReturn(java.util.Collections.singletonList("ORDER_ACCEPTED"));
+
+        orderEventConsumer = new OrderEventConsumer(objectMapper, new DeliveryEventStrategy[]{mockAcceptedStrategy});
     }
 
     @Test
-    void consumeOrderEvent_ShouldDispatchDriver_WhenOrderAcceptedWithLocation() {
-        UUID orderId = UUID.randomUUID();
-        double lat = 12.9716;
-        double lng = 77.5946;
-        
-        String message = String.format("{\"eventType\":\"ORDER_ACCEPTED\", \"orderId\":\"%s\", \"restaurantLat\":%f, \"restaurantLng\":%f}", 
-                orderId, lat, lng);
-
-        when(redisTemplate.opsForValue()).thenReturn(mock(org.springframework.data.redis.core.ValueOperations.class));
-        when(redisTemplate.opsForValue().setIfAbsent(anyString(), anyString(), any())).thenReturn(true);
-        orderEventConsumer.consumeOrderEvent(message, null);
-        
-        verify(logisticsDispatchService).dispatchNearestDriver(eq(12.9716), eq(77.5946), eq(0.0), eq(0.0), eq(""), eq(orderId));
-    }
-
-    @Test
-    void consumeOrderEvent_ShouldNotDispatchDriver_WhenOrderAcceptedWithoutLocation() {
+    void consumeOrderEvent_ShouldProcessOrderAcceptedEvent() throws Exception {
         UUID orderId = UUID.randomUUID();
         
-        String message = String.format("{\"eventType\":\"ORDER_ACCEPTED\", \"orderId\":\"%s\"}", orderId);
+        String message = String.format("{\"eventType\":\"ORDER_ACCEPTED\", \"orderId\":\"%s\", \"restaurantLat\":12.9716, \"restaurantLng\":77.5946}", 
+                orderId);
 
         orderEventConsumer.consumeOrderEvent(message, null);
-
-        verify(logisticsDispatchService, never()).dispatchNearestDriver(anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyString(), any(UUID.class));
+        
+        verify(mockAcceptedStrategy).process(any(), eq("ORDER_ACCEPTED"));
     }
 
     @Test
-    void consumeOrderEvent_ShouldIgnoreOtherEvents() {
+    void consumeOrderEvent_ShouldIgnoreOtherEvents() throws Exception {
         UUID orderId = UUID.randomUUID();
         
         String message = String.format("{\"eventType\":\"ORDER_CREATED\", \"orderId\":\"%s\"}", orderId);
 
         orderEventConsumer.consumeOrderEvent(message, null);
 
-        verify(logisticsDispatchService, never()).dispatchNearestDriver(anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyString(), any(UUID.class));
+        verify(mockAcceptedStrategy, never()).process(any(), anyString());
     }
 }

@@ -43,6 +43,9 @@ class DeliveryServiceTest {
     @Mock
     private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
 
+    @org.mockito.Spy
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+
     @InjectMocks
     private DeliveryService deliveryService;
 
@@ -62,13 +65,18 @@ class DeliveryServiceTest {
             org.springframework.transaction.support.TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction(new org.springframework.transaction.support.SimpleTransactionStatus());
         });
+        org.mockito.Mockito.lenient().doAnswer(invocation -> {
+            java.util.function.Consumer<org.springframework.transaction.TransactionStatus> action = invocation.getArgument(0);
+            action.accept(new org.springframework.transaction.support.SimpleTransactionStatus());
+            return null;
+        }).when(transactionTemplate).executeWithoutResult(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
     void acceptOrderPing_ShouldPublishEventAndUpdateStatus() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.setIfAbsent(eq("order:driver:lock:" + orderId), eq(driverId.toString()), org.mockito.ArgumentMatchers.any())).thenReturn(true);
-        when(repository.findById(driverId)).thenReturn(Optional.of(executive));
+        when(repository.findLockedById(driverId)).thenReturn(Optional.of(executive));
 
         deliveryService.acceptOrderPing(driverId, orderId);
 
