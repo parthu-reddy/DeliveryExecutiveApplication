@@ -11,4 +11,6 @@ public interface IDeliveryExecutiveRepository extends JpaRepository<DeliveryExec
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @org.springframework.data.jpa.repository.Query("SELECT d FROM DeliveryExecutive d WHERE d.id = :id")
     java.util.Optional<DeliveryExecutive> findLockedById(@org.springframework.data.repository.query.Param("id") UUID id);
+    
+    java.util.List<DeliveryExecutive> findByStatusAndUpdatedAtBefore(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus status, java.time.LocalDateTime time);
 }

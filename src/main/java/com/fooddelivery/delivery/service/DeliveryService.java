@@ -124,6 +124,9 @@ public class DeliveryService {
             });
             log.info("Driver {} accepted order {}. Emitted DRIVER_ASSIGNED event.", driverId, orderId);
             
+            redisTemplate.delete("order:ping:pending:" + orderId);
+            redisTemplate.opsForZSet().remove("order:ping:timeouts", orderId.toString());
+            
             try {
                 String key = "drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
                 redisTemplate.opsForSet().remove(key, driverId.toString());
@@ -133,6 +136,8 @@ public class DeliveryService {
         } catch (Exception e) {
             log.error("Failed to commit DRIVER_ASSIGNED transaction. Releasing Redis lock for order {}", orderId, e);
             redisTemplate.delete("order:driver:lock:" + orderId);
+            redisTemplate.delete("order:ping:pending:" + orderId);
+            redisTemplate.opsForZSet().remove("order:ping:timeouts", orderId.toString());
             throw e;
         }
     }
@@ -165,6 +170,8 @@ public class DeliveryService {
             return null;
         });
         
+        redisTemplate.delete("order:ping:pending:" + orderId);
+        redisTemplate.opsForZSet().remove("order:ping:timeouts", orderId.toString());
         logisticsDispatchService.releaseDriverLock(driverId.toString());
     }
 
@@ -178,7 +185,14 @@ public class DeliveryService {
         }
 
         transactionTemplate.execute(txStatus -> {
-            String eventType = "DELIVERED".equals(status) ? EventType.ORDER_DELIVERED : EventType.ORDER_STATUS_UPDATED;
+            String eventType;
+            if ("DELIVERED".equals(status)) {
+                eventType = EventType.ORDER_DELIVERED;
+            } else if ("DELIVERY_FAILED".equals(status)) {
+                eventType = EventType.DELIVERY_FAILED;
+            } else {
+                eventType = EventType.ORDER_STATUS_UPDATED;
+            }
             com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
             payloadNode.put("eventType", eventType);
             payloadNode.put("orderId", orderId.toString());
@@ -216,7 +230,9 @@ public class DeliveryService {
             logisticsDispatchService.releaseDriverLock(driverId.toString());
             // Release the order lock since the order has reached a terminal state
             redisTemplate.delete("order:driver:lock:" + orderId);
-            redisTemplate.delete("order:dispatch:lock:" + orderId);
+            redisTemplate.delete("order:ping:pending:" + orderId);
+            redisTemplate.opsForZSet().remove("order:ping:timeouts", orderId.toString());
+            redisTemplate.opsForValue().set("order:dispatch:lock:" + orderId, "accepted", java.time.Duration.ofHours(24));
             
             try {
                 String key = "drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
@@ -230,6 +246,9 @@ public class DeliveryService {
     public void timeoutDriverPing(UUID driverId, UUID orderId) {
         log.info("Driver {} ping timed out for order {}", driverId, orderId);
         
+        redisTemplate.delete("order:ping:pending:" + orderId);
+        redisTemplate.opsForZSet().remove("order:ping:timeouts", orderId.toString());
+
         transactionTemplate.execute(status -> {
             com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
             payloadNode.put("eventType", "ORDER_DRIVER_REJECTED");

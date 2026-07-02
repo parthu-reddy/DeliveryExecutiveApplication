@@ -152,6 +152,11 @@ Clients should send this payload every 3-5 seconds.
 - Scans Redis ZSET `delayed_dispatch_queue` for orders whose `dispatchTime ≤ now`.
 - Removes them from the queue and publishes dispatch requests to `platform.logistics.dispatch` for the MapsIntegration service to process.
 
+### DriverPingTimeoutPoller
+- Runs every **10 seconds**.
+- Scans Redis ZSET `order:ping:timeouts` for driver pings that have expired (timeout limit: 30 seconds).
+- Triggers auto-rejection via `DeliveryService.handleTimeout`, releasing the driver lock and retrying dispatch.
+
 ## Database
 - **PostgreSQL** database: `delivery_db`
 - **Flyway migrations**: `src/main/resources/db/migration/`
