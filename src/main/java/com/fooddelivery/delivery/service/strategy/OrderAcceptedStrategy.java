@@ -35,12 +35,13 @@ public class OrderAcceptedStrategy implements DeliveryEventStrategy {
         if (lat != 0.0 && lng != 0.0) {
             Boolean isNewDispatch = redisTemplate.opsForValue().setIfAbsent("order:dispatch:lock:" + orderId, "locked", java.time.Duration.ofHours(24));
             if (Boolean.TRUE.equals(isNewDispatch)) {
+                // ALWAYS store the payload with a TTL so retries can work if drivers reject/timeout
+                redisTemplate.opsForValue().set("order:dispatchPayload:" + orderId, root.toString(), java.time.Duration.ofHours(24));
                 if (System.currentTimeMillis() >= dispatchTime) {
                     log.info("Delivery Application received ORDER_ACCEPTED for order {}. Dispatching nearest driver immediately...", orderId);
                     logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, orderId);
                 } else {
                     log.info("Delivery Application received ORDER_ACCEPTED for order {}. Scheduling dispatch at {}.", orderId, dispatchTime);
-                    redisTemplate.opsForValue().set("order:dispatchPayload:" + orderId, root.toString());
                     redisTemplate.opsForZSet().add("delayed_dispatch_queue", orderId.toString(), dispatchTime);
                 }
             } else {

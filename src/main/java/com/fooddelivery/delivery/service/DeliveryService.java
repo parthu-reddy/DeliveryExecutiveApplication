@@ -3,7 +3,7 @@ package com.fooddelivery.delivery.service;
 import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import com.fooddelivery.delivery.enums.DeliveryExecutiveStatus;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
-import com.fooddelivery.delivery.repository.IOutboxEventRepository;
+import com.fooddelivery.common.outbox.repository.OutboxEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -45,6 +45,9 @@ public class DeliveryService {
             DeliveryExecutive executive = repository.findById(driverId)
                     .orElseThrow(() -> new RuntimeException("Driver not found"));
             
+            if (isOnline && executive.getStatus() == DeliveryExecutiveStatus.ONLINE) return executive;
+            if (!isOnline && executive.getStatus() == DeliveryExecutiveStatus.OFFLINE) return executive;
+
             com.fooddelivery.delivery.service.state.DeliveryExecutiveState state = com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory.getState(executive.getStatus());
             if (isOnline) {
                 state.goOnline(executive);
@@ -70,7 +73,7 @@ public class DeliveryService {
         return updated;
     }
 
-    private final IOutboxEventRepository outboxEventRepository;
+    private final OutboxEventRepository outboxEventRepository;
     private final LogisticsDispatchService logisticsDispatchService;
     private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
     private static final String TOPIC = com.fooddelivery.common.constants.KafkaConstants.TOPIC_ORDER_EVENTS;
@@ -103,7 +106,7 @@ public class DeliveryService {
                     throw new RuntimeException("Failed to serialize DRIVER_ASSIGNED payload", e);
                 }
                 
-                com.fooddelivery.delivery.entity.OutboxEventEntity outboxEvent = com.fooddelivery.delivery.entity.OutboxEventEntity.builder()
+                com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = com.fooddelivery.common.outbox.entity.OutboxEventEntity.builder()
                         .id(UUID.randomUUID())
                         .aggregateType(com.fooddelivery.common.constants.AppConstants.AGGREGATE_ORDER)
                         .aggregateId(orderId.toString())
@@ -120,6 +123,13 @@ public class DeliveryService {
                 repository.save(executive);
             });
             log.info("Driver {} accepted order {}. Emitted DRIVER_ASSIGNED event.", driverId, orderId);
+            
+            try {
+                String key = "drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
+                redisTemplate.opsForSet().remove(key, driverId.toString());
+            } catch (Exception e) {
+                log.error("Failed to remove driver {} from Redis pool", driverId, e);
+            }
         } catch (Exception e) {
             log.error("Failed to commit DRIVER_ASSIGNED transaction. Releasing Redis lock for order {}", orderId, e);
             redisTemplate.delete("order:driver:lock:" + orderId);
@@ -142,7 +152,7 @@ public class DeliveryService {
                 throw new RuntimeException("Failed to serialize ORDER_DRIVER_REJECTED payload", e);
             }
             
-            com.fooddelivery.delivery.entity.OutboxEventEntity outboxEvent = com.fooddelivery.delivery.entity.OutboxEventEntity.builder()
+            com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = com.fooddelivery.common.outbox.entity.OutboxEventEntity.builder()
                     .id(UUID.randomUUID())
                     .aggregateType(com.fooddelivery.common.constants.AppConstants.AGGREGATE_ORDER)
                     .aggregateId(orderId.toString())
@@ -161,6 +171,12 @@ public class DeliveryService {
     public void updateOrderStatus(UUID driverId, UUID orderId, String status) {
         log.info("Driver {} updating order {} to {}", driverId, orderId, status);
         
+        String currentAssignee = redisTemplate.opsForValue().get("order:driver:lock:" + orderId);
+        if (currentAssignee == null || !driverId.toString().equals(currentAssignee)) {
+            log.info("Idempotent/Invalid update: Order {} is not assigned to driver {}", orderId, driverId);
+            return;
+        }
+
         transactionTemplate.execute(txStatus -> {
             String eventType = "DELIVERED".equals(status) ? EventType.ORDER_DELIVERED : EventType.ORDER_STATUS_UPDATED;
             com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
@@ -174,7 +190,7 @@ public class DeliveryService {
                 throw new RuntimeException("Failed to serialize status update payload", e);
             }
             
-            com.fooddelivery.delivery.entity.OutboxEventEntity outboxEvent = com.fooddelivery.delivery.entity.OutboxEventEntity.builder()
+            com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = com.fooddelivery.common.outbox.entity.OutboxEventEntity.builder()
                     .id(UUID.randomUUID())
                     .aggregateType(com.fooddelivery.common.constants.AppConstants.AGGREGATE_ORDER)
                     .aggregateId(orderId.toString())
@@ -201,6 +217,13 @@ public class DeliveryService {
             // Release the order lock since the order has reached a terminal state
             redisTemplate.delete("order:driver:lock:" + orderId);
             redisTemplate.delete("order:dispatch:lock:" + orderId);
+            
+            try {
+                String key = "drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
+                redisTemplate.opsForSet().add(key, driverId.toString());
+            } catch (Exception e) {
+                log.error("Failed to add driver {} back to Redis pool", driverId, e);
+            }
         }
     }
 
@@ -219,7 +242,7 @@ public class DeliveryService {
                 throw new RuntimeException("Failed to serialize ORDER_DRIVER_REJECTED payload", e);
             }
             
-            com.fooddelivery.delivery.entity.OutboxEventEntity outboxEvent = com.fooddelivery.delivery.entity.OutboxEventEntity.builder()
+            com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = com.fooddelivery.common.outbox.entity.OutboxEventEntity.builder()
                     .id(UUID.randomUUID())
                     .aggregateType(com.fooddelivery.common.constants.AppConstants.AGGREGATE_ORDER)
                     .aggregateId(orderId.toString())

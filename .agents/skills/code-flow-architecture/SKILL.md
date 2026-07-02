@@ -26,5 +26,6 @@ The codebase is organized under `com.fooddelivery`:
 3. **Driver Assignment**: Emits `DRIVER_ASSIGNED` back to `order-events`.
 4. **Real-time Tracking**: WebSockets (`LocationTrackingWebSocketHandler`) accept continuous stream of {lat, lng} from driver apps, buffered into Redis using Project Reactor Sinks.
 5. **Completion**: API is called by the driver, emitting `ORDER_DELIVERED`.
+6. **Cancellation/Rejection Interception**: Listens to terminal states (`ORDER_REJECTED`, `ORDER_CANCELLED_BY_RESTAURANT`, `ORDER_DELAY_REJECTED`, `DELIVERY_FAILED`, `ORDER_CANCELLED`) to abort any pending dispatches and release locked drivers via `TerminalStateStrategy`.
 
-For visual diagrams, see `SYSTEM_FLOW_DIAGRAMS.md` in the repository root.
+For visual diagrams, see `Deployment/flow_diagram.md` and `README.md` in the repository root.

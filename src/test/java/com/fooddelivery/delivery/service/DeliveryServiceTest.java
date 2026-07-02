@@ -3,7 +3,7 @@ package com.fooddelivery.delivery.service;
 import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import com.fooddelivery.delivery.enums.DeliveryExecutiveStatus;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
-import com.fooddelivery.delivery.repository.IOutboxEventRepository;
+import com.fooddelivery.common.outbox.repository.OutboxEventRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,7 +29,7 @@ class DeliveryServiceTest {
     private IDeliveryExecutiveRepository repository;
 
     @Mock
-    private IOutboxEventRepository outboxEventRepository;
+    private OutboxEventRepository outboxEventRepository;
 
     @Mock
     private LogisticsDispatchService logisticsDispatchService;
@@ -80,7 +80,7 @@ class DeliveryServiceTest {
 
         deliveryService.acceptOrderPing(driverId, orderId);
 
-        ArgumentCaptor<com.fooddelivery.delivery.entity.OutboxEventEntity> outboxCaptor = ArgumentCaptor.forClass(com.fooddelivery.delivery.entity.OutboxEventEntity.class);
+        ArgumentCaptor<com.fooddelivery.common.outbox.entity.OutboxEventEntity> outboxCaptor = ArgumentCaptor.forClass(com.fooddelivery.common.outbox.entity.OutboxEventEntity.class);
         verify(outboxEventRepository).save(outboxCaptor.capture());
 
         assertThat(outboxCaptor.getValue().getPayload()).contains(com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED);
@@ -94,7 +94,7 @@ class DeliveryServiceTest {
 
         verify(logisticsDispatchService).releaseDriverLock(driverId.toString());
 
-        ArgumentCaptor<com.fooddelivery.delivery.entity.OutboxEventEntity> outboxCaptor = ArgumentCaptor.forClass(com.fooddelivery.delivery.entity.OutboxEventEntity.class);
+        ArgumentCaptor<com.fooddelivery.common.outbox.entity.OutboxEventEntity> outboxCaptor = ArgumentCaptor.forClass(com.fooddelivery.common.outbox.entity.OutboxEventEntity.class);
         verify(outboxEventRepository).save(outboxCaptor.capture());
 
         assertThat(outboxCaptor.getValue().getPayload()).contains(com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED);
@@ -102,12 +102,15 @@ class DeliveryServiceTest {
 
     @Test
     void updateOrderStatus_Delivered_ShouldUpdateDriverStatusAndReleaseLock() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("order:driver:lock:" + orderId)).thenReturn(driverId.toString());
+        
         when(repository.findById(driverId)).thenReturn(Optional.of(executive));
         executive.setStatus(DeliveryExecutiveStatus.ON_DELIVERY);
 
         deliveryService.updateOrderStatus(driverId, orderId, "DELIVERED");
 
-        ArgumentCaptor<com.fooddelivery.delivery.entity.OutboxEventEntity> outboxCaptor = ArgumentCaptor.forClass(com.fooddelivery.delivery.entity.OutboxEventEntity.class);
+        ArgumentCaptor<com.fooddelivery.common.outbox.entity.OutboxEventEntity> outboxCaptor = ArgumentCaptor.forClass(com.fooddelivery.common.outbox.entity.OutboxEventEntity.class);
         verify(outboxEventRepository).save(outboxCaptor.capture());
 
         assertThat(outboxCaptor.getValue().getPayload()).contains(com.fooddelivery.common.constants.EventType.ORDER_DELIVERED);
