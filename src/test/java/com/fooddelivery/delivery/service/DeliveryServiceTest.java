@@ -39,6 +39,9 @@ class DeliveryServiceTest {
 
     @Mock
     private org.springframework.data.redis.core.ValueOperations<String, String> valueOperations;
+    
+    @Mock
+    private org.springframework.data.redis.core.ZSetOperations<String, String> zSetOperations;
 
     @Mock
     private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
@@ -60,6 +63,9 @@ class DeliveryServiceTest {
         executive = new DeliveryExecutive();
         executive.setId(driverId);
         executive.setStatus(DeliveryExecutiveStatus.ONLINE);
+        
+        org.mockito.Mockito.lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        org.mockito.Mockito.lenient().when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
         
         org.mockito.Mockito.lenient().when(transactionTemplate.execute(org.mockito.ArgumentMatchers.any())).thenAnswer(invocation -> {
             org.springframework.transaction.support.TransactionCallback<?> callback = invocation.getArgument(0);

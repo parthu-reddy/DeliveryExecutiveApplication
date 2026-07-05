@@ -13,4 +13,6 @@ public interface IDeliveryExecutiveRepository extends JpaRepository<DeliveryExec
     java.util.Optional<DeliveryExecutive> findLockedById(@org.springframework.data.repository.query.Param("id") UUID id);
     
     java.util.List<DeliveryExecutive> findByStatusAndUpdatedAtBefore(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus status, java.time.LocalDateTime time);
+    
+    java.util.Optional<DeliveryExecutive> findByPhoneNumber(String phoneNumber);
 }

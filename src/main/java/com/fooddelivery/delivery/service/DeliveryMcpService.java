@@ -7,7 +7,9 @@ import com.fooddelivery.delivery.controller.DeliveryTelemetryController;
 import com.fooddelivery.delivery.controller.LogisticsController;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.stereotype.Service;
+import jakarta.servlet.http.HttpServletRequest;
 
+import java.lang.reflect.Proxy;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -31,6 +33,19 @@ public class DeliveryMcpService {
         this.objectMapper = objectMapper;
     }
 
+    private HttpServletRequest createMockRequest(String driverId) {
+        return (HttpServletRequest) Proxy.newProxyInstance(
+                HttpServletRequest.class.getClassLoader(),
+                new Class[]{HttpServletRequest.class},
+                (proxy, method, args) -> {
+                    if ("getAttribute".equals(method.getName()) && "DELIVERY_EXECUTIVE_ID".equals(args[0])) {
+                        return driverId;
+                    }
+                    return null;
+                }
+        );
+    }
+
     @Tool(description = "Onboard a new delivery executive. Provide name, phoneNumber, and vehicleNumber.")
     public String onboardDriver(String name, String phoneNumber, String vehicleNumber) {
         try {
@@ -50,7 +65,7 @@ public class DeliveryMcpService {
             Map<String, Object> req = new HashMap<>();
             req.put("driverId", driverId);
             req.put("available", isOnline);
-            return objectMapper.writeValueAsString(deliveryController.toggleStatus(req).getBody());
+            return objectMapper.writeValueAsString(deliveryController.toggleStatus(createMockRequest(driverId), req).getBody());
         } catch (Exception e) {
             return "Failed to toggle driver status: " + e.getMessage();
         }
@@ -59,7 +74,7 @@ public class DeliveryMcpService {
     @Tool(description = "Accept an order ping assigned to a delivery executive. Provide driverId and orderId.")
     public String acceptOrderPing(String driverId, String orderId) {
         try {
-            return objectMapper.writeValueAsString(deliveryController.acceptOrder(UUID.fromString(driverId), UUID.fromString(orderId)).getBody());
+            return objectMapper.writeValueAsString(deliveryController.acceptOrder(createMockRequest(driverId), UUID.fromString(driverId), UUID.fromString(orderId)).getBody());
         } catch (Exception e) {
             return "Failed to accept order ping: " + e.getMessage();
         }
@@ -68,7 +83,7 @@ public class DeliveryMcpService {
     @Tool(description = "Reject an order ping assigned to a delivery executive. Provide driverId and orderId.")
     public String rejectOrderPing(String driverId, String orderId) {
         try {
-            return objectMapper.writeValueAsString(deliveryController.rejectOrder(UUID.fromString(driverId), UUID.fromString(orderId)).getBody());
+            return objectMapper.writeValueAsString(deliveryController.rejectOrder(createMockRequest(driverId), UUID.fromString(driverId), UUID.fromString(orderId)).getBody());
         } catch (Exception e) {
             return "Failed to reject order ping: " + e.getMessage();
         }
@@ -79,7 +94,7 @@ public class DeliveryMcpService {
         try {
             Map<String, String> req = new HashMap<>();
             req.put("status", status);
-            return objectMapper.writeValueAsString(deliveryController.updateOrderStatus(UUID.fromString(driverId), UUID.fromString(orderId), req).getBody());
+            return objectMapper.writeValueAsString(deliveryController.updateOrderStatus(createMockRequest(driverId), UUID.fromString(driverId), UUID.fromString(orderId), req).getBody());
         } catch (Exception e) {
             return "Failed to update order status: " + e.getMessage();
         }
@@ -88,7 +103,7 @@ public class DeliveryMcpService {
     @Tool(description = "Timeout a driver ping for an order. Provide driverId and orderId.")
     public String timeoutDriverPing(String driverId, String orderId) {
         try {
-            return objectMapper.writeValueAsString(deliveryController.timeoutDriver(UUID.fromString(driverId), UUID.fromString(orderId)).getBody());
+            return objectMapper.writeValueAsString(deliveryController.timeoutDriver(createMockRequest(driverId), UUID.fromString(driverId), UUID.fromString(orderId)).getBody());
         } catch (Exception e) {
             return "Failed to timeout driver ping: " + e.getMessage();
         }
