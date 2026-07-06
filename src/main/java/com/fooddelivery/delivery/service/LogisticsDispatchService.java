@@ -18,6 +18,7 @@ public class LogisticsDispatchService {
 
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
+    private final org.springframework.web.client.RestTemplate restTemplate;
 
     public void dispatchNearestDriver(double restaurantLat, double restaurantLng, double deliveryLat, double deliveryLng, String deliveryAddress, UUID orderId) {
         log.info("Requesting driver dispatch for order {} via MapsIntegration service", orderId);
@@ -43,18 +44,11 @@ public class LogisticsDispatchService {
         }
     }
 
-    @org.springframework.beans.factory.annotation.Value("${maps-service.base-url:http://localhost:8083}")
-    private String mapsServiceBaseUrl;
+    private static final String mapsServiceBaseUrl = "http://mapsintegration";
 
     public void releaseDriverLock(String driverId) {
         log.info("Requesting driver lock release for driver {} via MapsIntegration service", driverId);
         try {
-            org.springframework.boot.web.client.RestTemplateBuilder builder = new org.springframework.boot.web.client.RestTemplateBuilder();
-            org.springframework.web.client.RestTemplate restTemplate = builder
-                    .setConnectTimeout(java.time.Duration.ofSeconds(3))
-                    .setReadTimeout(java.time.Duration.ofSeconds(3))
-                    .build();
-            
             String url = mapsServiceBaseUrl + "/api/fleet/availability";
             Map<String, Object> request = Map.of(
                 "cityId", com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID,

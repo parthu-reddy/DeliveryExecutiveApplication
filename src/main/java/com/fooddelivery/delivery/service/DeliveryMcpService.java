@@ -7,9 +7,8 @@ import com.fooddelivery.delivery.controller.DeliveryTelemetryController;
 import com.fooddelivery.delivery.controller.LogisticsController;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.stereotype.Service;
-import jakarta.servlet.http.HttpServletRequest;
-
 import java.lang.reflect.Proxy;
+import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -33,27 +32,18 @@ public class DeliveryMcpService {
         this.objectMapper = objectMapper;
     }
 
-    private HttpServletRequest createMockRequest(String driverId) {
-        return (HttpServletRequest) Proxy.newProxyInstance(
-                HttpServletRequest.class.getClassLoader(),
-                new Class[]{HttpServletRequest.class},
-                (proxy, method, args) -> {
-                    if ("getAttribute".equals(method.getName()) && "DELIVERY_EXECUTIVE_ID".equals(args[0])) {
-                        return driverId;
-                    }
-                    return null;
-                }
-        );
+    private Principal createMockPrincipal(String driverId) {
+        return () -> driverId;
     }
 
-    @Tool(description = "Onboard a new delivery executive. Provide name, phoneNumber, and vehicleNumber.")
-    public String onboardDriver(String name, String phoneNumber, String vehicleNumber) {
+    @Tool(description = "Onboard a new delivery executive. Provide driverId (representing X-User-Id), name, phoneNumber, and vehicleNumber.")
+    public String onboardDriver(String driverId, String name, String phoneNumber, String vehicleNumber) {
         try {
-            Map<String, String> req = new HashMap<>();
-            req.put("name", name);
-            req.put("phoneNumber", phoneNumber);
-            req.put("vehicleNumber", vehicleNumber);
-            return objectMapper.writeValueAsString(deliveryController.onboardDriver(req).getBody());
+            DeliveryExecutiveController.DeliveryOnboardRequest req = new DeliveryExecutiveController.DeliveryOnboardRequest();
+            req.setName(name);
+            req.setPhoneNumber(phoneNumber);
+            req.setVehicleNumber(vehicleNumber);
+            return objectMapper.writeValueAsString(deliveryController.onboardDriver(createMockPrincipal(driverId), req).getBody());
         } catch (Exception e) {
             return "Failed to onboard driver: " + e.getMessage();
         }
@@ -65,7 +55,7 @@ public class DeliveryMcpService {
             Map<String, Object> req = new HashMap<>();
             req.put("driverId", driverId);
             req.put("available", isOnline);
-            return objectMapper.writeValueAsString(deliveryController.toggleStatus(createMockRequest(driverId), req).getBody());
+            return objectMapper.writeValueAsString(deliveryController.toggleStatus(createMockPrincipal(driverId), req).getBody());
         } catch (Exception e) {
             return "Failed to toggle driver status: " + e.getMessage();
         }
@@ -74,7 +64,7 @@ public class DeliveryMcpService {
     @Tool(description = "Accept an order ping assigned to a delivery executive. Provide driverId and orderId.")
     public String acceptOrderPing(String driverId, String orderId) {
         try {
-            return objectMapper.writeValueAsString(deliveryController.acceptOrder(createMockRequest(driverId), UUID.fromString(driverId), UUID.fromString(orderId)).getBody());
+            return objectMapper.writeValueAsString(deliveryController.acceptOrder(UUID.fromString(driverId), UUID.fromString(orderId)).getBody());
         } catch (Exception e) {
             return "Failed to accept order ping: " + e.getMessage();
         }
@@ -83,7 +73,7 @@ public class DeliveryMcpService {
     @Tool(description = "Reject an order ping assigned to a delivery executive. Provide driverId and orderId.")
     public String rejectOrderPing(String driverId, String orderId) {
         try {
-            return objectMapper.writeValueAsString(deliveryController.rejectOrder(createMockRequest(driverId), UUID.fromString(driverId), UUID.fromString(orderId)).getBody());
+            return objectMapper.writeValueAsString(deliveryController.rejectOrder(UUID.fromString(driverId), UUID.fromString(orderId)).getBody());
         } catch (Exception e) {
             return "Failed to reject order ping: " + e.getMessage();
         }
@@ -94,7 +84,7 @@ public class DeliveryMcpService {
         try {
             Map<String, String> req = new HashMap<>();
             req.put("status", status);
-            return objectMapper.writeValueAsString(deliveryController.updateOrderStatus(createMockRequest(driverId), UUID.fromString(driverId), UUID.fromString(orderId), req).getBody());
+            return objectMapper.writeValueAsString(deliveryController.updateOrderStatus(UUID.fromString(driverId), UUID.fromString(orderId), req).getBody());
         } catch (Exception e) {
             return "Failed to update order status: " + e.getMessage();
         }
@@ -103,7 +93,7 @@ public class DeliveryMcpService {
     @Tool(description = "Timeout a driver ping for an order. Provide driverId and orderId.")
     public String timeoutDriverPing(String driverId, String orderId) {
         try {
-            return objectMapper.writeValueAsString(deliveryController.timeoutDriver(createMockRequest(driverId), UUID.fromString(driverId), UUID.fromString(orderId)).getBody());
+            return objectMapper.writeValueAsString(deliveryController.timeoutDriver(UUID.fromString(driverId), UUID.fromString(orderId)).getBody());
         } catch (Exception e) {
             return "Failed to timeout driver ping: " + e.getMessage();
         }
@@ -113,7 +103,8 @@ public class DeliveryMcpService {
     public String processBatchTelemetry(String telemetryBatchJson) {
         try {
             List<Map<String, Object>> batch = objectMapper.readValue(telemetryBatchJson, new TypeReference<List<Map<String, Object>>>() {});
-            return objectMapper.writeValueAsString(telemetryController.processBatchTelemetry(batch).getBody());
+            String authId = batch.isEmpty() ? "mock-driver-id" : (String) batch.get(0).get("driverId");
+            return objectMapper.writeValueAsString(telemetryController.processBatchTelemetry(createMockPrincipal(authId), batch).getBody());
         } catch (Exception e) {
             return "Failed to process batch telemetry: " + e.getMessage();
         }

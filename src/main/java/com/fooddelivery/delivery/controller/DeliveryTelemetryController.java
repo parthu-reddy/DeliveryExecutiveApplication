@@ -14,10 +14,13 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 @RestController
 @RequestMapping("/api/v1/delivery/telemetry")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("hasRole('DELIVERY')")
 public class DeliveryTelemetryController {
 
     private final StringRedisTemplate redisTemplate;
@@ -25,17 +28,26 @@ public class DeliveryTelemetryController {
     private static final String DRIVER_LOCATION_KEY = "drivers:geo:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
 
     @PostMapping("/batch")
-    public ResponseEntity<String> processBatchTelemetry(@RequestBody List<Map<String, Object>> telemetryBatch) {
+    public ResponseEntity<String> processBatchTelemetry(java.security.Principal principal, @RequestBody List<Map<String, Object>> telemetryBatch) {
         log.info("Received telemetry batch of size {}", telemetryBatch.size());
+        
+        String authId = principal.getName();
         
         try {
             for (Map<String, Object> event : telemetryBatch) {
                 String driverId = (String) event.get("driverId");
+                
+                // IDOR Prevention: Ensure the driver can only send their own telemetry
+                if (driverId == null || !driverId.equals(authId)) {
+                    log.warn("Unauthorized telemetry push attempt. authId={}, payloadDriverId={}", authId, driverId);
+                    continue; // Skip unauthorized events instead of failing the whole batch
+                }
+                
                 Double lat = (Double) event.get("lat");
                 Double lng = (Double) event.get("lng");
                 String orderId = (String) event.get("orderId");
                 
-                if (driverId != null && lat != null && lng != null) {
+                if (lat != null && lng != null) {
                     // Update geospatial index
                     redisTemplate.opsForGeo().add(DRIVER_LOCATION_KEY, new Point(lng, lat), driverId);
                     

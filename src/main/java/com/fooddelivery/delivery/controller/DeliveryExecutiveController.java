@@ -11,28 +11,45 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
+
 @RestController
 @RequestMapping("/api/delivery")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('DELIVERY')")
 public class DeliveryExecutiveController {
 
     private final DeliveryService deliveryService;
 
+    @Data
+    public static class DeliveryOnboardRequest {
+        @NotBlank
+        private String name;
+        @NotBlank
+        private String phoneNumber;
+        @NotBlank
+        private String vehicleNumber;
+    }
+
     @PostMapping("/onboard")
-    public ResponseEntity<ApiResponse<com.fooddelivery.delivery.entity.DeliveryExecutive>> onboardDriver(@RequestBody Map<String, String> request) {
-        String name = request.get("name");
-        String phoneNumber = request.get("phoneNumber");
-        String vehicleNumber = request.get("vehicleNumber");
-        com.fooddelivery.delivery.entity.DeliveryExecutive executive = deliveryService.onboard(name, phoneNumber, vehicleNumber);
+    public ResponseEntity<ApiResponse<com.fooddelivery.delivery.entity.DeliveryExecutive>> onboardDriver(
+            java.security.Principal principal, 
+            @Valid @RequestBody DeliveryOnboardRequest request) {
+        String name = request.getName();
+        String phoneNumber = request.getPhoneNumber();
+        String vehicleNumber = request.getVehicleNumber();
+        com.fooddelivery.delivery.entity.DeliveryExecutive executive = deliveryService.onboard(UUID.fromString(principal.getName()), name, phoneNumber, vehicleNumber);
         return ResponseEntity.ok(ApiResponse.success(executive, "Delivery Executive onboarded successfully"));
     }
 
     @PostMapping("/status")
-    public ResponseEntity<ApiResponse<Void>> toggleStatus(HttpServletRequest httpServletRequest, @RequestBody Map<String, Object> request) {
+    public ResponseEntity<ApiResponse<Void>> toggleStatus(java.security.Principal principal, @RequestBody Map<String, Object> request) {
         UUID driverId = UUID.fromString((String) request.get("driverId"));
         
-        String authId = (String) httpServletRequest.getAttribute("DELIVERY_EXECUTIVE_ID");
-        if (authId == null || !authId.equals(driverId.toString())) {
+        if (!principal.getName().equals(driverId.toString())) {
             return ResponseEntity.status(401).body(ApiResponse.<Void>builder().success(false).message("Unauthorized").build());
         }
         
@@ -48,50 +65,34 @@ public class DeliveryExecutiveController {
     }
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/accept")
+    @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
     public ResponseEntity<ApiResponse<Void>> acceptOrder(
-            HttpServletRequest httpServletRequest,
             @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
-        String authId = (String) httpServletRequest.getAttribute("DELIVERY_EXECUTIVE_ID");
-        if (authId == null || !authId.equals(driverId.toString())) {
-            return ResponseEntity.status(401).body(ApiResponse.<Void>builder().success(false).message("Unauthorized").build());
-        }
         deliveryService.acceptOrderPing(driverId, orderId);
         return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order accepted by driver").build());
     }
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/reject")
+    @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
     public ResponseEntity<ApiResponse<Void>> rejectOrder(
-            HttpServletRequest httpServletRequest,
             @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
-        String authId = (String) httpServletRequest.getAttribute("DELIVERY_EXECUTIVE_ID");
-        if (authId == null || !authId.equals(driverId.toString())) {
-            return ResponseEntity.status(401).body(ApiResponse.<Void>builder().success(false).message("Unauthorized").build());
-        }
         deliveryService.rejectOrderPing(driverId, orderId);
         return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order rejected").build());
     }
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/status")
+    @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
     public ResponseEntity<ApiResponse<Void>> updateOrderStatus(
-            HttpServletRequest httpServletRequest,
             @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId, @RequestBody Map<String, String> request) {
-        String authId = (String) httpServletRequest.getAttribute("DELIVERY_EXECUTIVE_ID");
-        if (authId == null || !authId.equals(driverId.toString())) {
-            return ResponseEntity.status(401).body(ApiResponse.<Void>builder().success(false).message("Unauthorized").build());
-        }
         String status = request.get("status");
         deliveryService.updateOrderStatus(driverId, orderId, status);
         return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order status updated").build());
     }
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/timeout")
+    @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
     public ResponseEntity<ApiResponse<Void>> timeoutDriver(
-            HttpServletRequest httpServletRequest,
             @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
-        String authId = (String) httpServletRequest.getAttribute("DELIVERY_EXECUTIVE_ID");
-        if (authId == null || !authId.equals(driverId.toString())) {
-            return ResponseEntity.status(401).body(ApiResponse.<Void>builder().success(false).message("Unauthorized").build());
-        }
         deliveryService.timeoutDriverPing(driverId, orderId);
         return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Driver ping timed out").build());
     }

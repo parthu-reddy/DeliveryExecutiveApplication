@@ -27,9 +27,9 @@ public class DeliveryService {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public DeliveryExecutive onboard(String name, String phoneNumber, String vehicleNumber) {
+    public DeliveryExecutive onboard(UUID driverId, String name, String phoneNumber, String vehicleNumber) {
         DeliveryExecutive executive = new DeliveryExecutive();
-        executive.setId(UUID.randomUUID());
+        executive.setId(driverId);
         executive.setName(name);
         executive.setPhoneNumber(phoneNumber);
         executive.setVehicleNumber(vehicleNumber);

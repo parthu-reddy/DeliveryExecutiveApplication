@@ -63,10 +63,9 @@ public class LocationTrackingWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        // Basic auth check using query params (e.g. ?token=...)
-        String query = session.getUri() != null ? session.getUri().getQuery() : "";
-        if (query == null || !query.contains("token=")) {
-            log.warn("Unauthorized WebSocket connection attempt: {}", session.getId());
+        String userId = (String) session.getAttributes().get("userId");
+        if (userId == null) {
+            log.warn("Unauthorized WebSocket connection attempt (missing userId in session): {}", session.getId());
             try {
                 session.close(CloseStatus.NOT_ACCEPTABLE);
             } catch (Exception e) {

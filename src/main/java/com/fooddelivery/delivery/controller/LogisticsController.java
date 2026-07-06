@@ -11,15 +11,17 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 @RestController
 @RequestMapping("/api/v1/logistics")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('DELIVERY')")
 public class LogisticsController {
 
     private final RestTemplate restTemplate;
 
-    @org.springframework.beans.factory.annotation.Value("${maps-service.base-url:http://localhost:8083}")
-    private String mapsServiceBaseUrl;
+    private static final String mapsServiceBaseUrl = "http://mapsintegration";
 
     @GetMapping("/route")
     public ResponseEntity<?> getRoute(

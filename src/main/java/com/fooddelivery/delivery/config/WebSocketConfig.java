@@ -16,9 +16,16 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private final TrackingWebSocketHandler trackingWebSocketHandler;
     private final LocationTrackingWebSocketHandler locationTrackingWebSocketHandler;
 
+    private final com.fooddelivery.common.security.WebSocketSecurityInterceptor securityInterceptor;
+
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(trackingWebSocketHandler, "/ws/telemetry").setAllowedOrigins("*");
-        registry.addHandler(locationTrackingWebSocketHandler, "/tracking").setAllowedOrigins("*");
+        registry.addHandler(trackingWebSocketHandler, "/api/delivery/ws/telemetry")
+                .setAllowedOrigins("*")
+                .addInterceptors(securityInterceptor);
+                
+        registry.addHandler(locationTrackingWebSocketHandler, "/api/delivery/tracking")
+                .setAllowedOrigins("*")
+                .addInterceptors(securityInterceptor);
     }
 }
