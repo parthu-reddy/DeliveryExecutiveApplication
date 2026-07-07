@@ -22,6 +22,7 @@ public class DeliveryExecutive {
     private String name;
     private String phoneNumber;
     private String vehicleNumber;
+    private String photoUrl;
 
     @Enumerated(EnumType.STRING)
     private DeliveryExecutiveStatus status;

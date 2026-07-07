@@ -32,6 +32,8 @@ public class DeliveryExecutiveController {
         private String phoneNumber;
         @NotBlank
         private String vehicleNumber;
+        @NotBlank
+        private String photoUrl;
     }
 
     @PostMapping("/onboard")
@@ -41,7 +43,8 @@ public class DeliveryExecutiveController {
         String name = request.getName();
         String phoneNumber = request.getPhoneNumber();
         String vehicleNumber = request.getVehicleNumber();
-        com.fooddelivery.delivery.entity.DeliveryExecutive executive = deliveryService.onboard(UUID.fromString(principal.getName()), name, phoneNumber, vehicleNumber);
+        String photoUrl = request.getPhotoUrl();
+        com.fooddelivery.delivery.entity.DeliveryExecutive executive = deliveryService.onboard(UUID.fromString(principal.getName()), name, phoneNumber, vehicleNumber, photoUrl);
         return ResponseEntity.ok(ApiResponse.success(executive, "Delivery Executive onboarded successfully"));
     }
 

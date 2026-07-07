@@ -36,13 +36,14 @@ public class DeliveryMcpService {
         return () -> driverId;
     }
 
-    @Tool(description = "Onboard a new delivery executive. Provide driverId (representing X-User-Id), name, phoneNumber, and vehicleNumber.")
-    public String onboardDriver(String driverId, String name, String phoneNumber, String vehicleNumber) {
+    @Tool(description = "Onboard a new delivery executive. Provide driverId (representing X-User-Id), name, phoneNumber, vehicleNumber, and photoUrl.")
+    public String onboardDriver(String driverId, String name, String phoneNumber, String vehicleNumber, String photoUrl) {
         try {
             DeliveryExecutiveController.DeliveryOnboardRequest req = new DeliveryExecutiveController.DeliveryOnboardRequest();
             req.setName(name);
             req.setPhoneNumber(phoneNumber);
             req.setVehicleNumber(vehicleNumber);
+            req.setPhotoUrl(photoUrl);
             return objectMapper.writeValueAsString(deliveryController.onboardDriver(createMockPrincipal(driverId), req).getBody());
         } catch (Exception e) {
             return "Failed to onboard driver: " + e.getMessage();
