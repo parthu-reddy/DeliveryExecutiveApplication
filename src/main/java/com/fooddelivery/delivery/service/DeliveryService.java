@@ -88,12 +88,12 @@ public class DeliveryService {
         }
         
         try {
-            transactionTemplate.executeWithoutResult(status -> {
-                String currentLock = redisTemplate.opsForValue().get("order:driver:lock:" + orderId);
-                if ("CANCELLED".equals(currentLock)) {
-                    throw new IllegalStateException("Order was cancelled during acceptance.");
-                }
+            String currentLock = redisTemplate.opsForValue().get("order:driver:lock:" + orderId);
+            if ("CANCELLED".equals(currentLock)) {
+                throw new IllegalStateException("Order was cancelled during acceptance.");
+            }
 
+            transactionTemplate.executeWithoutResult(status -> {
                 // Emitting event to CustomerApplication
                 com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
                 payloadNode.put("eventType", "DRIVER_ASSIGNED");

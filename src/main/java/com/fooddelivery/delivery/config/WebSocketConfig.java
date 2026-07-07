@@ -16,7 +16,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private final TrackingWebSocketHandler trackingWebSocketHandler;
     private final LocationTrackingWebSocketHandler locationTrackingWebSocketHandler;
 
-    private final com.fooddelivery.common.security.WebSocketSecurityInterceptor securityInterceptor;
+    private final com.fooddelivery.common.security.WebSocketSecurityInterceptor securityInterceptor = new com.fooddelivery.common.security.WebSocketSecurityInterceptor();
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {

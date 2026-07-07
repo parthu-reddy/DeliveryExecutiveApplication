@@ -23,6 +23,7 @@ public class TerminalStateStrategy implements DeliveryEventStrategy {
     private final StringRedisTemplate redisTemplate;
     private final IDeliveryExecutiveRepository executiveRepository;
     private final LogisticsDispatchService logisticsDispatchService;
+    private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
 
     @Override
     public void process(JsonNode root, String eventType) throws Exception {
@@ -46,14 +47,17 @@ public class TerminalStateStrategy implements DeliveryEventStrategy {
                 logisticsDispatchService.releaseDriverLock(driverId);
                 
                 // Reset driver status in DB
+                final String finalDriverId = driverId;
                 try {
-                    DeliveryExecutive executive = executiveRepository.findLockedById(UUID.fromString(driverId)).orElse(null);
-                    if (executive != null && executive.getStatus() == DeliveryExecutiveStatus.ON_DELIVERY) {
-                        executive.setStatus(DeliveryExecutiveStatus.ONLINE);
-                        executive.setUpdatedAt(java.time.LocalDateTime.now());
-                        executiveRepository.save(executive);
-                        log.info("Reset driver {} to ONLINE after order {} was cancelled.", driverId, orderId);
-                    }
+                    transactionTemplate.executeWithoutResult(status -> {
+                        DeliveryExecutive executive = executiveRepository.findLockedById(UUID.fromString(finalDriverId)).orElse(null);
+                        if (executive != null && executive.getStatus() == DeliveryExecutiveStatus.ON_DELIVERY) {
+                            executive.setStatus(DeliveryExecutiveStatus.ONLINE);
+                            executive.setUpdatedAt(java.time.LocalDateTime.now());
+                            executiveRepository.save(executive);
+                            log.info("Reset driver {} to ONLINE after order {} was cancelled.", finalDriverId, orderId);
+                        }
+                    });
                 } catch (Exception ex) {
                     log.error("Failed to reset driver status in DB", ex);
                 }

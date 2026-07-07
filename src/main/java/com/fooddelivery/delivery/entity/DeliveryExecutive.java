@@ -26,6 +26,9 @@ public class DeliveryExecutive {
     @Enumerated(EnumType.STRING)
     private DeliveryExecutiveStatus status;
 
+    @Version
+    private Integer version;
+
     @JsonIgnore
     private Point lastKnownLocation;
 
