@@ -26,7 +26,6 @@ public class DeliveryValidationIntegrationTest extends BaseIntegrationTest {
         
         DeliveryExecutive exec1 = new DeliveryExecutive();
         exec1.setId(UUID.randomUUID());
-        exec1.setName("Driver One");
         exec1.setPhoneNumber("9999999999");
         exec1.setVehicleNumber(duplicateVehicle);
         exec1.setPhotoUrl("http://example.com/photo1.jpg");
@@ -37,7 +36,6 @@ public class DeliveryValidationIntegrationTest extends BaseIntegrationTest {
         // Try to create second delivery executive with same vehicle number
         DeliveryExecutive exec2 = new DeliveryExecutive();
         exec2.setId(UUID.randomUUID());
-        exec2.setName("Driver Two");
         exec2.setPhoneNumber("8888888888");
         exec2.setVehicleNumber(duplicateVehicle); // Same vehicle number
         exec2.setPhotoUrl("http://example.com/photo2.jpg");

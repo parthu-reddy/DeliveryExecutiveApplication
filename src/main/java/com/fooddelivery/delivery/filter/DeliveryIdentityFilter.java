@@ -31,12 +31,17 @@ public class DeliveryIdentityFilter extends OncePerRequestFilter {
         if (phone != null && !phone.isEmpty()) {
             DeliveryExecutive executive = deliveryRepository.findByPhoneNumber(phone)
                     .orElseGet(() -> {
-                        log.info("Creating new delivery executive seamlessly for phone {}", phone);
-                        DeliveryExecutive newExecutive = new DeliveryExecutive();
-                        newExecutive.setId(UUID.randomUUID());
-                        newExecutive.setPhoneNumber(phone);
-                        newExecutive.setStatus(DeliveryExecutiveStatus.OFFLINE);
-                        return deliveryRepository.save(newExecutive);
+                        try {
+                            log.info("Creating new delivery executive seamlessly for phone {}", phone);
+                            DeliveryExecutive newExecutive = new DeliveryExecutive();
+                            newExecutive.setId(UUID.randomUUID());
+                            newExecutive.setPhoneNumber(phone);
+                            newExecutive.setStatus(DeliveryExecutiveStatus.OFFLINE);
+                            return deliveryRepository.save(newExecutive);
+                        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                            log.info("Delivery executive already created concurrently for phone {}, fetching existing record", phone);
+                            return deliveryRepository.findByPhoneNumber(phone).orElseThrow();
+                        }
                     });
                     
             request.setAttribute("DELIVERY_EXECUTIVE_ID", executive.getId().toString());

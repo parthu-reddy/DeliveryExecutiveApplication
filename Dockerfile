@@ -1,3 +1,10 @@
+# Builder stage
+FROM eclipse-temurin:17-jre-jammy as builder
+WORKDIR /builder
+COPY DeliveryExecutiveApplication/target/*.jar app.jar
+RUN java -Djarmode=tools -jar app.jar extract --layers --launcher --destination extracted
+
+# Final stage
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 
@@ -5,10 +12,13 @@ WORKDIR /app
 RUN useradd -m spring
 USER spring
 
-# Copy pre-compiled JAR from the target directory
-COPY DeliveryExecutiveApplication/target/*.jar app.jar
+# Copy layers in order of frequency of change
+COPY --from=builder /builder/extracted/dependencies/ ./
+COPY --from=builder /builder/extracted/spring-boot-loader/ ./
+COPY --from=builder /builder/extracted/snapshot-dependencies/ ./
+COPY --from=builder /builder/extracted/application/ ./
 
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0 -XX:+UseG1GC"
 
 EXPOSE 8095
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS org.springframework.boot.loader.launch.JarLauncher"]

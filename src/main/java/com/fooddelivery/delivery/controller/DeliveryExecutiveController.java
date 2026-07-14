@@ -27,8 +27,6 @@ public class DeliveryExecutiveController {
     @Data
     public static class DeliveryOnboardRequest {
         @NotBlank
-        private String name;
-        @NotBlank
         private String phoneNumber;
         @NotBlank
         private String vehicleNumber;
@@ -40,11 +38,10 @@ public class DeliveryExecutiveController {
     public ResponseEntity<ApiResponse<com.fooddelivery.delivery.entity.DeliveryExecutive>> onboardDriver(
             java.security.Principal principal, 
             @Valid @RequestBody DeliveryOnboardRequest request) {
-        String name = request.getName();
         String phoneNumber = request.getPhoneNumber();
         String vehicleNumber = request.getVehicleNumber();
         String photoUrl = request.getPhotoUrl();
-        com.fooddelivery.delivery.entity.DeliveryExecutive executive = deliveryService.onboard(UUID.fromString(principal.getName()), name, phoneNumber, vehicleNumber, photoUrl);
+        com.fooddelivery.delivery.entity.DeliveryExecutive executive = deliveryService.onboard(UUID.fromString(principal.getName()), phoneNumber, vehicleNumber, photoUrl);
         return ResponseEntity.ok(ApiResponse.success(executive, "Delivery Executive onboarded successfully"));
     }
 
