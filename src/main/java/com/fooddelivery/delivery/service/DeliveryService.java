@@ -27,23 +27,37 @@ public class DeliveryService {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public DeliveryExecutive onboard(UUID driverId, String phoneNumber, String vehicleNumber, String photoUrl) {
-        DeliveryExecutive executive = new DeliveryExecutive();
-        executive.setId(driverId);
+    public DeliveryExecutive onboard(UUID driverId, String fullName, String phoneNumber, String vehicleNumber, String photoUrl) {
+        DeliveryExecutive executive = repository.findById(driverId).orElseGet(DeliveryExecutive::new);
+        
+        if (executive.getId() == null) {
+            executive.setId(driverId);
+            executive.setStatus(DeliveryExecutiveStatus.OFFLINE);
+            executive.setCreatedAt(LocalDateTime.now());
+        }
+        
+        executive.setFullName(fullName);
         executive.setPhoneNumber(phoneNumber);
         executive.setVehicleNumber(vehicleNumber);
         executive.setPhotoUrl(photoUrl);
-        executive.setStatus(DeliveryExecutiveStatus.OFFLINE);
-        executive.setCreatedAt(LocalDateTime.now());
         executive.setUpdatedAt(LocalDateTime.now());
-        log.info("Onboarded Delivery Executive: {}", executive.getId());
+        
+        log.info("Onboarded/Updated Delivery Executive: {}", executive.getId());
         return repository.save(executive);
+    }
+
+    public java.util.Optional<DeliveryExecutive> findByPhoneNumber(String phoneNumber) {
+        return repository.findByPhoneNumber(phoneNumber);
     }
 
     public DeliveryExecutive toggleStatus(UUID driverId, boolean isOnline) {
         DeliveryExecutive updated = transactionTemplate.execute(status -> {
             DeliveryExecutive executive = repository.findById(driverId)
                     .orElseThrow(() -> new RuntimeException("Driver not found"));
+            
+            if (isOnline && (executive.getVehicleNumber() == null || executive.getVehicleNumber().trim().isEmpty())) {
+                throw new IllegalArgumentException("Registration incomplete: Please complete registration before going online.");
+            }
             
             if (isOnline && executive.getStatus() == DeliveryExecutiveStatus.ONLINE) return executive;
             if (!isOnline && executive.getStatus() == DeliveryExecutiveStatus.OFFLINE) return executive;
@@ -275,5 +289,64 @@ public class DeliveryService {
         });
         
         logisticsDispatchService.releaseDriverLock(driverId.toString());
+    }
+    
+    public void forceAssignOrder(UUID orderId, UUID driverId) {
+        log.info("Admin forcing assignment of order {} to driver {}", orderId, driverId);
+        
+        // Remove from pending ping if any
+        redisTemplate.delete("order:ping:pending:" + orderId);
+        redisTemplate.opsForZSet().remove("order:ping:timeouts", orderId.toString());
+
+        // Force set the order driver lock
+        redisTemplate.opsForValue().set("order:driver:lock:" + orderId, driverId.toString(), java.time.Duration.ofMinutes(60));
+
+        transactionTemplate.executeWithoutResult(status -> {
+            com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
+            payloadNode.put("eventType", "DRIVER_ASSIGNED");
+            payloadNode.put("orderId", orderId.toString());
+            payloadNode.put("driverId", driverId.toString());
+            String payload;
+            try {
+                payload = objectMapper.writeValueAsString(payloadNode);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to serialize DRIVER_ASSIGNED payload", e);
+            }
+            
+            com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = com.fooddelivery.common.outbox.entity.OutboxEventEntity.builder()
+                    .id(UUID.randomUUID())
+                    .aggregateType(com.fooddelivery.common.constants.AppConstants.AGGREGATE_ORDER)
+                    .aggregateId(orderId.toString())
+                    .eventType(com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED)
+                    .payload(payload)
+                    .createdAt(java.time.LocalDateTime.now())
+                    .status(com.fooddelivery.common.constants.AppConstants.OUTBOX_STATUS_UNPROCESSED)
+                    .build();
+            outboxEventRepository.save(outboxEvent);
+            
+            DeliveryExecutive executive = repository.findLockedById(driverId).orElseThrow(() -> new IllegalArgumentException("Driver not found"));
+            com.fooddelivery.delivery.service.state.DeliveryExecutiveState state = com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory.getState(executive.getStatus());
+            
+            // Just force it to ONLINE if it's OFFLINE to allow assignment?
+            // Actually, we expect them to be ONLINE, so state.acceptOrder should work.
+            if (executive.getStatus() != com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.ONLINE) {
+                // To be safe, if they somehow went offline or are ON_DELIVERY already, force them to ONLINE first?
+                // Let's just assume acceptOrder works for ONLINE drivers.
+                if (executive.getStatus() == com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.OFFLINE) {
+                     executive.setStatus(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.ONLINE);
+                }
+            }
+            // re-fetch state in case we updated status
+            state = com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory.getState(executive.getStatus());
+            state.acceptOrder(executive);
+            repository.save(executive);
+        });
+        
+        try {
+            String key = "drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
+            redisTemplate.opsForSet().remove(key, driverId.toString());
+        } catch (Exception e) {
+            log.error("Failed to remove driver {} from Redis pool", driverId, e);
+        }
     }
 }

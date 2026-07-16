@@ -24,7 +24,7 @@ public class LocationTrackingWebSocketHandler extends TextWebSocketHandler {
     private final ConcurrentHashMap<String, WebSocketSession> activeSessions = new ConcurrentHashMap<>();
     private final Sinks.Many<TelemetryEvent> telemetrySink = Sinks.many().multicast().onBackpressureBuffer();
 
-    private static final String DRIVER_LOCATION_KEY = "driver_locations";
+    private static final String DRIVER_LOCATION_KEY = "drivers:geo:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
 
     public LocationTrackingWebSocketHandler(ObjectMapper objectMapper, StringRedisTemplate redisTemplate) {
         this.objectMapper = objectMapper;

@@ -20,7 +20,7 @@ public class StaleDriverSweeperDaemon {
     private final StringRedisTemplate redisTemplate;
     private final IDeliveryExecutiveRepository deliveryExecutiveRepository;
 
-    private static final String DRIVER_LOCATION_KEY = "driver_locations";
+    private static final String DRIVER_LOCATION_KEY = "drivers:geo:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
     private static final String DRIVER_LAST_PING_KEY = "driver_last_ping";
     private static final long STALE_THRESHOLD_MS = 60_000; // 60 seconds
 
@@ -74,6 +74,7 @@ public class StaleDriverSweeperDaemon {
             if (dbUpdateSucceeded) {
                 redisTemplate.opsForGeo().remove(DRIVER_LOCATION_KEY, driverIdStr);
                 redisTemplate.opsForZSet().remove(DRIVER_LAST_PING_KEY, driverIdStr);
+                redisTemplate.opsForSet().remove("drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID, driverIdStr);
             }
         } catch (IllegalArgumentException e) {
             log.error("Invalid UUID format for driverId: {}", driverIdStr, e);

@@ -19,6 +19,7 @@ public class DeliveryExecutive {
     @Id
     private UUID id;
 
+    private String fullName;
     private String phoneNumber;
     private String vehicleNumber;
     private String photoUrl;

@@ -27,6 +27,8 @@ public class DeliveryExecutiveController {
     @Data
     public static class DeliveryOnboardRequest {
         @NotBlank
+        private String fullName;
+        @NotBlank
         private String phoneNumber;
         @NotBlank
         private String vehicleNumber;
@@ -38,11 +40,20 @@ public class DeliveryExecutiveController {
     public ResponseEntity<ApiResponse<com.fooddelivery.delivery.entity.DeliveryExecutive>> onboardDriver(
             java.security.Principal principal, 
             @Valid @RequestBody DeliveryOnboardRequest request) {
+        String fullName = request.getFullName();
         String phoneNumber = request.getPhoneNumber();
         String vehicleNumber = request.getVehicleNumber();
         String photoUrl = request.getPhotoUrl();
-        com.fooddelivery.delivery.entity.DeliveryExecutive executive = deliveryService.onboard(UUID.fromString(principal.getName()), phoneNumber, vehicleNumber, photoUrl);
+        com.fooddelivery.delivery.entity.DeliveryExecutive executive = deliveryService.onboard(UUID.fromString(principal.getName()), fullName, phoneNumber, vehicleNumber, photoUrl);
         return ResponseEntity.ok(ApiResponse.success(executive, "Delivery Executive onboarded successfully"));
+    }
+
+    @GetMapping("/profile")
+    public ResponseEntity<ApiResponse<com.fooddelivery.delivery.entity.DeliveryExecutive>> getProfile(
+            @RequestParam("phoneNumber") String phoneNumber) {
+        return deliveryService.findByPhoneNumber(phoneNumber)
+                .map(executive -> ResponseEntity.ok(ApiResponse.success(executive, "Profile fetched successfully")))
+                .orElseGet(() -> ResponseEntity.status(404).body(ApiResponse.<com.fooddelivery.delivery.entity.DeliveryExecutive>builder().success(false).message("Profile not found").build()));
     }
 
     @PostMapping("/status")
@@ -55,7 +66,11 @@ public class DeliveryExecutiveController {
         
         boolean available = (Boolean) request.get("available");
         
-        deliveryService.toggleStatus(driverId, available);
+        try {
+            deliveryService.toggleStatus(driverId, available);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.<Void>builder().success(false).message(e.getMessage()).build());
+        }
         
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)

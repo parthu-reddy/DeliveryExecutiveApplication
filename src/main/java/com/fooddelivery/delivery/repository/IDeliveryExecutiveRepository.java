@@ -14,5 +14,7 @@ public interface IDeliveryExecutiveRepository extends JpaRepository<DeliveryExec
     
     java.util.List<DeliveryExecutive> findByStatusAndUpdatedAtBefore(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus status, java.time.LocalDateTime time);
     
+    java.util.List<DeliveryExecutive> findByStatus(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus status);
+    
     java.util.Optional<DeliveryExecutive> findByPhoneNumber(String phoneNumber);
 }

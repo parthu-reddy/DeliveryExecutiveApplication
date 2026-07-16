@@ -26,7 +26,7 @@ public class TrackingWebSocketHandler extends TextWebSocketHandler {
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
-    private static final String DRIVER_LOCATION_KEY = "driver_locations";
+    private static final String DRIVER_LOCATION_KEY = "drivers:geo:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
 
     // Use Sinks.Many to create a reactive stream for telemetry data with backpressure buffering
     private final Sinks.Many<Map<String, Object>> telemetrySink = Sinks.many().multicast().onBackpressureBuffer(10000, false);

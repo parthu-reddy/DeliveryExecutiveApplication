@@ -18,6 +18,7 @@ import java.util.UUID;
 public class CandidateFoundStrategy implements DeliveryEventStrategy {
 
     private final StringRedisTemplate redisTemplate;
+    private final com.fooddelivery.common.service.NotificationRouterService notificationRouterService;
 
     @Override
     public void process(JsonNode root, String eventType) throws Exception {
@@ -29,9 +30,16 @@ public class CandidateFoundStrategy implements DeliveryEventStrategy {
         redisTemplate.opsForValue().set("order:ping:pending:" + orderId, driverId, Duration.ofSeconds(30));
         redisTemplate.opsForZSet().add("order:ping:timeouts", orderId.toString(), System.currentTimeMillis() + 30000);
 
-        // Here we would typically push a notification to the driver's app over WebSockets.
-        // For now, we simulate this by logging the action.
         log.info("Pinging Driver {} for Order {}...", driverId, orderId);
+
+        // Send a push notification to the driver
+        com.fooddelivery.common.event.NotificationRequestEvent notificationEvent = com.fooddelivery.common.event.NotificationRequestEvent.builder()
+                .userId(UUID.fromString(driverId))
+                .channel(com.fooddelivery.common.enums.ChannelType.PUSH)
+                .eventName("NEW_ORDER_DISPATCH")
+                .payload(java.util.Map.of("orderId", orderId.toString()))
+                .build();
+        notificationRouterService.routeNotification(notificationEvent);
     }
 
     @Override
