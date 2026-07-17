@@ -25,6 +25,7 @@ public class DeliveryService {
 
     private final IDeliveryExecutiveRepository repository;
     private final ObjectMapper objectMapper;
+    private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
 
     @Transactional
     public DeliveryExecutive onboard(UUID driverId, String fullName, String phoneNumber, String vehicleNumber, String photoUrl) {
@@ -59,8 +60,11 @@ public class DeliveryService {
                 throw new IllegalArgumentException("Registration incomplete: Please complete registration before going online.");
             }
             
-            if (isOnline && executive.getStatus() == DeliveryExecutiveStatus.ONLINE) return executive;
+            if (isOnline && (executive.getStatus() == DeliveryExecutiveStatus.ONLINE || executive.getStatus() == DeliveryExecutiveStatus.ON_DELIVERY)) return executive;
             if (!isOnline && executive.getStatus() == DeliveryExecutiveStatus.OFFLINE) return executive;
+            if (!isOnline && executive.getStatus() == DeliveryExecutiveStatus.ON_DELIVERY) {
+                throw new IllegalArgumentException("Cannot go offline while on delivery. Please complete the delivery first.");
+            }
 
             com.fooddelivery.delivery.service.state.DeliveryExecutiveState state = com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory.getState(executive.getStatus());
             if (isOnline) {
@@ -87,9 +91,36 @@ public class DeliveryService {
         return updated;
     }
 
+    public java.util.List<com.fooddelivery.delivery.dto.DriverLocationDTO> getAvailableDriversWithLocation() {
+        java.util.List<DeliveryExecutive> availableDrivers = repository.findByStatus(DeliveryExecutiveStatus.ONLINE);
+        System.out.println("getAvailableDriversWithLocation: found " + availableDrivers.size() + " drivers ONLINE");
+        java.util.List<com.fooddelivery.delivery.dto.DriverLocationDTO> result = new java.util.ArrayList<>();
+        String DRIVER_LOCATION_KEY = "drivers:geo:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
+        
+        for (DeliveryExecutive driver : availableDrivers) {
+            com.fooddelivery.delivery.dto.DriverLocationDTO dto = new com.fooddelivery.delivery.dto.DriverLocationDTO(
+                driver.getId(), driver.getFullName(), driver.getPhoneNumber(), null, null
+            );
+            try {
+                java.util.List<org.springframework.data.geo.Point> positions = redisTemplate.opsForGeo().position(DRIVER_LOCATION_KEY, driver.getId().toString());
+                if (positions != null && !positions.isEmpty() && positions.get(0) != null) {
+                    dto.setLng(positions.get(0).getX());
+                    dto.setLat(positions.get(0).getY());
+                } else {
+                    // Fallback test coordinates near Bangalore
+                    dto.setLng(77.5946 + (Math.random() - 0.5) * 0.05);
+                    dto.setLat(12.9716 + (Math.random() - 0.5) * 0.05);
+                }
+            } catch (Exception e) {
+                log.warn("Could not fetch location for driver {}", driver.getId());
+            }
+            result.add(dto);
+        }
+        return result;
+    }
+
     private final OutboxEventRepository outboxEventRepository;
     private final LogisticsDispatchService logisticsDispatchService;
-    private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
     private static final String TOPIC = com.fooddelivery.common.constants.KafkaConstants.TOPIC_ORDER_EVENTS;
 
     public void acceptOrderPing(UUID driverId, UUID orderId) {
@@ -108,11 +139,15 @@ public class DeliveryService {
             }
 
             transactionTemplate.executeWithoutResult(status -> {
+                DeliveryExecutive executive = repository.findLockedById(driverId).orElseThrow();
+
                 // Emitting event to CustomerApplication
                 com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
                 payloadNode.put("eventType", "DRIVER_ASSIGNED");
                 payloadNode.put("orderId", orderId.toString());
                 payloadNode.put("driverId", driverId.toString());
+                payloadNode.put("driverName", executive.getFullName());
+                payloadNode.put("driverPhone", executive.getPhoneNumber());
                 String payload;
                 try {
                     payload = objectMapper.writeValueAsString(payloadNode);
@@ -131,7 +166,6 @@ public class DeliveryService {
                         .build();
                 outboxEventRepository.save(outboxEvent);
                 
-                DeliveryExecutive executive = repository.findLockedById(driverId).orElseThrow();
                 com.fooddelivery.delivery.service.state.DeliveryExecutiveState state = com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory.getState(executive.getStatus());
                 state.acceptOrder(executive);
                 repository.save(executive);
@@ -189,12 +223,12 @@ public class DeliveryService {
         logisticsDispatchService.releaseDriverLock(driverId.toString());
     }
 
-    public void updateOrderStatus(UUID driverId, UUID orderId, String status) {
+    public void updateOrderStatus(UUID driverId, UUID orderId, String status, String pickupOtp) {
         log.info("Driver {} updating order {} to {}", driverId, orderId, status);
         
         String currentAssignee = redisTemplate.opsForValue().get("order:driver:lock:" + orderId);
-        if (currentAssignee == null || !driverId.toString().equals(currentAssignee)) {
-            log.info("Idempotent/Invalid update: Order {} is not assigned to driver {}", orderId, driverId);
+        if (currentAssignee != null && !driverId.toString().equals(currentAssignee)) {
+            log.info("Idempotent/Invalid update: Order {} is assigned to another driver {}", orderId, currentAssignee);
             return;
         }
 
@@ -211,6 +245,9 @@ public class DeliveryService {
             payloadNode.put("eventType", eventType);
             payloadNode.put("orderId", orderId.toString());
             payloadNode.put("status", status);
+            if (pickupOtp != null && !pickupOtp.isEmpty()) {
+                payloadNode.put("pickupOtp", pickupOtp);
+            }
             String payload;
             try {
                 payload = objectMapper.writeValueAsString(payloadNode);

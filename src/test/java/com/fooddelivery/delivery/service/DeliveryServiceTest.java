@@ -114,7 +114,7 @@ class DeliveryServiceTest {
         when(repository.findById(driverId)).thenReturn(Optional.of(executive));
         executive.setStatus(DeliveryExecutiveStatus.ON_DELIVERY);
 
-        deliveryService.updateOrderStatus(driverId, orderId, "DELIVERED");
+        deliveryService.updateOrderStatus(driverId, orderId, "DELIVERED", null);
 
         ArgumentCaptor<com.fooddelivery.common.outbox.entity.OutboxEventEntity> outboxCaptor = ArgumentCaptor.forClass(com.fooddelivery.common.outbox.entity.OutboxEventEntity.class);
         verify(outboxEventRepository).save(outboxCaptor.capture());

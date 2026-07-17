@@ -100,7 +100,8 @@ public class DeliveryExecutiveController {
     public ResponseEntity<ApiResponse<Void>> updateOrderStatus(
             @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId, @RequestBody Map<String, String> request) {
         String status = request.get("status");
-        deliveryService.updateOrderStatus(driverId, orderId, status);
+        String pickupOtp = request.get("pickupOtp");
+        deliveryService.updateOrderStatus(driverId, orderId, status, pickupOtp);
         return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order status updated").build());
     }
 
