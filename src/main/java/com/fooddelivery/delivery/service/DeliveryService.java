@@ -79,8 +79,10 @@ public class DeliveryService {
         try {
             if (isOnline) {
                 redisTemplate.opsForSet().add(key, driverId.toString());
+                redisTemplate.opsForZSet().add("driver_last_ping", driverId.toString(), System.currentTimeMillis());
             } else {
                 redisTemplate.opsForSet().remove(key, driverId.toString());
+                redisTemplate.opsForZSet().remove("driver_last_ping", driverId.toString());
             }
         } catch (Exception e) {
             log.error("Failed to sync driver status with Redis for driver {}", driverId, e);
@@ -106,15 +108,13 @@ public class DeliveryService {
                 if (positions != null && !positions.isEmpty() && positions.get(0) != null) {
                     dto.setLng(positions.get(0).getX());
                     dto.setLat(positions.get(0).getY());
+                    result.add(dto);
                 } else {
-                    // Fallback test coordinates near Bangalore
-                    dto.setLng(77.5946 + (Math.random() - 0.5) * 0.05);
-                    dto.setLat(12.9716 + (Math.random() - 0.5) * 0.05);
+                    log.debug("Skipping driver {} as they have no valid location in Redis", driver.getId());
                 }
             } catch (Exception e) {
                 log.warn("Could not fetch location for driver {}", driver.getId());
             }
-            result.add(dto);
         }
         return result;
     }
@@ -339,10 +339,13 @@ public class DeliveryService {
         redisTemplate.opsForValue().set("order:driver:lock:" + orderId, driverId.toString(), java.time.Duration.ofMinutes(60));
 
         transactionTemplate.executeWithoutResult(status -> {
+            DeliveryExecutive executive = repository.findLockedById(driverId).orElseThrow(() -> new IllegalArgumentException("Driver not found"));
             com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
             payloadNode.put("eventType", "DRIVER_ASSIGNED");
             payloadNode.put("orderId", orderId.toString());
             payloadNode.put("driverId", driverId.toString());
+            payloadNode.put("driverName", executive.getFullName());
+            payloadNode.put("driverPhone", executive.getPhoneNumber());
             String payload;
             try {
                 payload = objectMapper.writeValueAsString(payloadNode);
@@ -361,7 +364,6 @@ public class DeliveryService {
                     .build();
             outboxEventRepository.save(outboxEvent);
             
-            DeliveryExecutive executive = repository.findLockedById(driverId).orElseThrow(() -> new IllegalArgumentException("Driver not found"));
             com.fooddelivery.delivery.service.state.DeliveryExecutiveState state = com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory.getState(executive.getStatus());
             
             // Just force it to ONLINE if it's OFFLINE to allow assignment?

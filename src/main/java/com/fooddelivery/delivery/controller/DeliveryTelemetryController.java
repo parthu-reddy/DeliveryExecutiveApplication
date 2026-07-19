@@ -54,6 +54,9 @@ public class DeliveryTelemetryController {
                     // Update geospatial index
                     redisTemplate.opsForGeo().add(DRIVER_LOCATION_KEY, new Point(lng, lat), driverId);
                     
+                    // Update last ping time for stale driver sweeping
+                    redisTemplate.opsForZSet().add("driver_last_ping", driverId, System.currentTimeMillis());
+                    
                     // Publish to pub/sub for SSE tracking
                     if (orderId != null && !orderId.isEmpty()) {
                         String channel = "tracking:order:" + orderId;
