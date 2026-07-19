@@ -232,6 +232,23 @@ public class DeliveryService {
             return;
         }
 
+        if ("DELIVERED".equals(status)) {
+            String payload = redisTemplate.opsForValue().get("order:dispatchPayload:" + orderId);
+            if (payload != null) {
+                try {
+                    com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(payload);
+                    String expectedOtp = root.path("deliveryOtp").asText(null);
+                    if (expectedOtp != null && !expectedOtp.isEmpty() && !expectedOtp.equals(deliveryOtp)) {
+                        throw new IllegalArgumentException("Invalid Delivery OTP");
+                    }
+                } catch (IllegalArgumentException e) {
+                    throw e;
+                } catch (Exception e) {
+                    log.error("Failed to parse dispatch payload for order {}", orderId, e);
+                }
+            }
+        }
+
         transactionTemplate.execute(txStatus -> {
             String eventType;
             if ("DELIVERED".equals(status)) {
