@@ -9,4 +9,10 @@ public class OnDeliveryState implements DeliveryExecutiveState {
     public void completeDelivery(DeliveryExecutive executive) {
         executive.setStatus(DeliveryExecutiveStatus.ONLINE);
     }
+
+    @Override
+    public void goOffline(DeliveryExecutive executive) {
+        // Websocket disconnected during delivery
+        executive.setStatus(DeliveryExecutiveStatus.OFFLINE);
+    }
 }

@@ -64,6 +64,10 @@ public class DeliveryExecutiveController {
         @Size(max = 10)
         @Pattern(regexp = "^\\d+$")
         private String pickupOtp;
+
+        @Size(max = 10)
+        @Pattern(regexp = "^\\d+$")
+        private String deliveryOtp;
     }
 
     @PostMapping("/onboard")
@@ -127,12 +131,12 @@ public class DeliveryExecutiveController {
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/status")
     @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
-    public ResponseEntity<ApiResponse<Void>> updateOrderStatus(
-            @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId, @Valid @RequestBody UpdateOrderStatusRequest request) {
-        String status = request.getStatus();
-        String pickupOtp = request.getPickupOtp();
-        deliveryService.updateOrderStatus(driverId, orderId, status, pickupOtp);
-        return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order status updated").build());
+    public ResponseEntity<ApiResponse<Object>> updateOrderStatus(
+            @PathVariable UUID driverId,
+            @PathVariable UUID orderId,
+            @Valid @RequestBody UpdateOrderStatusRequest request) {
+        deliveryService.updateOrderStatus(driverId, orderId, request.getStatus(), request.getPickupOtp(), request.getDeliveryOtp());
+        return ResponseEntity.ok(ApiResponse.<Object>builder().success(true).message("Order status updated").build());
     }
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/timeout")

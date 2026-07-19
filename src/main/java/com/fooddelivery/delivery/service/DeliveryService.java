@@ -223,7 +223,7 @@ public class DeliveryService {
         logisticsDispatchService.releaseDriverLock(driverId.toString());
     }
 
-    public void updateOrderStatus(UUID driverId, UUID orderId, String status, String pickupOtp) {
+    public void updateOrderStatus(UUID driverId, UUID orderId, String status, String pickupOtp, String deliveryOtp) {
         log.info("Driver {} updating order {} to {}", driverId, orderId, status);
         
         String currentAssignee = redisTemplate.opsForValue().get("order:driver:lock:" + orderId);
@@ -247,6 +247,9 @@ public class DeliveryService {
             payloadNode.put("status", status);
             if (pickupOtp != null && !pickupOtp.isEmpty()) {
                 payloadNode.put("pickupOtp", pickupOtp);
+            }
+            if (deliveryOtp != null && !deliveryOtp.isEmpty()) {
+                payloadNode.put("deliveryOtp", deliveryOtp);
             }
             String payload;
             try {
