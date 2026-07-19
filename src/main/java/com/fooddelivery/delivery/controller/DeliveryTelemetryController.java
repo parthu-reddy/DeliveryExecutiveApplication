@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fooddelivery.delivery.dto.TelemetryEventRequest;
+import jakarta.validation.Valid;
+
 import java.util.List;
 import java.util.Map;
 
@@ -28,14 +31,14 @@ public class DeliveryTelemetryController {
     private static final String DRIVER_LOCATION_KEY = "drivers:geo:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
 
     @PostMapping("/batch")
-    public ResponseEntity<String> processBatchTelemetry(java.security.Principal principal, @RequestBody List<Map<String, Object>> telemetryBatch) {
+    public ResponseEntity<String> processBatchTelemetry(java.security.Principal principal, @Valid @RequestBody List<TelemetryEventRequest> telemetryBatch) {
         log.info("Received telemetry batch of size {}", telemetryBatch.size());
         
         String authId = principal.getName();
         
         try {
-            for (Map<String, Object> event : telemetryBatch) {
-                String driverId = (String) event.get("driverId");
+            for (TelemetryEventRequest event : telemetryBatch) {
+                String driverId = event.getDriverId();
                 
                 // IDOR Prevention: Ensure the driver can only send their own telemetry
                 if (driverId == null || !driverId.equals(authId)) {
@@ -43,9 +46,9 @@ public class DeliveryTelemetryController {
                     continue; // Skip unauthorized events instead of failing the whole batch
                 }
                 
-                Double lat = (Double) event.get("lat");
-                Double lng = (Double) event.get("lng");
-                String orderId = (String) event.get("orderId");
+                Double lat = event.getLat();
+                Double lng = event.getLng();
+                String orderId = event.getOrderId();
                 
                 if (lat != null && lng != null) {
                     // Update geospatial index

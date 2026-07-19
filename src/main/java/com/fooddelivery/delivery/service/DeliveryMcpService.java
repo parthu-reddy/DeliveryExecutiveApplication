@@ -52,9 +52,9 @@ public class DeliveryMcpService {
     @Tool(description = "Toggle the online/offline status of a delivery executive. Provide driverId and boolean isOnline.")
     public String toggleDriverStatus(String driverId, boolean isOnline) {
         try {
-            Map<String, Object> req = new HashMap<>();
-            req.put("driverId", driverId);
-            req.put("available", isOnline);
+            DeliveryExecutiveController.ToggleStatusRequest req = new DeliveryExecutiveController.ToggleStatusRequest();
+            req.setDriverId(driverId);
+            req.setAvailable(isOnline);
             return objectMapper.writeValueAsString(deliveryController.toggleStatus(createMockPrincipal(driverId), req).getBody());
         } catch (Exception e) {
             return "Failed to toggle driver status: " + e.getMessage();
@@ -82,8 +82,8 @@ public class DeliveryMcpService {
     @Tool(description = "Update the status of an ongoing order delivery. Provide driverId, orderId, and status (e.g., PICKED_UP, DELIVERED).")
     public String updateOrderStatus(String driverId, String orderId, String status) {
         try {
-            Map<String, String> req = new HashMap<>();
-            req.put("status", status);
+            DeliveryExecutiveController.UpdateOrderStatusRequest req = new DeliveryExecutiveController.UpdateOrderStatusRequest();
+            req.setStatus(status);
             return objectMapper.writeValueAsString(deliveryController.updateOrderStatus(UUID.fromString(driverId), UUID.fromString(orderId), req).getBody());
         } catch (Exception e) {
             return "Failed to update order status: " + e.getMessage();
@@ -102,8 +102,8 @@ public class DeliveryMcpService {
     @Tool(description = "Process batch telemetry for drivers. Provide JSON string of list of telemetry events.")
     public String processBatchTelemetry(String telemetryBatchJson) {
         try {
-            List<Map<String, Object>> batch = objectMapper.readValue(telemetryBatchJson, new TypeReference<List<Map<String, Object>>>() {});
-            String authId = batch.isEmpty() ? "mock-driver-id" : (String) batch.get(0).get("driverId");
+            List<com.fooddelivery.delivery.dto.TelemetryEventRequest> batch = objectMapper.readValue(telemetryBatchJson, new TypeReference<List<com.fooddelivery.delivery.dto.TelemetryEventRequest>>() {});
+            String authId = batch.isEmpty() ? "mock-driver-id" : batch.get(0).getDriverId();
             return objectMapper.writeValueAsString(telemetryController.processBatchTelemetry(createMockPrincipal(authId), batch).getBody());
         } catch (Exception e) {
             return "Failed to process batch telemetry: " + e.getMessage();

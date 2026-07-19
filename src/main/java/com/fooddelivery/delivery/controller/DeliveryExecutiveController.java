@@ -14,6 +14,9 @@ import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @RestController
@@ -27,13 +30,40 @@ public class DeliveryExecutiveController {
     @Data
     public static class DeliveryOnboardRequest {
         @NotBlank
+        @Size(max = 100)
         private String fullName;
         @NotBlank
+        @Size(max = 20)
+        @Pattern(regexp = "^\\+?[1-9]\\d{1,14}$")
         private String phoneNumber;
         @NotBlank
+        @Size(max = 50)
         private String vehicleNumber;
         @NotBlank
+        @Size(max = 255)
         private String photoUrl;
+    }
+
+    @Data
+    public static class ToggleStatusRequest {
+        @NotBlank
+        @Size(max = 36)
+        @Pattern(regexp = "^[0-9a-fA-F\\-]{36}$")
+        private String driverId;
+        @NotNull
+        private Boolean available;
+    }
+
+    @Data
+    public static class UpdateOrderStatusRequest {
+        @NotBlank
+        @Size(max = 50)
+        @Pattern(regexp = "^[A-Z_]+$")
+        private String status;
+        
+        @Size(max = 10)
+        @Pattern(regexp = "^\\d+$")
+        private String pickupOtp;
     }
 
     @PostMapping("/onboard")
@@ -57,14 +87,14 @@ public class DeliveryExecutiveController {
     }
 
     @PostMapping("/status")
-    public ResponseEntity<ApiResponse<Void>> toggleStatus(java.security.Principal principal, @RequestBody Map<String, Object> request) {
-        UUID driverId = UUID.fromString((String) request.get("driverId"));
+    public ResponseEntity<ApiResponse<Void>> toggleStatus(java.security.Principal principal, @Valid @RequestBody ToggleStatusRequest request) {
+        UUID driverId = UUID.fromString(request.getDriverId());
         
         if (!principal.getName().equals(driverId.toString())) {
             return ResponseEntity.status(401).body(ApiResponse.<Void>builder().success(false).message("Unauthorized").build());
         }
         
-        boolean available = (Boolean) request.get("available");
+        boolean available = request.getAvailable();
         
         try {
             deliveryService.toggleStatus(driverId, available);
@@ -98,9 +128,9 @@ public class DeliveryExecutiveController {
     @PostMapping("/drivers/{driverId}/orders/{orderId}/status")
     @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
     public ResponseEntity<ApiResponse<Void>> updateOrderStatus(
-            @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId, @RequestBody Map<String, String> request) {
-        String status = request.get("status");
-        String pickupOtp = request.get("pickupOtp");
+            @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId, @Valid @RequestBody UpdateOrderStatusRequest request) {
+        String status = request.getStatus();
+        String pickupOtp = request.getPickupOtp();
         deliveryService.updateOrderStatus(driverId, orderId, status, pickupOtp);
         return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order status updated").build());
     }
