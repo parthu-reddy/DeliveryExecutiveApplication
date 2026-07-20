@@ -15,6 +15,10 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fooddelivery.common.enums.OrderStatus;
+import java.util.Map;
+import java.util.UUID;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +30,7 @@ public class DeliveryService {
     private final IDeliveryExecutiveRepository repository;
     private final ObjectMapper objectMapper;
     private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+    private final com.fooddelivery.delivery.service.state.order.DeliveryOrderStateFactory deliveryOrderStateFactory;
 
     @Transactional
     public DeliveryExecutive onboard(UUID driverId, String fullName, String phoneNumber, String vehicleNumber, String photoUrl) {
@@ -134,7 +139,7 @@ public class DeliveryService {
         
         try {
             String currentLock = redisTemplate.opsForValue().get("order:driver:lock:" + orderId);
-            if ("CANCELLED".equals(currentLock)) {
+            if (com.fooddelivery.common.enums.OrderStatus.CANCELLED.name().equals(currentLock)) {
                 throw new IllegalStateException("Order was cancelled during acceptance.");
             }
 
@@ -143,7 +148,7 @@ public class DeliveryService {
 
                 // Emitting event to CustomerApplication
                 com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
-                payloadNode.put("eventType", "DRIVER_ASSIGNED");
+                payloadNode.put("eventType", com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED);
                 payloadNode.put("orderId", orderId.toString());
                 payloadNode.put("driverId", driverId.toString());
                 payloadNode.put("driverName", executive.getFullName());
@@ -162,7 +167,7 @@ public class DeliveryService {
                         .eventType(com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED)
                         .payload(payload)
                         .createdAt(java.time.LocalDateTime.now())
-                        .status(com.fooddelivery.common.constants.AppConstants.OUTBOX_STATUS_UNPROCESSED)
+                        .status(com.fooddelivery.common.enums.OutboxStatus.UNPROCESSED)
                         .build();
                 outboxEventRepository.save(outboxEvent);
                 
@@ -195,7 +200,7 @@ public class DeliveryService {
         
         transactionTemplate.execute(status -> {
             com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
-            payloadNode.put("eventType", "ORDER_DRIVER_REJECTED");
+            payloadNode.put("eventType", com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED);
             payloadNode.put("orderId", orderId.toString());
             payloadNode.put("driverId", driverId.toString());
             String payload;
@@ -212,7 +217,7 @@ public class DeliveryService {
                     .eventType(com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED)
                     .payload(payload)
                     .createdAt(java.time.LocalDateTime.now())
-                    .status(com.fooddelivery.common.constants.AppConstants.OUTBOX_STATUS_UNPROCESSED)
+                    .status(com.fooddelivery.common.enums.OutboxStatus.UNPROCESSED)
                     .build();
             outboxEventRepository.save(outboxEvent);
             return null;
@@ -223,93 +228,24 @@ public class DeliveryService {
         logisticsDispatchService.releaseDriverLock(driverId.toString());
     }
 
-    public void updateOrderStatus(UUID driverId, UUID orderId, String status, String pickupOtp, String deliveryOtp) {
-        log.info("Driver {} updating order {} to {}", driverId, orderId, status);
-        
-        String currentAssignee = redisTemplate.opsForValue().get("order:driver:lock:" + orderId);
-        if (currentAssignee != null && !driverId.toString().equals(currentAssignee)) {
-            log.info("Idempotent/Invalid update: Order {} is assigned to another driver {}", orderId, currentAssignee);
-            return;
-        }
-
-        if ("DELIVERED".equals(status)) {
-            String payload = redisTemplate.opsForValue().get("order:dispatchPayload:" + orderId);
-            if (payload != null) {
-                try {
-                    com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(payload);
-                    String expectedOtp = root.path("deliveryOtp").asText(null);
-                    if (expectedOtp != null && !expectedOtp.isEmpty() && !expectedOtp.equals(deliveryOtp)) {
-                        throw new IllegalArgumentException("Invalid Delivery OTP");
-                    }
-                } catch (IllegalArgumentException e) {
-                    throw e;
-                } catch (Exception e) {
-                    log.error("Failed to parse dispatch payload for order {}", orderId, e);
+    public void updateOrderStatus(UUID driverId, UUID orderId, OrderStatus status, String pickupOtp, String deliveryOtp) {
+        int maxRetries = 3;
+        for (int i = 0; i < maxRetries; i++) {
+            try {
+                com.fooddelivery.delivery.service.state.order.DeliveryOrderStateStrategy strategy = deliveryOrderStateFactory.getStrategy(status);
+                strategy.handleStatusUpdate(driverId, orderId, status, pickupOtp, deliveryOtp);
+                return;
+            } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {
+                if (i == maxRetries - 1) {
+                    log.error("Optimistic locking failure while updating order status for driver {}, order {}", driverId, orderId, e);
+                    throw new RuntimeException("Concurrent update conflict. Please try again.", e);
                 }
-            }
-        }
-
-        transactionTemplate.execute(txStatus -> {
-            String eventType;
-            if ("DELIVERED".equals(status)) {
-                eventType = EventType.ORDER_DELIVERED;
-            } else if ("DELIVERY_FAILED".equals(status)) {
-                eventType = EventType.DELIVERY_FAILED;
-            } else {
-                eventType = EventType.ORDER_STATUS_UPDATED;
-            }
-            com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
-            payloadNode.put("eventType", eventType);
-            payloadNode.put("orderId", orderId.toString());
-            payloadNode.put("status", status);
-            if (pickupOtp != null && !pickupOtp.isEmpty()) {
-                payloadNode.put("pickupOtp", pickupOtp);
-            }
-            if (deliveryOtp != null && !deliveryOtp.isEmpty()) {
-                payloadNode.put("deliveryOtp", deliveryOtp);
-            }
-            String payload;
-            try {
-                payload = objectMapper.writeValueAsString(payloadNode);
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to serialize status update payload", e);
-            }
-            
-            com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = com.fooddelivery.common.outbox.entity.OutboxEventEntity.builder()
-                    .id(UUID.randomUUID())
-                    .aggregateType(com.fooddelivery.common.constants.AppConstants.AGGREGATE_ORDER)
-                    .aggregateId(orderId.toString())
-                    .eventType(eventType)
-                    .payload(payload)
-                    .createdAt(java.time.LocalDateTime.now())
-                    .status(com.fooddelivery.common.constants.AppConstants.OUTBOX_STATUS_UNPROCESSED)
-                    .build();
-            outboxEventRepository.save(outboxEvent);
-            
-            if ("DELIVERED".equals(status) || "DELIVERY_FAILED".equals(status)) {
-                DeliveryExecutive executive = repository.findById(driverId).orElseThrow();
-                com.fooddelivery.delivery.service.state.DeliveryExecutiveState state = com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory.getState(executive.getStatus());
-                state.completeDelivery(executive);
-                executive.setUpdatedAt(java.time.LocalDateTime.now());
-                repository.save(executive);
-            }
-            return null;
-        });
-        
-        if ("DELIVERED".equals(status) || "DELIVERY_FAILED".equals(status)) {
-            // Release the Redis driver lock so they can receive new pings
-            logisticsDispatchService.releaseDriverLock(driverId.toString());
-            // Release the order lock since the order has reached a terminal state
-            redisTemplate.delete("order:driver:lock:" + orderId);
-            redisTemplate.delete("order:ping:pending:" + orderId);
-            redisTemplate.opsForZSet().remove("order:ping:timeouts", orderId.toString());
-            redisTemplate.opsForValue().set("order:dispatch:lock:" + orderId, "accepted", java.time.Duration.ofHours(24));
-            
-            try {
-                String key = "drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
-                redisTemplate.opsForSet().add(key, driverId.toString());
-            } catch (Exception e) {
-                log.error("Failed to add driver {} back to Redis pool", driverId, e);
+                log.warn("Optimistic locking failure for driver {}. Retrying {}/{}", driverId, i + 1, maxRetries);
+                try {
+                    Thread.sleep(100 + (long)(Math.random() * 100)); // basic jitter
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
             }
         }
     }
@@ -322,7 +258,7 @@ public class DeliveryService {
 
         transactionTemplate.execute(status -> {
             com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
-            payloadNode.put("eventType", "ORDER_DRIVER_REJECTED");
+            payloadNode.put("eventType", com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED);
             payloadNode.put("orderId", orderId.toString());
             payloadNode.put("driverId", driverId.toString());
             String payload;
@@ -339,7 +275,7 @@ public class DeliveryService {
                     .eventType(com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED)
                     .payload(payload)
                     .createdAt(java.time.LocalDateTime.now())
-                    .status(com.fooddelivery.common.constants.AppConstants.OUTBOX_STATUS_UNPROCESSED)
+                    .status(com.fooddelivery.common.enums.OutboxStatus.UNPROCESSED)
                     .build();
             outboxEventRepository.save(outboxEvent);
             return null;
@@ -361,7 +297,7 @@ public class DeliveryService {
         transactionTemplate.executeWithoutResult(status -> {
             DeliveryExecutive executive = repository.findLockedById(driverId).orElseThrow(() -> new IllegalArgumentException("Driver not found"));
             com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
-            payloadNode.put("eventType", "DRIVER_ASSIGNED");
+            payloadNode.put("eventType", com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED);
             payloadNode.put("orderId", orderId.toString());
             payloadNode.put("driverId", driverId.toString());
             payloadNode.put("driverName", executive.getFullName());
@@ -380,7 +316,7 @@ public class DeliveryService {
                     .eventType(com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED)
                     .payload(payload)
                     .createdAt(java.time.LocalDateTime.now())
-                    .status(com.fooddelivery.common.constants.AppConstants.OUTBOX_STATUS_UNPROCESSED)
+                    .status(com.fooddelivery.common.enums.OutboxStatus.UNPROCESSED)
                     .build();
             outboxEventRepository.save(outboxEvent);
             

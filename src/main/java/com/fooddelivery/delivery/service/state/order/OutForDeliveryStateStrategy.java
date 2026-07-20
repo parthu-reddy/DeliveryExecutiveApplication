@@ -1,0 +1,52 @@
+package com.fooddelivery.delivery.service.state.order;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fooddelivery.common.constants.EventType;
+import com.fooddelivery.common.enums.OrderStatus;
+import com.fooddelivery.common.outbox.repository.OutboxEventRepository;
+import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
+import com.fooddelivery.delivery.service.LogisticsDispatchService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import java.util.UUID;
+
+@Slf4j
+@Component
+public class OutForDeliveryStateStrategy extends AbstractDeliveryOrderState {
+
+    public OutForDeliveryStateStrategy(StringRedisTemplate redisTemplate, ObjectMapper objectMapper, TransactionTemplate transactionTemplate, OutboxEventRepository outboxEventRepository, IDeliveryExecutiveRepository repository, LogisticsDispatchService logisticsDispatchService) {
+        super(redisTemplate, objectMapper, transactionTemplate, outboxEventRepository, repository, logisticsDispatchService);
+    }
+
+    @Override
+    public OrderStatus getSupportedStatus() {
+        return OrderStatus.OUT_FOR_DELIVERY;
+    }
+
+    @Override
+    protected String getEventType() {
+        return EventType.ORDER_STATUS_UPDATED;
+    }
+
+    @Override
+    protected void validate(UUID driverId, UUID orderId, String pickupOtp, String deliveryOtp) {
+        String payload = redisTemplate.opsForValue().get("order:dispatchPayload:" + orderId);
+        if (payload != null) {
+            try {
+                JsonNode root = objectMapper.readTree(payload);
+                String expectedOtp = root.path("pickupOtp").asText(null);
+                if (expectedOtp != null && !expectedOtp.isEmpty() && !expectedOtp.equals(pickupOtp)) {
+                    throw new IllegalArgumentException("Invalid Pickup OTP");
+                }
+            } catch (IllegalArgumentException e) {
+                throw e;
+            } catch (Exception e) {
+                log.error("Failed to parse dispatch payload for order {}", orderId, e);
+            }
+        }
+    }
+}

@@ -41,9 +41,9 @@ public class TerminalStateStrategy implements DeliveryEventStrategy {
             }
             
             // PREVENT any in-flight ping from being successfully accepted later
-            redisTemplate.opsForValue().set("order:driver:lock:" + orderId, "CANCELLED", java.time.Duration.ofHours(24));
+            redisTemplate.opsForValue().set("order:driver:lock:" + orderId, com.fooddelivery.common.enums.OrderStatus.CANCELLED.name(), java.time.Duration.ofHours(24));
             
-            if (driverId != null && !driverId.isEmpty() && !driverId.equals("CANCELLED") && !driverId.equals("locked")) {
+            if (driverId != null && !driverId.isEmpty() && !driverId.equals(com.fooddelivery.common.enums.OrderStatus.CANCELLED.name()) && !driverId.equals("locked")) {
                 logisticsDispatchService.releaseDriverLock(driverId);
                 
                 // Reset driver status in DB

@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.HashMap;
-
+import com.fooddelivery.common.enums.OrderStatus;
 @Service
 public class DeliveryMcpService {
 
@@ -83,7 +83,7 @@ public class DeliveryMcpService {
     public String updateOrderStatus(String driverId, String orderId, String status) {
         try {
             DeliveryExecutiveController.UpdateOrderStatusRequest req = new DeliveryExecutiveController.UpdateOrderStatusRequest();
-            req.setStatus(status);
+            req.setStatus(OrderStatus.valueOf(status));
             return objectMapper.writeValueAsString(deliveryController.updateOrderStatus(UUID.fromString(driverId), UUID.fromString(orderId), req).getBody());
         } catch (Exception e) {
             return "Failed to update order status: " + e.getMessage();

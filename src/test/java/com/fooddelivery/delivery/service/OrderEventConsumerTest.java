@@ -27,28 +27,25 @@ class OrderEventConsumerTest {
         MockitoAnnotations.openMocks(this);
         objectMapper = new ObjectMapper();
         
-        when(mockAcceptedStrategy.getEventTypes()).thenReturn(java.util.Collections.singletonList("ORDER_ACCEPTED"));
+        when(mockAcceptedStrategy.getEventTypes()).thenReturn(java.util.Collections.singletonList(com.fooddelivery.common.constants.EventType.ORDER_ACCEPTED));
 
         orderEventConsumer = new OrderEventConsumer(objectMapper, new DeliveryEventStrategy[]{mockAcceptedStrategy});
     }
 
     @Test
-    void consumeOrderEvent_ShouldProcessOrderAcceptedEvent() throws Exception {
-        UUID orderId = UUID.randomUUID();
+    void testConsumeEvent_Success() throws Exception {
+        String payload = "{\"eventType\":\"ORDER_ACCEPTED\",\"orderId\":\"123e4567-e89b-12d3-a456-426614174000\"}";
         
-        String message = String.format("{\"eventType\":\"ORDER_ACCEPTED\", \"orderId\":\"%s\", \"restaurantLat\":12.9716, \"restaurantLng\":77.5946}", 
-                orderId);
-
-        orderEventConsumer.consumeOrderEvent(message, null);
+        orderEventConsumer.consumeOrderEvent(payload, null);
         
-        verify(mockAcceptedStrategy).process(any(), eq("ORDER_ACCEPTED"));
+        verify(mockAcceptedStrategy).process(any(), eq(com.fooddelivery.common.constants.EventType.ORDER_ACCEPTED));
     }
 
     @Test
     void consumeOrderEvent_ShouldIgnoreOtherEvents() throws Exception {
         UUID orderId = UUID.randomUUID();
         
-        String message = String.format("{\"eventType\":\"ORDER_CREATED\", \"orderId\":\"%s\"}", orderId);
+        String message = String.format("{\"eventType\":\"%s\", \"orderId\":\"%s\"}", com.fooddelivery.common.constants.EventType.ORDER_CREATED, orderId);
 
         orderEventConsumer.consumeOrderEvent(message, null);
 

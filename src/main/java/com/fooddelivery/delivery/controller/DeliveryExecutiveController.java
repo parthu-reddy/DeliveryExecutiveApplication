@@ -2,6 +2,8 @@ package com.fooddelivery.delivery.controller;
 
 import com.fooddelivery.common.dto.ApiResponse;
 import com.fooddelivery.delivery.service.DeliveryService;
+import com.fooddelivery.delivery.service.DeliveryService;
+import com.fooddelivery.common.enums.OrderStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -56,10 +58,8 @@ public class DeliveryExecutiveController {
 
     @Data
     public static class UpdateOrderStatusRequest {
-        @NotBlank
-        @Size(max = 50)
-        @Pattern(regexp = "^[A-Z_]+$")
-        private String status;
+        @NotNull
+        private OrderStatus status;
         
         @Size(max = 10)
         @Pattern(regexp = "^\\d+$")
