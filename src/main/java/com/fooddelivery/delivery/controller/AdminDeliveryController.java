@@ -33,6 +33,13 @@ public class AdminDeliveryController {
         return ResponseEntity.ok(deliveryService.getAvailableDriversWithLocation());
     }
 
+    @GetMapping("/drivers/all-with-location")
+    // @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<com.fooddelivery.delivery.dto.DriverLocationDTO>> getAllDriversWithLocation() {
+        return ResponseEntity.ok(deliveryService.getAllDriversWithLocation());
+    }
+
+
     @PostMapping("/orders/{orderId}/assign")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> forceAssignOrder(

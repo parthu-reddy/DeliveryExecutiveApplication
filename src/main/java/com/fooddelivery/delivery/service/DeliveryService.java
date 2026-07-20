@@ -124,6 +124,39 @@ public class DeliveryService {
         return result;
     }
 
+    public java.util.List<com.fooddelivery.delivery.dto.DriverLocationDTO> getAllDriversWithLocation() {
+        java.util.List<DeliveryExecutive> allDrivers = repository.findAll();
+        System.out.println("getAllDriversWithLocation: found " + allDrivers.size() + " drivers");
+        java.util.List<com.fooddelivery.delivery.dto.DriverLocationDTO> result = new java.util.ArrayList<>();
+        String DRIVER_LOCATION_KEY = "drivers:geo:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
+        
+        for (DeliveryExecutive driver : allDrivers) {
+            com.fooddelivery.delivery.dto.DriverLocationDTO dto = new com.fooddelivery.delivery.dto.DriverLocationDTO(
+                driver.getId(), driver.getFullName(), driver.getPhoneNumber(), null, null
+            );
+            // We use status to let frontend know if they are online/offline
+            dto.setVehicleNumber(driver.getStatus().toString()); // Quick hack to pass status using existing field without modifying DTO
+            
+            try {
+                java.util.List<org.springframework.data.geo.Point> positions = redisTemplate.opsForGeo().position(DRIVER_LOCATION_KEY, driver.getId().toString());
+                if (positions != null && !positions.isEmpty() && positions.get(0) != null) {
+                    dto.setLng(positions.get(0).getX());
+                    dto.setLat(positions.get(0).getY());
+                    result.add(dto);
+                } else {
+                    // Even if location is null, we might want to return them with 0.0 or exclude them.
+                    // For admin map, we should exclude drivers without any known location, or provide fallback.
+                    dto.setLat(0.0);
+                    dto.setLng(0.0);
+                    result.add(dto);
+                }
+            } catch (Exception e) {
+                log.warn("Could not fetch location for driver {}", driver.getId());
+            }
+        }
+        return result;
+    }
+
     private final OutboxEventRepository outboxEventRepository;
     private final LogisticsDispatchService logisticsDispatchService;
     private static final String TOPIC = com.fooddelivery.common.constants.KafkaConstants.TOPIC_ORDER_EVENTS;
