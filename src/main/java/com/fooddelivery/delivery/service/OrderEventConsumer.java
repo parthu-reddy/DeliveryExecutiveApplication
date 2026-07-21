@@ -35,11 +35,35 @@ public class OrderEventConsumer {
     }
 
     @KafkaListener(topics = com.fooddelivery.common.constants.KafkaConstants.TOPIC_ORDER_EVENTS, groupId = com.fooddelivery.common.constants.KafkaConstants.GROUP_DELIVERY_SERVICE)
-    public void consumeOrderEvent(String message, @org.springframework.messaging.handler.annotation.Header(value = "eventType", required = false) String headerEventType) {
+    public void consumeOrderEvent(String message, @org.springframework.messaging.handler.annotation.Headers java.util.Map<String, Object> headers) {
+        log.info("Consumed event from {}: {}", com.fooddelivery.common.constants.KafkaConstants.TOPIC_ORDER_EVENTS, message);
+        
         try {
-            log.info("Consumed event from {}: {}", com.fooddelivery.common.constants.KafkaConstants.TOPIC_ORDER_EVENTS, message);
             JsonNode root = objectMapper.readTree(message);
             String jsonEventType = root.path("eventType").asText(null);
+            
+            String headerEventType = null;
+            Object eventTypeObj = headers.get("eventType");
+            if (eventTypeObj != null) {
+                if (eventTypeObj instanceof byte[]) {
+                    headerEventType = new String((byte[]) eventTypeObj, java.nio.charset.StandardCharsets.UTF_8);
+                } else if (eventTypeObj.getClass().getName().contains("NonTrustedHeaderType")) {
+                    try {
+                        java.lang.reflect.Method getValueMethod = eventTypeObj.getClass().getMethod("getValue");
+                        Object val = getValueMethod.invoke(eventTypeObj);
+                        if (val instanceof byte[]) {
+                            headerEventType = new String((byte[]) val, java.nio.charset.StandardCharsets.UTF_8);
+                        } else if (val != null) {
+                            headerEventType = val.toString();
+                        }
+                    } catch (Exception e) {
+                        headerEventType = eventTypeObj.toString();
+                    }
+                } else {
+                    headerEventType = eventTypeObj.toString();
+                }
+            }
+            
             String eventType = headerEventType != null ? headerEventType : jsonEventType;
             
             com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy strategy = strategyMap.get(eventType);
