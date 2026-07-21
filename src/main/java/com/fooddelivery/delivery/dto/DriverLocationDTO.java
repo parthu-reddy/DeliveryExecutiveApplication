@@ -14,4 +14,5 @@ public class DriverLocationDTO {
     private String phoneNumber;
     private Double lat;
     private Double lng;
+    private String status;
 }

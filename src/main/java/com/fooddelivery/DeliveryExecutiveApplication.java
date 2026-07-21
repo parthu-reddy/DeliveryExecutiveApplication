@@ -5,9 +5,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import com.fooddelivery.common.outbox.config.EnableOutbox;
 
+import org.springframework.cloud.openfeign.EnableFeignClients;
+
 @SpringBootApplication
 @EnableScheduling
 @EnableOutbox
+@EnableFeignClients
 public class DeliveryExecutiveApplication {
     public static void main(String[] args) {
         SpringApplication.run(DeliveryExecutiveApplication.class, args);

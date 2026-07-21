@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Map;
 import java.util.UUID;
+import com.fooddelivery.delivery.client.MapsClient;
 
 @Slf4j
 @Service
@@ -18,7 +19,7 @@ public class LogisticsDispatchService {
 
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
-    private final org.springframework.web.client.RestTemplate restTemplate;
+    private final MapsClient mapsClient;
 
     public void dispatchNearestDriver(double restaurantLat, double restaurantLng, double deliveryLat, double deliveryLng, String deliveryAddress, UUID orderId) {
         log.info("Requesting driver dispatch for order {} via MapsIntegration service", orderId);
@@ -35,6 +36,7 @@ public class LogisticsDispatchService {
             
             String payload = objectMapper.writeValueAsString(dispatchRequest);
             
+            log.info("Triggering event: LOGISTICS_DISPATCH_REQUEST for order: {}", orderId);
             kafkaTemplate.send(KafkaConstants.TOPIC_LOGISTICS_DISPATCH, orderId.toString(), payload)
                 .get(3, java.util.concurrent.TimeUnit.SECONDS);
             log.info("Successfully published dispatch request for order {}", orderId);
@@ -44,18 +46,15 @@ public class LogisticsDispatchService {
         }
     }
 
-    private static final String mapsServiceBaseUrl = "http://mapsintegration";
-
     public void releaseDriverLock(String driverId) {
         log.info("Requesting driver lock release for driver {} via MapsIntegration service", driverId);
         try {
-            String url = mapsServiceBaseUrl + "/api/fleet/availability";
             Map<String, Object> request = Map.of(
                 "cityId", com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID,
                 "driverId", driverId,
                 "available", true
             );
-            restTemplate.postForEntity(url, request, String.class);
+            mapsClient.setDriverAvailability(request);
             log.info("Successfully requested driver lock release for driver {}", driverId);
         } catch (Exception e) {
             log.error("Failed to release driver lock for driver {}", driverId, e);

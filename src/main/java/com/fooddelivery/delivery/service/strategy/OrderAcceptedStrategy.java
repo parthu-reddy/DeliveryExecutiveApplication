@@ -54,6 +54,6 @@ public class OrderAcceptedStrategy implements DeliveryEventStrategy {
 
     @Override
     public List<String> getEventTypes() {
-        return Collections.singletonList(EventType.ORDER_ACCEPTED);
+        return Collections.singletonList(EventType.ORDER_ACCEPTED.name());
     }
 }

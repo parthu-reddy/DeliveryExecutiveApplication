@@ -106,7 +106,7 @@ public class DeliveryService {
         
         for (DeliveryExecutive driver : availableDrivers) {
             com.fooddelivery.delivery.dto.DriverLocationDTO dto = new com.fooddelivery.delivery.dto.DriverLocationDTO(
-                driver.getId(), driver.getFullName(), driver.getPhoneNumber(), null, null
+                driver.getId(), driver.getFullName(), driver.getPhoneNumber(), null, null, driver.getStatus().toString()
             );
             try {
                 java.util.List<org.springframework.data.geo.Point> positions = redisTemplate.opsForGeo().position(DRIVER_LOCATION_KEY, driver.getId().toString());
@@ -132,11 +132,10 @@ public class DeliveryService {
         
         for (DeliveryExecutive driver : allDrivers) {
             com.fooddelivery.delivery.dto.DriverLocationDTO dto = new com.fooddelivery.delivery.dto.DriverLocationDTO(
-                driver.getId(), driver.getFullName(), driver.getPhoneNumber(), null, null
+                driver.getId(), driver.getFullName(), driver.getPhoneNumber(), null, null, driver.getStatus().toString()
             );
-            // We use status to let frontend know if they are online/offline
-            dto.setVehicleNumber(driver.getStatus().toString()); // Quick hack to pass status using existing field without modifying DTO
             
+
             try {
                 java.util.List<org.springframework.data.geo.Point> positions = redisTemplate.opsForGeo().position(DRIVER_LOCATION_KEY, driver.getId().toString());
                 if (positions != null && !positions.isEmpty() && positions.get(0) != null) {
@@ -181,7 +180,7 @@ public class DeliveryService {
 
                 // Emitting event to CustomerApplication
                 com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
-                payloadNode.put("eventType", com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED);
+                payloadNode.put("eventType", com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED.name());
                 payloadNode.put("orderId", orderId.toString());
                 payloadNode.put("driverId", driverId.toString());
                 payloadNode.put("driverName", executive.getFullName());
@@ -195,13 +194,14 @@ public class DeliveryService {
                 
                 com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = com.fooddelivery.common.outbox.entity.OutboxEventEntity.builder()
                         .id(UUID.randomUUID())
-                        .aggregateType(com.fooddelivery.common.constants.AppConstants.AGGREGATE_ORDER)
+                        .aggregateType(com.fooddelivery.common.constants.AggregateType.ORDER)
                         .aggregateId(orderId.toString())
                         .eventType(com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED)
                         .payload(payload)
                         .createdAt(java.time.LocalDateTime.now())
                         .status(com.fooddelivery.common.enums.OutboxStatus.UNPROCESSED)
                         .build();
+                log.info("Triggering event: DRIVER_ASSIGNED for executive: {}", executive.getId());
                 outboxEventRepository.save(outboxEvent);
                 
                 com.fooddelivery.delivery.service.state.DeliveryExecutiveState state = com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory.getState(executive.getStatus());
@@ -233,7 +233,7 @@ public class DeliveryService {
         
         transactionTemplate.execute(status -> {
             com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
-            payloadNode.put("eventType", com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED);
+            payloadNode.put("eventType", com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED.name());
             payloadNode.put("orderId", orderId.toString());
             payloadNode.put("driverId", driverId.toString());
             String payload;
@@ -245,13 +245,14 @@ public class DeliveryService {
             
             com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = com.fooddelivery.common.outbox.entity.OutboxEventEntity.builder()
                     .id(UUID.randomUUID())
-                    .aggregateType(com.fooddelivery.common.constants.AppConstants.AGGREGATE_ORDER)
+                    .aggregateType(com.fooddelivery.common.constants.AggregateType.ORDER)
                     .aggregateId(orderId.toString())
                     .eventType(com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED)
                     .payload(payload)
                     .createdAt(java.time.LocalDateTime.now())
                     .status(com.fooddelivery.common.enums.OutboxStatus.UNPROCESSED)
                     .build();
+            log.info("Triggering event: {} for aggregate: {}", com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED.name(), orderId);
             outboxEventRepository.save(outboxEvent);
             return null;
         });
@@ -259,6 +260,64 @@ public class DeliveryService {
         redisTemplate.delete("order:ping:pending:" + orderId);
         redisTemplate.opsForZSet().remove("order:ping:timeouts", orderId.toString());
         logisticsDispatchService.releaseDriverLock(driverId.toString());
+    }
+
+
+    @Transactional
+    public void abortOrder(UUID driverId, UUID orderId) {
+        String currentLock = redisTemplate.opsForValue().get("order:driver:lock:" + orderId);
+        if (currentLock == null || !currentLock.equals(driverId.toString())) {
+            throw new IllegalArgumentException("Driver is not assigned to this order or order lock missing");
+        }
+
+        // 1. Mark driver as available
+        DeliveryExecutive executive = repository.findById(driverId)
+                .orElseThrow(() -> new IllegalArgumentException("Driver not found"));
+        
+        com.fooddelivery.delivery.service.state.DeliveryExecutiveState state = com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory.getState(executive.getStatus());
+        // Since driver is ON_DELIVERY, they can complete it or abort it. We need a way to transition them back.
+        // DeliveryExecutiveState might not have an abort() method, so we force ONLINE status.
+        executive.setStatus(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.ONLINE);
+        repository.save(executive);
+        
+        // Add back to pool
+        try {
+            String key = "drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
+            redisTemplate.opsForSet().add(key, driverId.toString());
+        } catch (Exception e) {
+            log.error("Failed to add driver {} to Redis pool", driverId, e);
+        }
+
+        // 2. Clear the lock
+        redisTemplate.delete("order:driver:lock:" + orderId);
+        logisticsDispatchService.releaseDriverLock(driverId.toString());
+
+        // 3. Trigger dispatch loop again to find a new driver
+        log.info("Driver {} aborted order {}. Re-triggering candidate search...", driverId, orderId);
+        
+        // Since we don't have restaurant lat/lng here, we can emit an event that tells the CustomerApplication that the driver aborted, 
+        // or we can just send ORDER_DRIVER_REJECTED so it falls back to the dispatcher finding the next one!
+        com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
+        payloadNode.put("eventType", com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED.name());
+        payloadNode.put("orderId", orderId.toString());
+        payloadNode.put("driverId", driverId.toString());
+        String payload;
+        try {
+            payload = objectMapper.writeValueAsString(payloadNode);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize ORDER_DRIVER_REJECTED payload", e);
+        }
+        
+        com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = com.fooddelivery.common.outbox.entity.OutboxEventEntity.builder()
+                .id(UUID.randomUUID())
+                .aggregateType(com.fooddelivery.common.constants.AggregateType.ORDER)
+                .aggregateId(orderId.toString())
+                .eventType(com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED)
+                .payload(payload)
+                .createdAt(java.time.LocalDateTime.now())
+                .status(com.fooddelivery.common.enums.OutboxStatus.UNPROCESSED)
+                .build();
+        outboxEventRepository.save(outboxEvent);
     }
 
     public void updateOrderStatus(UUID driverId, UUID orderId, OrderStatus status, String pickupOtp, String deliveryOtp) {
@@ -291,7 +350,7 @@ public class DeliveryService {
 
         transactionTemplate.execute(status -> {
             com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
-            payloadNode.put("eventType", com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED);
+            payloadNode.put("eventType", com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED.name());
             payloadNode.put("orderId", orderId.toString());
             payloadNode.put("driverId", driverId.toString());
             String payload;
@@ -303,13 +362,14 @@ public class DeliveryService {
             
             com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = com.fooddelivery.common.outbox.entity.OutboxEventEntity.builder()
                     .id(UUID.randomUUID())
-                    .aggregateType(com.fooddelivery.common.constants.AppConstants.AGGREGATE_ORDER)
+                    .aggregateType(com.fooddelivery.common.constants.AggregateType.ORDER)
                     .aggregateId(orderId.toString())
                     .eventType(com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED)
                     .payload(payload)
                     .createdAt(java.time.LocalDateTime.now())
                     .status(com.fooddelivery.common.enums.OutboxStatus.UNPROCESSED)
                     .build();
+            log.info("Triggering event: DELIVERY_EXECUTIVE_STATUS_CHANGED for executive: {}", driverId);
             outboxEventRepository.save(outboxEvent);
             return null;
         });
@@ -330,7 +390,7 @@ public class DeliveryService {
         transactionTemplate.executeWithoutResult(status -> {
             DeliveryExecutive executive = repository.findLockedById(driverId).orElseThrow(() -> new IllegalArgumentException("Driver not found"));
             com.fasterxml.jackson.databind.node.ObjectNode payloadNode = objectMapper.createObjectNode();
-            payloadNode.put("eventType", com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED);
+            payloadNode.put("eventType", com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED.name());
             payloadNode.put("orderId", orderId.toString());
             payloadNode.put("driverId", driverId.toString());
             payloadNode.put("driverName", executive.getFullName());
@@ -344,13 +404,14 @@ public class DeliveryService {
             
             com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = com.fooddelivery.common.outbox.entity.OutboxEventEntity.builder()
                     .id(UUID.randomUUID())
-                    .aggregateType(com.fooddelivery.common.constants.AppConstants.AGGREGATE_ORDER)
+                    .aggregateType(com.fooddelivery.common.constants.AggregateType.ORDER)
                     .aggregateId(orderId.toString())
                     .eventType(com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED)
                     .payload(payload)
                     .createdAt(java.time.LocalDateTime.now())
                     .status(com.fooddelivery.common.enums.OutboxStatus.UNPROCESSED)
                     .build();
+            log.info("Triggering event: DELIVERY_EXECUTIVE_STATUS_CHANGED for executive: {}", driverId);
             outboxEventRepository.save(outboxEvent);
             
             com.fooddelivery.delivery.service.state.DeliveryExecutiveState state = com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory.getState(executive.getStatus());

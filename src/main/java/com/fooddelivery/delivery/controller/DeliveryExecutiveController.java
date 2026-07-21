@@ -129,6 +129,14 @@ public class DeliveryExecutiveController {
         return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order rejected").build());
     }
 
+    @PostMapping("/drivers/{driverId}/orders/{orderId}/abort")
+    @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
+    public ResponseEntity<ApiResponse<Void>> abortOrder(
+            @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
+        deliveryService.abortOrder(driverId, orderId);
+        return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order assignment aborted. Looking for a new driver.").build());
+    }
+
     @PostMapping("/drivers/{driverId}/orders/{orderId}/status")
     @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
     public ResponseEntity<ApiResponse<Object>> updateOrderStatus(

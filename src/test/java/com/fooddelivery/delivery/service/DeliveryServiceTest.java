@@ -89,7 +89,7 @@ class DeliveryServiceTest {
         ArgumentCaptor<com.fooddelivery.common.outbox.entity.OutboxEventEntity> outboxCaptor = ArgumentCaptor.forClass(com.fooddelivery.common.outbox.entity.OutboxEventEntity.class);
         verify(outboxEventRepository).save(outboxCaptor.capture());
 
-        assertThat(outboxCaptor.getValue().getPayload()).contains(com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED);
+        assertThat(outboxCaptor.getValue().getPayload()).contains(com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED.name());
         assertThat(executive.getStatus()).isEqualTo(DeliveryExecutiveStatus.ON_DELIVERY);
         verify(repository).save(executive);
     }
@@ -103,7 +103,7 @@ class DeliveryServiceTest {
         ArgumentCaptor<com.fooddelivery.common.outbox.entity.OutboxEventEntity> outboxCaptor = ArgumentCaptor.forClass(com.fooddelivery.common.outbox.entity.OutboxEventEntity.class);
         verify(outboxEventRepository).save(outboxCaptor.capture());
 
-        assertThat(outboxCaptor.getValue().getPayload()).contains(com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED);
+        assertThat(outboxCaptor.getValue().getPayload()).contains(com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED.name());
     }
 
     @Test
@@ -119,7 +119,7 @@ class DeliveryServiceTest {
         ArgumentCaptor<com.fooddelivery.common.outbox.entity.OutboxEventEntity> outboxCaptor = ArgumentCaptor.forClass(com.fooddelivery.common.outbox.entity.OutboxEventEntity.class);
         verify(outboxEventRepository).save(outboxCaptor.capture());
 
-        assertThat(outboxCaptor.getValue().getPayload()).contains(com.fooddelivery.common.constants.EventType.ORDER_DELIVERED);
+        assertThat(outboxCaptor.getValue().getPayload()).contains(com.fooddelivery.common.constants.EventType.ORDER_DELIVERED.name());
         assertThat(executive.getStatus()).isEqualTo(DeliveryExecutiveStatus.ONLINE);
         verify(repository).save(executive);
         verify(logisticsDispatchService).releaseDriverLock(driverId.toString());

@@ -33,7 +33,7 @@ public class DeliveryFailedStateStrategy extends AbstractDeliveryOrderState {
     }
 
     @Override
-    protected String getEventType() {
+    protected com.fooddelivery.common.constants.EventType getEventType() {
         return EventType.DELIVERY_FAILED;
     }
 

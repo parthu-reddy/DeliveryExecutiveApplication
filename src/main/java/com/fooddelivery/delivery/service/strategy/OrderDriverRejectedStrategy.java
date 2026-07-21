@@ -46,6 +46,6 @@ public class OrderDriverRejectedStrategy implements DeliveryEventStrategy {
 
     @Override
     public List<String> getEventTypes() {
-        return Collections.singletonList(EventType.ORDER_DRIVER_REJECTED);
+        return Collections.singletonList(EventType.ORDER_DRIVER_REJECTED.name());
     }
 }

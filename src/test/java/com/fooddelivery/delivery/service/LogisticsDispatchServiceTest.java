@@ -25,7 +25,7 @@ class LogisticsDispatchServiceTest {
     private KafkaTemplate<String, String> kafkaTemplate;
     
     @Mock
-    private org.springframework.web.client.RestTemplate restTemplate;
+    private com.fooddelivery.delivery.client.MapsClient mapsClient;
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -33,7 +33,7 @@ class LogisticsDispatchServiceTest {
 
     @BeforeEach
     void setUp() {
-        logisticsDispatchService = new LogisticsDispatchService(kafkaTemplate, objectMapper, restTemplate);
+        logisticsDispatchService = new LogisticsDispatchService(kafkaTemplate, objectMapper, mapsClient);
     }
 
     @Test

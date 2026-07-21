@@ -27,7 +27,7 @@ public class DefaultDeliveryOrderStateStrategy extends AbstractDeliveryOrderStat
     }
 
     @Override
-    protected String getEventType() {
+    protected com.fooddelivery.common.constants.EventType getEventType() {
         return EventType.ORDER_STATUS_UPDATED;
     }
 

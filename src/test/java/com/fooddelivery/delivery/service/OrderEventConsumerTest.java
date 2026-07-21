@@ -27,7 +27,7 @@ class OrderEventConsumerTest {
         MockitoAnnotations.openMocks(this);
         objectMapper = new ObjectMapper();
         
-        when(mockAcceptedStrategy.getEventTypes()).thenReturn(java.util.Collections.singletonList(com.fooddelivery.common.constants.EventType.ORDER_ACCEPTED));
+        when(mockAcceptedStrategy.getEventTypes()).thenReturn(java.util.Collections.singletonList(com.fooddelivery.common.constants.EventType.ORDER_ACCEPTED.name()));
 
         orderEventConsumer = new OrderEventConsumer(objectMapper, new DeliveryEventStrategy[]{mockAcceptedStrategy});
     }
@@ -38,14 +38,14 @@ class OrderEventConsumerTest {
         
         orderEventConsumer.consumeOrderEvent(payload, null);
         
-        verify(mockAcceptedStrategy).process(any(), eq(com.fooddelivery.common.constants.EventType.ORDER_ACCEPTED));
+        verify(mockAcceptedStrategy).process(any(), eq(com.fooddelivery.common.constants.EventType.ORDER_ACCEPTED.name()));
     }
 
     @Test
     void consumeOrderEvent_ShouldIgnoreOtherEvents() throws Exception {
         UUID orderId = UUID.randomUUID();
         
-        String message = String.format("{\"eventType\":\"%s\", \"orderId\":\"%s\"}", com.fooddelivery.common.constants.EventType.ORDER_CREATED, orderId);
+        String message = String.format("{\"eventType\":\"%s\", \"orderId\":\"%s\"}", com.fooddelivery.common.constants.EventType.ORDER_CREATED.name(), orderId);
 
         orderEventConsumer.consumeOrderEvent(message, null);
 

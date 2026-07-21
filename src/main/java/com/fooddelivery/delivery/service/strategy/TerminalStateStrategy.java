@@ -35,7 +35,7 @@ public class TerminalStateStrategy implements DeliveryEventStrategy {
         redisTemplate.delete("order:dispatchPayload:" + orderId);
         redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderId.toString());
 
-        if (EventType.ORDER_CANCELLED.equals(eventType) || EventType.DELIVERY_FAILED.equals(eventType) || EventType.ORDER_CANCELLED_BY_RESTAURANT.equals(eventType) || EventType.ORDER_REJECTED.equals(eventType) || EventType.ORDER_DELAY_REJECTED.equals(eventType)) {
+        if (EventType.ORDER_CANCELLED.name().equals(eventType) || EventType.DELIVERY_FAILED.name().equals(eventType) || EventType.ORDER_CANCELLED_BY_RESTAURANT.name().equals(eventType) || EventType.ORDER_CANCELLED_BY_CUSTOMER.name().equals(eventType) || EventType.ORDER_REJECTED.name().equals(eventType) || EventType.ORDER_DELAY_REJECTED.name().equals(eventType)) {
             if (driverId == null || driverId.isEmpty()) {
                 driverId = redisTemplate.opsForValue().get("order:driver:lock:" + orderId);
             }
@@ -70,13 +70,14 @@ public class TerminalStateStrategy implements DeliveryEventStrategy {
     @Override
     public List<String> getEventTypes() {
         return Arrays.asList(
-                EventType.DRIVER_ASSIGNED, 
-                EventType.DISPATCH_FAILED, 
-                EventType.ORDER_CANCELLED, 
-                EventType.DELIVERY_FAILED, 
-                EventType.ORDER_CANCELLED_BY_RESTAURANT, 
-                EventType.ORDER_REJECTED, 
-                EventType.ORDER_DELAY_REJECTED
+                EventType.DRIVER_ASSIGNED.name(), 
+                EventType.DISPATCH_FAILED.name(), 
+                EventType.ORDER_CANCELLED.name(), 
+                EventType.DELIVERY_FAILED.name(), 
+                EventType.ORDER_CANCELLED_BY_RESTAURANT.name(), 
+                EventType.ORDER_CANCELLED_BY_CUSTOMER.name(),
+                EventType.ORDER_REJECTED.name(), 
+                EventType.ORDER_DELAY_REJECTED.name()
         );
     }
 }

@@ -37,6 +37,7 @@ public class OrderEventConsumer {
     @KafkaListener(topics = com.fooddelivery.common.constants.KafkaConstants.TOPIC_ORDER_EVENTS, groupId = com.fooddelivery.common.constants.KafkaConstants.GROUP_DELIVERY_SERVICE)
     public void consumeOrderEvent(String message, @org.springframework.messaging.handler.annotation.Header(value = "eventType", required = false) String headerEventType) {
         try {
+            log.info("Consumed event from {}: {}", com.fooddelivery.common.constants.KafkaConstants.TOPIC_ORDER_EVENTS, message);
             JsonNode root = objectMapper.readTree(message);
             String jsonEventType = root.path("eventType").asText(null);
             String eventType = headerEventType != null ? headerEventType : jsonEventType;

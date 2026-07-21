@@ -44,6 +44,6 @@ public class CandidateFoundStrategy implements DeliveryEventStrategy {
 
     @Override
     public List<String> getEventTypes() {
-        return Collections.singletonList(EventType.DISPATCH_CANDIDATE_FOUND);
+        return Collections.singletonList(EventType.DISPATCH_CANDIDATE_FOUND.name());
     }
 }

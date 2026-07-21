@@ -34,7 +34,7 @@ public class DeliveredStateStrategy extends AbstractDeliveryOrderState {
     }
 
     @Override
-    protected String getEventType() {
+    protected com.fooddelivery.common.constants.EventType getEventType() {
         return EventType.ORDER_DELIVERED;
     }
 

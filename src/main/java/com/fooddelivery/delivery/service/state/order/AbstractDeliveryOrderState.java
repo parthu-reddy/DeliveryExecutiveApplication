@@ -70,7 +70,7 @@ public abstract class AbstractDeliveryOrderState implements DeliveryOrderStateSt
 
     protected void saveOutboxEvent(UUID orderId, OrderStatus status, String pickupOtp, String deliveryOtp) {
         ObjectNode payloadNode = objectMapper.createObjectNode();
-        payloadNode.put("eventType", getEventType());
+        payloadNode.put("eventType", getEventType().name());
         payloadNode.put("orderId", orderId.toString());
         payloadNode.put("status", status.name());
         
@@ -90,13 +90,14 @@ public abstract class AbstractDeliveryOrderState implements DeliveryOrderStateSt
 
         OutboxEventEntity outboxEvent = OutboxEventEntity.builder()
                 .id(UUID.randomUUID())
-                .aggregateType(AppConstants.AGGREGATE_ORDER)
+                .aggregateType(com.fooddelivery.common.constants.AggregateType.ORDER)
                 .aggregateId(orderId.toString())
                 .eventType(getEventType())
                 .payload(payload)
                 .createdAt(LocalDateTime.now())
                 .status(OutboxStatus.UNPROCESSED)
                 .build();
+        log.info("Triggering event: {} for order: {}", getEventType().name(), orderId);
         outboxEventRepository.save(outboxEvent);
     }
 
@@ -108,5 +109,5 @@ public abstract class AbstractDeliveryOrderState implements DeliveryOrderStateSt
         // Default no-op. Override for DELIVERED / FAILED.
     }
 
-    protected abstract String getEventType();
+    protected abstract com.fooddelivery.common.constants.EventType getEventType();
 }
