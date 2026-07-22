@@ -1,6 +1,6 @@
 package com.fooddelivery.delivery.service.state.order;
 
-import com.fooddelivery.common.enums.OrderStatus;
+import com.fooddelivery.common.enums.DeliveryStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -11,7 +11,7 @@ import java.util.Map;
 @Component
 public class DeliveryOrderStateFactory {
 
-    private final Map<OrderStatus, DeliveryOrderStateStrategy> strategies = new HashMap<>();
+    private final Map<DeliveryStatus, DeliveryOrderStateStrategy> strategies = new HashMap<>();
     private final DefaultDeliveryOrderStateStrategy defaultStrategy;
 
     @Autowired
@@ -24,7 +24,7 @@ public class DeliveryOrderStateFactory {
         this.defaultStrategy = defaultStrategy;
     }
 
-    public DeliveryOrderStateStrategy getStrategy(OrderStatus status) {
+    public DeliveryOrderStateStrategy getStrategy(DeliveryStatus status) {
         return strategies.getOrDefault(status, defaultStrategy);
     }
 }

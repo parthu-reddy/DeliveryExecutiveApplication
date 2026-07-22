@@ -89,13 +89,13 @@ else
     echo "Successfully caught double accept attempt (HTTP $HTTP_STATUS)"
 fi
 
-echo "Polling for DISPATCHED Status (Saga)..."
+echo "Polling for PICKED_UP Status (Saga)..."
 for (( i=1; i<=MAX_RETRIES; i++ )); do
   ORDER_STATUS=$(docker exec -i food_delivery_db psql -U postgres -d food_delivery -t -c "SELECT status FROM orders WHERE id = '$ORDER_ID';" | xargs)
-  if [ "$ORDER_STATUS" == "DISPATCHED" ]; then break; fi
+  if [ "$ORDER_STATUS" == "PICKED_UP" ]; then break; fi
   sleep 2
 done
-if [ "$ORDER_STATUS" != "DISPATCHED" ]; then echo "FAIL: Expected DISPATCHED, got $ORDER_STATUS"; exit 1; fi
+if [ "$ORDER_STATUS" != "PICKED_UP" ]; then echo "FAIL: Expected PICKED_UP, got $ORDER_STATUS"; exit 1; fi
 
 echo "=========================================================="
 echo "FAILURE STEP 4: Unauthorized Driver Actions (Logistics)"

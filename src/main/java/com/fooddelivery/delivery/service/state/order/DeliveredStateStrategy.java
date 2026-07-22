@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fooddelivery.common.constants.AppConstants;
 import com.fooddelivery.common.constants.EventType;
-import com.fooddelivery.common.enums.OrderStatus;
+import com.fooddelivery.common.enums.DeliveryStatus;
 import com.fooddelivery.common.outbox.repository.OutboxEventRepository;
 import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
@@ -29,8 +29,8 @@ public class DeliveredStateStrategy extends AbstractDeliveryOrderState {
     }
 
     @Override
-    public OrderStatus getSupportedStatus() {
-        return OrderStatus.DELIVERED;
+    public DeliveryStatus getSupportedStatus() {
+        return DeliveryStatus.DELIVERED;
     }
 
     @Override

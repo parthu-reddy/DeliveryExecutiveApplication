@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fooddelivery.common.constants.AppConstants;
 import com.fooddelivery.common.constants.EventType;
-import com.fooddelivery.common.enums.OrderStatus;
+import com.fooddelivery.common.enums.DeliveryStatus;
 import com.fooddelivery.common.enums.OutboxStatus;
 import com.fooddelivery.common.outbox.entity.OutboxEventEntity;
 import com.fooddelivery.common.outbox.repository.OutboxEventRepository;
@@ -44,7 +44,7 @@ public abstract class AbstractDeliveryOrderState implements DeliveryOrderStateSt
     }
 
     @Override
-    public void handleStatusUpdate(UUID driverId, UUID orderId, OrderStatus status, String pickupOtp, String deliveryOtp, Boolean goOfflineAfter) {
+    public void handleStatusUpdate(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp, Boolean goOfflineAfter) {
         log.info("Driver {} updating order {} to {}", driverId, orderId, status);
 
         String currentAssignee = redisTemplate.opsForValue().get("order:driver:lock:" + orderId);
@@ -68,7 +68,7 @@ public abstract class AbstractDeliveryOrderState implements DeliveryOrderStateSt
         // Default no-op. Override in subclasses if validation is needed.
     }
 
-    protected void saveOutboxEvent(UUID orderId, OrderStatus status, String pickupOtp, String deliveryOtp) {
+    protected void saveOutboxEvent(UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp) {
         ObjectNode payloadNode = objectMapper.createObjectNode();
         payloadNode.put("eventType", getEventType().name());
         payloadNode.put("orderId", orderId.toString());

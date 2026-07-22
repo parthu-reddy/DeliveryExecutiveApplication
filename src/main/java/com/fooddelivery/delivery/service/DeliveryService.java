@@ -14,8 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fooddelivery.common.enums.OrderStatus;
+import com.fooddelivery.common.enums.DeliveryStatus;
 import java.util.Map;
 import java.util.UUID;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -337,7 +337,7 @@ public class DeliveryService {
         outboxEventRepository.save(outboxEvent);
     }
 
-    public void updateOrderStatus(UUID driverId, UUID orderId, OrderStatus status, String pickupOtp, String deliveryOtp, Boolean goOfflineAfter) {
+    public void updateOrderStatus(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp, Boolean goOfflineAfter) {
         int maxRetries = 3;
         for (int i = 0; i < maxRetries; i++) {
             try {

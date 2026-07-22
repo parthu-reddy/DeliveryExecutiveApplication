@@ -83,7 +83,7 @@ public class DeliveryMcpService {
     public String updateOrderStatus(String driverId, String orderId, String status) {
         try {
             DeliveryExecutiveController.UpdateOrderStatusRequest req = new DeliveryExecutiveController.UpdateOrderStatusRequest();
-            req.setStatus(OrderStatus.valueOf(status));
+            req.setStatus(com.fooddelivery.common.enums.DeliveryStatus.valueOf(status));
             return objectMapper.writeValueAsString(deliveryController.updateOrderStatus(UUID.fromString(driverId), UUID.fromString(orderId), req).getBody());
         } catch (Exception e) {
             return "Failed to update order status: " + e.getMessage();

@@ -2,7 +2,7 @@ package com.fooddelivery.delivery.service.state.order;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fooddelivery.common.constants.EventType;
-import com.fooddelivery.common.enums.OrderStatus;
+import com.fooddelivery.common.enums.DeliveryStatus;
 import com.fooddelivery.common.outbox.repository.OutboxEventRepository;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
 import com.fooddelivery.delivery.service.LogisticsDispatchService;
@@ -22,8 +22,8 @@ public class AtRestaurantStateStrategy extends AbstractDeliveryOrderState {
     }
 
     @Override
-    public OrderStatus getSupportedStatus() {
-        return OrderStatus.AT_RESTAURANT;
+    public DeliveryStatus getSupportedStatus() {
+        return DeliveryStatus.AT_RESTAURANT;
     }
 
     @Override

@@ -38,8 +38,8 @@ curl -s -X POST http://localhost:8092/api/v1/restaurants/$REST_ID/fulfillment/or
 
 echo "Waiting for driver to be dispatched..."
 for i in {1..10}; do
-    DISPATCHED_DRIVER_ID_1=$(docker exec -i food_delivery_db psql -U postgres -d food_delivery -t -c "SELECT delivery_executive_id FROM orders WHERE id = '$ORDER_ID_1';" | xargs)
-    if [ "$DISPATCHED_DRIVER_ID_1" != "" ] && [ "$DISPATCHED_DRIVER_ID_1" != "null" ]; then
+    PICKED_UP_DRIVER_ID_1=$(docker exec -i food_delivery_db psql -U postgres -d food_delivery -t -c "SELECT delivery_executive_id FROM orders WHERE id = '$ORDER_ID_1';" | xargs)
+    if [ "$PICKED_UP_DRIVER_ID_1" != "" ] && [ "$PICKED_UP_DRIVER_ID_1" != "null" ]; then
         break
     fi
     sleep 1
@@ -72,23 +72,23 @@ curl -s -X POST http://localhost:8092/api/v1/restaurants/$REST_ID/fulfillment/or
 
 echo "Waiting for driver to be dispatched..."
 for i in {1..10}; do
-    DISPATCHED_DRIVER_ID=$(docker exec -i food_delivery_db psql -U postgres -d food_delivery -t -c "SELECT delivery_executive_id FROM orders WHERE id = '$ORDER_ID_2';" | xargs)
-    if [ "$DISPATCHED_DRIVER_ID" != "" ] && [ "$DISPATCHED_DRIVER_ID" != "null" ]; then
+    PICKED_UP_DRIVER_ID=$(docker exec -i food_delivery_db psql -U postgres -d food_delivery -t -c "SELECT delivery_executive_id FROM orders WHERE id = '$ORDER_ID_2';" | xargs)
+    if [ "$PICKED_UP_DRIVER_ID" != "" ] && [ "$PICKED_UP_DRIVER_ID" != "null" ]; then
         break
     fi
     sleep 1
 done
 
-if [ "$DISPATCHED_DRIVER_ID" == "" ] || [ "$DISPATCHED_DRIVER_ID" == "null" ]; then
+if [ "$PICKED_UP_DRIVER_ID" == "" ] || [ "$PICKED_UP_DRIVER_ID" == "null" ]; then
     echo "FAIL: Driver was not dispatched."
     exit 1
 fi
 
 curl -s -X POST http://localhost:8092/api/v1/restaurants/$REST_ID/fulfillment/orders/$ORDER_ID_2/ready > /dev/null
-curl -s -X POST http://localhost:8092/api/delivery/drivers/$DISPATCHED_DRIVER_ID/orders/$ORDER_ID_2/accept > /dev/null
+curl -s -X POST http://localhost:8092/api/delivery/drivers/$PICKED_UP_DRIVER_ID/orders/$ORDER_ID_2/accept > /dev/null
 
 echo "Driver marking DELIVERY_FAILED..."
-curl -s -X POST -H "Content-Type: application/json" -d "{\"status\": \"DELIVERY_FAILED\"}" http://localhost:8092/api/delivery/drivers/$DISPATCHED_DRIVER_ID/orders/$ORDER_ID_2/status > /dev/null
+curl -s -X POST -H "Content-Type: application/json" -d "{\"status\": \"DELIVERY_FAILED\"}" http://localhost:8092/api/delivery/drivers/$PICKED_UP_DRIVER_ID/orders/$ORDER_ID_2/status > /dev/null
 
 sleep 2
 ORDER_STATUS=$(docker exec -i food_delivery_db psql -U postgres -d food_delivery -t -c "SELECT status FROM orders WHERE id = '$ORDER_ID_2';" | xargs)
@@ -119,20 +119,20 @@ curl -s -X POST http://localhost:8092/api/v1/restaurants/$REST_ID/fulfillment/or
 
 echo "Waiting for driver to be dispatched..."
 for i in {1..10}; do
-    DISPATCHED_DRIVER_ID_3=$(docker exec -i food_delivery_db psql -U postgres -d food_delivery -t -c "SELECT delivery_executive_id FROM orders WHERE id = '$ORDER_ID_3';" | xargs)
-    if [ "$DISPATCHED_DRIVER_ID_3" != "" ] && [ "$DISPATCHED_DRIVER_ID_3" != "null" ]; then
+    PICKED_UP_DRIVER_ID_3=$(docker exec -i food_delivery_db psql -U postgres -d food_delivery -t -c "SELECT delivery_executive_id FROM orders WHERE id = '$ORDER_ID_3';" | xargs)
+    if [ "$PICKED_UP_DRIVER_ID_3" != "" ] && [ "$PICKED_UP_DRIVER_ID_3" != "null" ]; then
         break
     fi
     sleep 1
 done
 
-if [ "$DISPATCHED_DRIVER_ID_3" == "" ] || [ "$DISPATCHED_DRIVER_ID_3" == "null" ]; then
+if [ "$PICKED_UP_DRIVER_ID_3" == "" ] || [ "$PICKED_UP_DRIVER_ID_3" == "null" ]; then
     echo "FAIL: Driver was not dispatched."
     exit 1
 fi
 
 echo "Simulating Driver Timeout..."
-curl -s -X POST http://localhost:8092/api/delivery/drivers/$DISPATCHED_DRIVER_ID_3/orders/$ORDER_ID_3/timeout > /dev/null
+curl -s -X POST http://localhost:8092/api/delivery/drivers/$PICKED_UP_DRIVER_ID_3/orders/$ORDER_ID_3/timeout > /dev/null
 
 echo "Timeout successfully simulated."
 

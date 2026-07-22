@@ -59,13 +59,13 @@ if [ "$ORDER_STATUS" != "PAID" ]; then echo "FAIL: Expected PAID, got $ORDER_STA
 echo "8. Restaurant Accepts Order..."
 curl -s -X POST http://localhost:8092/api/v1/restaurants/$REST_ID/fulfillment/orders/$ORDER_ID/accept > /dev/null
 
-echo "9. Polling for DISPATCHED Status (Saga)..."
+echo "9. Polling for PICKED_UP Status (Saga)..."
 for (( i=1; i<=MAX_RETRIES; i++ )); do
   ORDER_STATUS=$(docker exec -i food_delivery_db psql -U postgres -d food_delivery -t -c "SELECT status FROM orders WHERE id = '$ORDER_ID';" | xargs)
-  if [ "$ORDER_STATUS" == "DISPATCHED" ]; then break; fi
+  if [ "$ORDER_STATUS" == "PICKED_UP" ]; then break; fi
   sleep 2
 done
-if [ "$ORDER_STATUS" != "DISPATCHED" ]; then echo "FAIL: Expected DISPATCHED, got $ORDER_STATUS"; exit 1; fi
+if [ "$ORDER_STATUS" != "PICKED_UP" ]; then echo "FAIL: Expected PICKED_UP, got $ORDER_STATUS"; exit 1; fi
 
 echo "10. Driver Rejects Ping..."
 curl -s -X POST "http://localhost:8092/api/delivery/drivers/$DEL_EXEC_ID/orders/$ORDER_ID/reject" > /dev/null
@@ -75,10 +75,10 @@ sleep 5 # Wait for Saga to process the Outbox event and Redispatch
 ORDER_STATUS=$(docker exec -i food_delivery_db psql -U postgres -d food_delivery -t -c "SELECT status FROM orders WHERE id = '$ORDER_ID';" | xargs)
 ASSIGNED_DRIVER=$(docker exec -i food_delivery_db psql -U postgres -d food_delivery -t -c "SELECT delivery_executive_id FROM orders WHERE id = '$ORDER_ID';" | xargs)
 
-if [ "$ORDER_STATUS" == "DISPATCHED" ] && [ "$ASSIGNED_DRIVER" == "$DEL_EXEC_ID_2" ]; then
+if [ "$ORDER_STATUS" == "PICKED_UP" ] && [ "$ASSIGNED_DRIVER" == "$DEL_EXEC_ID_2" ]; then
     echo "Order correctly reassigned to Driver 2 ($ASSIGNED_DRIVER)."
 else
-    echo "FAIL: Expected DISPATCHED to $DEL_EXEC_ID_2, got status $ORDER_STATUS to driver $ASSIGNED_DRIVER"
+    echo "FAIL: Expected PICKED_UP to $DEL_EXEC_ID_2, got status $ORDER_STATUS to driver $ASSIGNED_DRIVER"
     exit 1
 fi
 

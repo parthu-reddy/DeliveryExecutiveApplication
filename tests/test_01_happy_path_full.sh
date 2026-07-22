@@ -51,13 +51,13 @@ if [ "$ORDER_STATUS" != "PAID" ]; then echo "FAIL: Expected PAID, got $ORDER_STA
 echo "8. Restaurant Accepts Order..."
 curl -s -X POST http://localhost:8092/api/v1/restaurants/$REST_ID/fulfillment/orders/$ORDER_ID/accept > /dev/null
 
-echo "9. Polling for DISPATCHED Status (Saga)..."
+echo "9. Polling for PICKED_UP Status (Saga)..."
 for (( i=1; i<=MAX_RETRIES; i++ )); do
   ORDER_STATUS=$(docker exec -i food_delivery_db psql -U postgres -d food_delivery -t -c "SELECT status FROM orders WHERE id = '$ORDER_ID';" | xargs)
-  if [ "$ORDER_STATUS" == "DISPATCHED" ]; then break; fi
+  if [ "$ORDER_STATUS" == "PICKED_UP" ]; then break; fi
   sleep 2
 done
-if [ "$ORDER_STATUS" != "DISPATCHED" ]; then echo "FAIL: Expected DISPATCHED, got $ORDER_STATUS"; exit 1; fi
+if [ "$ORDER_STATUS" != "PICKED_UP" ]; then echo "FAIL: Expected PICKED_UP, got $ORDER_STATUS"; exit 1; fi
 
 echo "10. Restaurant marks order READY_FOR_PICKUP..."
 curl -s -X POST http://localhost:8092/api/v1/restaurants/$REST_ID/fulfillment/orders/$ORDER_ID/ready > /dev/null
