@@ -38,28 +38,38 @@ public class DeliveryFailedStateStrategy extends AbstractDeliveryOrderState {
     }
 
     @Override
-    protected void updateExecutiveState(UUID driverId) {
+    protected void updateExecutiveState(UUID driverId, Boolean goOfflineAfter) {
         DeliveryExecutive executive = repository.findById(driverId)
                 .orElseThrow(() -> new IllegalArgumentException("Driver not found"));
         DeliveryExecutiveState state = DeliveryExecutiveStateFactory.getState(executive.getStatus());
         state.completeDelivery(executive);
+        
+        if (Boolean.TRUE.equals(goOfflineAfter)) {
+            log.info("Driver {} opted to go offline after delivery failed", driverId);
+            executive.setStatus(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.OFFLINE);
+        }
+        
         executive.setUpdatedAt(LocalDateTime.now());
         repository.save(executive);
     }
 
     @Override
-    protected void postProcess(UUID driverId, UUID orderId) {
+    protected void postProcess(UUID driverId, UUID orderId, Boolean goOfflineAfter) {
         logisticsDispatchService.releaseDriverLock(driverId.toString());
         redisTemplate.delete("order:driver:lock:" + orderId);
         redisTemplate.delete("order:ping:pending:" + orderId);
         redisTemplate.opsForZSet().remove("order:ping:timeouts", orderId.toString());
         redisTemplate.opsForValue().set("order:dispatch:lock:" + orderId, getSupportedStatus().name(), Duration.ofHours(24));
 
-        try {
-            String key = "drivers:available:" + AppConstants.DEFAULT_CITY_ID;
-            redisTemplate.opsForSet().add(key, driverId.toString());
-        } catch (Exception e) {
-            log.error("Failed to add driver {} back to Redis pool", driverId, e);
+        if (!Boolean.TRUE.equals(goOfflineAfter)) {
+            try {
+                String key = "drivers:available:" + AppConstants.DEFAULT_CITY_ID;
+                redisTemplate.opsForSet().add(key, driverId.toString());
+            } catch (Exception e) {
+                log.error("Failed to add driver {} back to Redis pool", driverId, e);
+            }
+        } else {
+            log.info("Driver {} opted to go offline, skipping addition to available pool", driverId);
         }
     }
 }

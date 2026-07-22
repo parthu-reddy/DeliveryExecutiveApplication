@@ -160,6 +160,16 @@ public class DeliveryService {
     private final LogisticsDispatchService logisticsDispatchService;
     private static final String TOPIC = com.fooddelivery.common.constants.KafkaConstants.TOPIC_ORDER_EVENTS;
 
+    public String getPendingPing(UUID driverId) {
+        return redisTemplate.opsForValue().get("driver:pending_ping:" + driverId);
+    }
+    
+    public Long getPingExpiration(UUID orderId) {
+        Double score = redisTemplate.opsForZSet().score("order:ping:timeouts", orderId.toString());
+        return score != null ? score.longValue() : null;
+    }
+
+
     public void acceptOrderPing(UUID driverId, UUID orderId) {
         log.info("Driver {} attempting to accept order {}", driverId, orderId);
         
@@ -211,6 +221,7 @@ public class DeliveryService {
             log.info("Driver {} accepted order {}. Emitted DRIVER_ASSIGNED event.", driverId, orderId);
             
             redisTemplate.delete("order:ping:pending:" + orderId);
+            redisTemplate.delete("driver:pending_ping:" + driverId);
             redisTemplate.opsForZSet().remove("order:ping:timeouts", orderId.toString());
             
             try {
@@ -223,6 +234,7 @@ public class DeliveryService {
             log.error("Failed to commit DRIVER_ASSIGNED transaction. Releasing Redis lock for order {}", orderId, e);
             redisTemplate.delete("order:driver:lock:" + orderId);
             redisTemplate.delete("order:ping:pending:" + orderId);
+            redisTemplate.delete("driver:pending_ping:" + driverId);
             redisTemplate.opsForZSet().remove("order:ping:timeouts", orderId.toString());
             throw e;
         }
@@ -258,7 +270,12 @@ public class DeliveryService {
         });
         
         redisTemplate.delete("order:ping:pending:" + orderId);
+        redisTemplate.delete("driver:pending_ping:" + driverId);
         redisTemplate.opsForZSet().remove("order:ping:timeouts", orderId.toString());
+        
+        redisTemplate.opsForSet().add("order:rejected_drivers:" + orderId, driverId.toString());
+        redisTemplate.expire("order:rejected_drivers:" + orderId, java.time.Duration.ofHours(2));
+        
         logisticsDispatchService.releaseDriverLock(driverId.toString());
     }
 
@@ -320,12 +337,12 @@ public class DeliveryService {
         outboxEventRepository.save(outboxEvent);
     }
 
-    public void updateOrderStatus(UUID driverId, UUID orderId, OrderStatus status, String pickupOtp, String deliveryOtp) {
+    public void updateOrderStatus(UUID driverId, UUID orderId, OrderStatus status, String pickupOtp, String deliveryOtp, Boolean goOfflineAfter) {
         int maxRetries = 3;
         for (int i = 0; i < maxRetries; i++) {
             try {
                 com.fooddelivery.delivery.service.state.order.DeliveryOrderStateStrategy strategy = deliveryOrderStateFactory.getStrategy(status);
-                strategy.handleStatusUpdate(driverId, orderId, status, pickupOtp, deliveryOtp);
+                strategy.handleStatusUpdate(driverId, orderId, status, pickupOtp, deliveryOtp, goOfflineAfter);
                 return;
             } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {
                 if (i == maxRetries - 1) {
@@ -346,6 +363,7 @@ public class DeliveryService {
         log.info("Driver {} ping timed out for order {}", driverId, orderId);
         
         redisTemplate.delete("order:ping:pending:" + orderId);
+        redisTemplate.delete("driver:pending_ping:" + driverId);
         redisTemplate.opsForZSet().remove("order:ping:timeouts", orderId.toString());
 
         transactionTemplate.execute(status -> {
@@ -373,6 +391,9 @@ public class DeliveryService {
             outboxEventRepository.save(outboxEvent);
             return null;
         });
+        
+        redisTemplate.opsForSet().add("order:rejected_drivers:" + orderId, driverId.toString());
+        redisTemplate.expire("order:rejected_drivers:" + orderId, java.time.Duration.ofHours(2));
         
         logisticsDispatchService.releaseDriverLock(driverId.toString());
     }

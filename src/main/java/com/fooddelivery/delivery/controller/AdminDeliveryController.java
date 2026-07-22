@@ -48,4 +48,12 @@ public class AdminDeliveryController {
         deliveryService.forceAssignOrder(orderId, driverId);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/drivers/{driverId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RESTAURANT')")
+    public ResponseEntity<DeliveryExecutive> getDriverById(@PathVariable UUID driverId) {
+        return repository.findById(driverId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
 }

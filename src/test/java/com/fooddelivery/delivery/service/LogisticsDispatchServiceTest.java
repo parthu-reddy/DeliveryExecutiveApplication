@@ -43,7 +43,7 @@ class LogisticsDispatchServiceTest {
                 .thenReturn(CompletableFuture.completedFuture(null));
 
         // Act
-        logisticsDispatchService.dispatchNearestDriver(12.9716, 77.5946, 12.98, 77.60, "Test Address", orderId);
+        logisticsDispatchService.dispatchNearestDriver(12.9716, 77.5946, 12.9352, 77.6245, "BLR", orderId, java.util.Collections.emptyList());
 
         ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
         verify(kafkaTemplate).send(eq("platform.logistics.dispatch"), eq(orderId.toString()), payloadCaptor.capture());

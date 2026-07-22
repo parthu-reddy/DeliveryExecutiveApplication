@@ -39,6 +39,16 @@ public class TerminalStateStrategy implements DeliveryEventStrategy {
             if (driverId == null || driverId.isEmpty()) {
                 driverId = redisTemplate.opsForValue().get("order:driver:lock:" + orderId);
             }
+            if (driverId == null || driverId.isEmpty()) {
+                driverId = redisTemplate.opsForValue().get("order:ping:pending:" + orderId);
+            }
+            
+            // Clean up any pending pings to prevent timeout poller from penalizing the driver
+            redisTemplate.delete("order:ping:pending:" + orderId);
+            if (driverId != null && !driverId.isEmpty()) {
+                redisTemplate.delete("driver:pending_ping:" + driverId);
+            }
+            redisTemplate.opsForZSet().remove("order:ping:timeouts", orderId.toString());
             
             // PREVENT any in-flight ping from being successfully accepted later
             redisTemplate.opsForValue().set("order:driver:lock:" + orderId, com.fooddelivery.common.enums.OrderStatus.CANCELLED.name(), java.time.Duration.ofHours(24));
@@ -56,6 +66,14 @@ public class TerminalStateStrategy implements DeliveryEventStrategy {
                             executive.setUpdatedAt(java.time.LocalDateTime.now());
                             executiveRepository.save(executive);
                             log.info("Reset driver {} to ONLINE after order {} was cancelled.", finalDriverId, orderId);
+                            
+                            // Add back to available pool
+                            try {
+                                String key = "drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
+                                redisTemplate.opsForSet().add(key, finalDriverId);
+                            } catch (Exception e) {
+                                log.error("Failed to add driver {} back to Redis pool", finalDriverId, e);
+                            }
                         }
                     });
                 } catch (Exception ex) {

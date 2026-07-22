@@ -34,6 +34,11 @@ public class OutForDeliveryStateStrategy extends AbstractDeliveryOrderState {
 
     @Override
     protected void validate(UUID driverId, UUID orderId, String pickupOtp, String deliveryOtp) {
+        String restaurantStatus = redisTemplate.opsForValue().get("order:restaurantStatus:" + orderId);
+        if (restaurantStatus == null || !(restaurantStatus.equals(OrderStatus.READY_FOR_PICKUP.name()) || restaurantStatus.equals(OrderStatus.DISPATCHED.name()))) {
+            throw new IllegalArgumentException("Restaurant has not marked the order as ready yet.");
+        }
+
         String payload = redisTemplate.opsForValue().get("order:dispatchPayload:" + orderId);
         if (payload != null) {
             try {

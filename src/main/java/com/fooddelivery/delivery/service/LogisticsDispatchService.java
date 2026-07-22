@@ -21,18 +21,20 @@ public class LogisticsDispatchService {
     private final ObjectMapper objectMapper;
     private final MapsClient mapsClient;
 
-    public void dispatchNearestDriver(double restaurantLat, double restaurantLng, double deliveryLat, double deliveryLng, String deliveryAddress, UUID orderId) {
+    public void dispatchNearestDriver(double restaurantLat, double restaurantLng, double deliveryLat, double deliveryLng, String deliveryAddress, UUID orderId, java.util.List<String> excludedDriverIds) {
         log.info("Requesting driver dispatch for order {} via MapsIntegration service", orderId);
         
         try {
-            Map<String, Object> dispatchRequest = Map.of(
-                "orderId", orderId.toString(),
-                "restaurantLat", restaurantLat,
-                "restaurantLng", restaurantLng,
-                "deliveryLat", deliveryLat,
-                "deliveryLng", deliveryLng,
-                "deliveryAddress", deliveryAddress
-            );
+            Map<String, Object> dispatchRequest = new java.util.HashMap<>();
+            dispatchRequest.put("orderId", orderId.toString());
+            dispatchRequest.put("restaurantLat", restaurantLat);
+            dispatchRequest.put("restaurantLng", restaurantLng);
+            dispatchRequest.put("deliveryLat", deliveryLat);
+            dispatchRequest.put("deliveryLng", deliveryLng);
+            dispatchRequest.put("deliveryAddress", deliveryAddress);
+            if (excludedDriverIds != null && !excludedDriverIds.isEmpty()) {
+                dispatchRequest.put("excludedDriverIds", excludedDriverIds);
+            }
             
             String payload = objectMapper.writeValueAsString(dispatchRequest);
             
@@ -51,10 +53,9 @@ public class LogisticsDispatchService {
         try {
             Map<String, Object> request = Map.of(
                 "cityId", com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID,
-                "driverId", driverId,
-                "available", true
+                "driverId", driverId
             );
-            mapsClient.setDriverAvailability(request);
+            mapsClient.releaseDriver(request);
             log.info("Successfully requested driver lock release for driver {}", driverId);
         } catch (Exception e) {
             log.error("Failed to release driver lock for driver {}", driverId, e);

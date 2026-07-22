@@ -48,16 +48,21 @@ public class OrderEventConsumer {
                 if (eventTypeObj instanceof byte[]) {
                     headerEventType = new String((byte[]) eventTypeObj, java.nio.charset.StandardCharsets.UTF_8);
                 } else if (eventTypeObj.getClass().getName().contains("NonTrustedHeaderType")) {
-                    try {
-                        java.lang.reflect.Method getValueMethod = eventTypeObj.getClass().getMethod("getValue");
-                        Object val = getValueMethod.invoke(eventTypeObj);
-                        if (val instanceof byte[]) {
-                            headerEventType = new String((byte[]) val, java.nio.charset.StandardCharsets.UTF_8);
-                        } else if (val != null) {
-                            headerEventType = val.toString();
+                    String str = eventTypeObj.toString();
+                    if (str.contains("headerValue=")) {
+                        int start = str.indexOf("\"") + 1;
+                        if (start > 0) {
+                            int end = str.indexOf("\"", start);
+                            if (end > start) {
+                                headerEventType = str.substring(start, end);
+                            } else {
+                                headerEventType = str;
+                            }
+                        } else {
+                            headerEventType = str;
                         }
-                    } catch (Exception e) {
-                        headerEventType = eventTypeObj.toString();
+                    } else {
+                        headerEventType = str;
                     }
                 } else {
                     headerEventType = eventTypeObj.toString();

@@ -39,7 +39,7 @@ public class OrderAcceptedStrategy implements DeliveryEventStrategy {
                 redisTemplate.opsForValue().set("order:dispatchPayload:" + orderId, root.toString(), java.time.Duration.ofHours(24));
                 if (System.currentTimeMillis() >= dispatchTime) {
                     log.info("Delivery Application received ORDER_ACCEPTED for order {}. Dispatching nearest driver immediately...", orderId);
-                    logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, orderId);
+                    logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, orderId, null);
                 } else {
                     log.info("Delivery Application received ORDER_ACCEPTED for order {}. Scheduling dispatch at {}.", orderId, dispatchTime);
                     redisTemplate.opsForZSet().add("delayed_dispatch_queue", orderId.toString(), dispatchTime);

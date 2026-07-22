@@ -9,11 +9,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.Map;
 
-@FeignClient(name = "mapsintegration", url = "${maps.service.url:http://mapsintegration}")
+@FeignClient(name = "mapsintegration")
 public interface MapsClient {
 
     @PostMapping("/api/fleet/availability")
     ResponseEntity<String> setDriverAvailability(@RequestBody Map<String, Object> request);
+
+    @PostMapping("/api/fleet/release")
+    ResponseEntity<String> releaseDriver(@RequestBody Map<String, Object> request);
 
     @GetMapping("/api/logistics/route")
     ResponseEntity<Map> getRoute(@RequestParam("origin") String origin, @RequestParam("destination") String destination);

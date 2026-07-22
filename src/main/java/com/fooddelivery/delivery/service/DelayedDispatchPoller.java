@@ -40,7 +40,7 @@ public class DelayedDispatchPoller {
                         
                         if (lat != 0.0 && lng != 0.0) {
                             log.info("Delayed dispatch triggered for order {}. Dispatching nearest driver...", orderIdStr);
-                            logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, UUID.fromString(orderIdStr));
+                            logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, UUID.fromString(orderIdStr), null);
                         }
                     }
                     redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderIdStr);

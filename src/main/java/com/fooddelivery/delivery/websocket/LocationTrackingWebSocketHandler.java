@@ -22,6 +22,7 @@ public class LocationTrackingWebSocketHandler extends TextWebSocketHandler {
     private final ObjectMapper objectMapper;
     private final StringRedisTemplate redisTemplate;
     private final ConcurrentHashMap<String, WebSocketSession> activeSessions = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, WebSocketSession> userSessions = new ConcurrentHashMap<>();
     private final Sinks.Many<TelemetryEvent> telemetrySink = Sinks.many().multicast().onBackpressureBuffer();
 
     private static final String DRIVER_LOCATION_KEY = "drivers:geo:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
@@ -76,7 +77,8 @@ public class LocationTrackingWebSocketHandler extends TextWebSocketHandler {
 
         String sessionId = session.getId();
         activeSessions.put(sessionId, session);
-        log.info("WebSocket connected: {}", sessionId);
+        userSessions.put(userId, session);
+        log.info("WebSocket connected: {} for user: {}", sessionId, userId);
     }
 
     @Override
@@ -101,7 +103,29 @@ public class LocationTrackingWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         activeSessions.remove(session.getId());
+        String userId = (String) session.getAttributes().get("userId");
+        if (userId != null) {
+            userSessions.remove(userId, session);
+        }
         log.info("WebSocket closed: {}", session.getId());
+    }
+
+    public void sendPingToDriver(String driverId, String orderId) {
+        WebSocketSession session = userSessions.get(driverId);
+        if (session != null && session.isOpen()) {
+            try {
+                java.util.Map<String, String> payload = java.util.Map.of(
+                    "type", "NEW_ORDER_DISPATCH",
+                    "orderId", orderId
+                );
+                session.sendMessage(new TextMessage(objectMapper.writeValueAsString(payload)));
+                log.info("Successfully sent ping to driver {} via WebSocket", driverId);
+            } catch (Exception e) {
+                log.error("Failed to send ping to driver {} via WebSocket", driverId, e);
+            }
+        } else {
+            log.warn("Driver {} is not connected via WebSocket, cannot send ping", driverId);
+        }
     }
 
     private record TelemetryEvent(String driverId, String orderId, double lat, double lng) {}

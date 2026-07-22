@@ -44,7 +44,7 @@ public abstract class AbstractDeliveryOrderState implements DeliveryOrderStateSt
     }
 
     @Override
-    public void handleStatusUpdate(UUID driverId, UUID orderId, OrderStatus status, String pickupOtp, String deliveryOtp) {
+    public void handleStatusUpdate(UUID driverId, UUID orderId, OrderStatus status, String pickupOtp, String deliveryOtp, Boolean goOfflineAfter) {
         log.info("Driver {} updating order {} to {}", driverId, orderId, status);
 
         String currentAssignee = redisTemplate.opsForValue().get("order:driver:lock:" + orderId);
@@ -57,11 +57,11 @@ public abstract class AbstractDeliveryOrderState implements DeliveryOrderStateSt
 
         transactionTemplate.execute(txStatus -> {
             saveOutboxEvent(orderId, status, pickupOtp, deliveryOtp);
-            updateExecutiveState(driverId);
+            updateExecutiveState(driverId, goOfflineAfter);
             return null;
         });
 
-        postProcess(driverId, orderId);
+        postProcess(driverId, orderId, goOfflineAfter);
     }
 
     protected void validate(UUID driverId, UUID orderId, String pickupOtp, String deliveryOtp) {
@@ -101,11 +101,11 @@ public abstract class AbstractDeliveryOrderState implements DeliveryOrderStateSt
         outboxEventRepository.save(outboxEvent);
     }
 
-    protected void updateExecutiveState(UUID driverId) {
+    protected void updateExecutiveState(UUID driverId, Boolean goOfflineAfter) {
         // Default no-op. Override for DELIVERED / FAILED.
     }
 
-    protected void postProcess(UUID driverId, UUID orderId) {
+    protected void postProcess(UUID driverId, UUID orderId, Boolean goOfflineAfter) {
         // Default no-op. Override for DELIVERED / FAILED.
     }
 

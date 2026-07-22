@@ -19,6 +19,8 @@ public class CandidateFoundStrategy implements DeliveryEventStrategy {
 
     private final StringRedisTemplate redisTemplate;
     private final com.fooddelivery.common.service.NotificationRouterService notificationRouterService;
+    private final org.springframework.core.env.Environment env;
+    private final com.fooddelivery.delivery.websocket.LocationTrackingWebSocketHandler locationTrackingWebSocketHandler;
 
     @Override
     public void process(JsonNode root, String eventType) throws Exception {
@@ -26,20 +28,26 @@ public class CandidateFoundStrategy implements DeliveryEventStrategy {
         String driverId = root.path("driverId").asText(null);
         log.info("Delivery Application received DISPATCH_CANDIDATE_FOUND for order {}. Driver {} will be pinged.", orderId, driverId);
         
-        // Track the ping in Redis for timeout poller (30 seconds timeout)
-        redisTemplate.opsForValue().set("order:ping:pending:" + orderId, driverId, Duration.ofSeconds(30));
+        // Track the ping in Redis for timeout poller (30 seconds timeout limit for driver to accept, but 60s TTL for the key to avoid race conditions with poller)
+        redisTemplate.opsForValue().set("order:ping:pending:" + orderId, driverId, Duration.ofSeconds(60));
+        redisTemplate.opsForValue().set("driver:pending_ping:" + driverId, orderId.toString(), Duration.ofSeconds(60));
         redisTemplate.opsForZSet().add("order:ping:timeouts", orderId.toString(), System.currentTimeMillis() + 30000);
 
         log.info("Pinging Driver {} for Order {}...", driverId, orderId);
 
-        // Send a push notification to the driver
-        com.fooddelivery.common.event.NotificationRequestEvent notificationEvent = com.fooddelivery.common.event.NotificationRequestEvent.builder()
-                .userId(UUID.fromString(driverId))
-                .channel(com.fooddelivery.common.enums.ChannelType.PUSH)
-                .eventName("NEW_ORDER_DISPATCH")
-                .payload(java.util.Map.of("orderId", orderId.toString()))
-                .build();
-        notificationRouterService.routeNotification(notificationEvent);
+        if (env.acceptsProfiles(org.springframework.core.env.Profiles.of("dev"))) {
+            // For local development, send the ping directly through the active WebSocket connection
+            locationTrackingWebSocketHandler.sendPingToDriver(driverId, orderId.toString());
+        } else {
+            // Send a push notification to the driver
+            com.fooddelivery.common.event.NotificationRequestEvent notificationEvent = com.fooddelivery.common.event.NotificationRequestEvent.builder()
+                    .userId(UUID.fromString(driverId))
+                    .channel(com.fooddelivery.common.enums.ChannelType.PUSH)
+                    .eventName("NEW_ORDER_DISPATCH")
+                    .payload(java.util.Map.of("orderId", orderId.toString()))
+                    .build();
+            notificationRouterService.routeNotification(notificationEvent);
+        }
     }
 
     @Override

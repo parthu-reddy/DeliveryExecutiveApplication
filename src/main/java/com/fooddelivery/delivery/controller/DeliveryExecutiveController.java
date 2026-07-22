@@ -68,6 +68,8 @@ public class DeliveryExecutiveController {
         @Size(max = 10)
         @Pattern(regexp = "^\\d+$")
         private String deliveryOtp;
+
+        private Boolean goOfflineAfter;
     }
 
     @PostMapping("/onboard")
@@ -88,6 +90,31 @@ public class DeliveryExecutiveController {
         return deliveryService.findByPhoneNumber(phoneNumber)
                 .map(executive -> ResponseEntity.ok(ApiResponse.success(executive, "Profile fetched successfully")))
                 .orElseGet(() -> ResponseEntity.status(404).body(ApiResponse.<com.fooddelivery.delivery.entity.DeliveryExecutive>builder().success(false).message("Profile not found").build()));
+    }
+
+
+    @GetMapping("/drivers/{driverId}/pings")
+    public ResponseEntity<ApiResponse<java.util.List<Map<String, Object>>>> getPendingPings(java.security.Principal principal, @PathVariable UUID driverId) {
+        if (!principal.getName().equals(driverId.toString())) {
+            return ResponseEntity.status(401).body(ApiResponse.<java.util.List<Map<String, Object>>>builder().success(false).message("Unauthorized").build());
+        }
+        
+        String pendingOrderId = deliveryService.getPendingPing(driverId);
+        if (pendingOrderId == null) {
+            return ResponseEntity.ok(ApiResponse.success(java.util.Collections.emptyList(), "No pending pings"));
+        }
+        
+        Long expiresAt = deliveryService.getPingExpiration(UUID.fromString(pendingOrderId));
+        if (expiresAt == null) {
+            return ResponseEntity.ok(ApiResponse.success(java.util.Collections.emptyList(), "No pending pings"));
+        }
+        
+        return ResponseEntity.ok(ApiResponse.success(
+            java.util.Collections.singletonList(
+                Map.of("id", pendingOrderId, "expiresAt", expiresAt)
+            ), 
+            "Pending ping retrieved"
+        ));
     }
 
     @PostMapping("/status")
@@ -143,7 +170,7 @@ public class DeliveryExecutiveController {
             @PathVariable UUID driverId,
             @PathVariable UUID orderId,
             @Valid @RequestBody UpdateOrderStatusRequest request) {
-        deliveryService.updateOrderStatus(driverId, orderId, request.getStatus(), request.getPickupOtp(), request.getDeliveryOtp());
+        deliveryService.updateOrderStatus(driverId, orderId, request.getStatus(), request.getPickupOtp(), request.getDeliveryOtp(), request.getGoOfflineAfter());
         return ResponseEntity.ok(ApiResponse.<Object>builder().success(true).message("Order status updated").build());
     }
 
