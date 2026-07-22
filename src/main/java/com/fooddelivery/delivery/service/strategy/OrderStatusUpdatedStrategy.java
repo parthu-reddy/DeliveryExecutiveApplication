@@ -7,7 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
 
 @Slf4j
@@ -20,18 +20,33 @@ public class OrderStatusUpdatedStrategy implements DeliveryEventStrategy {
     @Override
     public void process(JsonNode root, String eventType) throws Exception {
         String orderId = root.path("orderId").asText(null);
-        String status = root.path("status").asText(null);
+        String status = null;
+
+        if (EventType.ORDER_STATUS_UPDATED.name().equals(eventType)) {
+            status = root.path("status").asText(null);
+        } else if (EventType.ORDER_READY.name().equals(eventType)) {
+            status = com.fooddelivery.common.enums.OrderStatus.READY_FOR_PICKUP.name();
+        } else if (EventType.ORDER_PREPARING.name().equals(eventType)) {
+            status = com.fooddelivery.common.enums.OrderStatus.PREPARING.name();
+        } else if (EventType.ORDER_ACCEPTED.name().equals(eventType)) {
+            status = com.fooddelivery.common.enums.OrderStatus.ACCEPTED.name();
+        }
 
         if (orderId != null && status != null) {
-            log.info("Received ORDER_STATUS_UPDATED for order {} with status {}", orderId, status);
+            log.info("Received {} for order {} setting restaurantStatus to {}", eventType, orderId, status);
             redisTemplate.opsForValue().set("order:restaurantStatus:" + orderId, status);
         } else {
-            log.warn("Invalid ORDER_STATUS_UPDATED event received: {}", root);
+            log.warn("Invalid event received: {}", root);
         }
     }
 
     @Override
     public List<String> getEventTypes() {
-        return Collections.singletonList(EventType.ORDER_STATUS_UPDATED.name());
+        return Arrays.asList(
+            EventType.ORDER_STATUS_UPDATED.name(),
+            EventType.ORDER_READY.name(),
+            EventType.ORDER_PREPARING.name(),
+            EventType.ORDER_ACCEPTED.name()
+        );
     }
 }
