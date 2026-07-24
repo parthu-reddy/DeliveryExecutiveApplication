@@ -22,6 +22,11 @@ public class DelayedDispatchPoller {
 
     @Scheduled(fixedDelay = 5000)
     public void pollDelayedDispatches() {
+        Boolean locked = redisTemplate.opsForValue().setIfAbsent("lock:pollDelayedDispatches", "1", java.time.Duration.ofSeconds(4));
+        if (!Boolean.TRUE.equals(locked)) {
+            return;
+        }
+        
         long currentTime = System.currentTimeMillis();
         
         Set<String> orderIds = redisTemplate.opsForZSet().rangeByScore("delayed_dispatch_queue", 0, currentTime);
@@ -29,6 +34,14 @@ public class DelayedDispatchPoller {
         if (orderIds != null && !orderIds.isEmpty()) {
             for (String orderIdStr : orderIds) {
                 try {
+                    // Guard: check if order was cancelled while waiting in the delayed queue
+                    String dispatchLock = redisTemplate.opsForValue().get("order:dispatch:lock:" + orderIdStr);
+                    if ("CANCELLED".equals(dispatchLock)) {
+                        log.info("Order {} was cancelled while in delayed dispatch queue. Skipping.", orderIdStr);
+                        redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderIdStr);
+                        continue;
+                    }
+                    
                     String payload = redisTemplate.opsForValue().get("order:dispatchPayload:" + orderIdStr);
                     if (payload != null) {
                         JsonNode root = objectMapper.readTree(payload);

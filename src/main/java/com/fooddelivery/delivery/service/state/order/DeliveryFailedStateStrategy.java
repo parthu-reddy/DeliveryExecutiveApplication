@@ -39,7 +39,7 @@ public class DeliveryFailedStateStrategy extends AbstractDeliveryOrderState {
 
     @Override
     protected void updateExecutiveState(UUID driverId, Boolean goOfflineAfter) {
-        DeliveryExecutive executive = repository.findById(driverId)
+        DeliveryExecutive executive = repository.findLockedById(driverId)
                 .orElseThrow(() -> new IllegalArgumentException("Driver not found"));
         DeliveryExecutiveState state = DeliveryExecutiveStateFactory.getState(executive.getStatus());
         state.completeDelivery(executive);
@@ -55,9 +55,15 @@ public class DeliveryFailedStateStrategy extends AbstractDeliveryOrderState {
 
     @Override
     protected void postProcess(UUID driverId, UUID orderId, Boolean goOfflineAfter) {
-        logisticsDispatchService.releaseDriverLock(driverId.toString());
+        try {
+            logisticsDispatchService.releaseDriverLock(driverId.toString());
+        } catch (Exception e) {
+            log.error("Failed to release driver lock for driver {} after delivery failed, will be retried by availability poller", driverId, e);
+        }
         redisTemplate.delete("order:driver:lock:" + orderId);
         redisTemplate.delete("order:ping:pending:" + orderId);
+        redisTemplate.delete("order:dispatchPayload:" + orderId);
+        redisTemplate.delete("order:rejected_drivers:" + orderId);
         redisTemplate.opsForZSet().remove("order:ping:timeouts", orderId.toString());
         redisTemplate.opsForValue().set("order:dispatch:lock:" + orderId, getSupportedStatus().name(), Duration.ofHours(24));
 

@@ -1,7 +1,8 @@
 package com.fooddelivery.delivery.service.state;
 
+import com.fooddelivery.common.enums.DeliveryStatus;
+import com.fooddelivery.common.exception.IllegalStateTransitionException;
 import com.fooddelivery.delivery.entity.DeliveryExecutive;
-import com.fooddelivery.delivery.exception.IllegalStateTransitionException;
 
 public interface DeliveryExecutiveState {
     default void goOnline(DeliveryExecutive executive) {

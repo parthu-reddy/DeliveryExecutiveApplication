@@ -31,58 +31,87 @@ public class TerminalStateStrategy implements DeliveryEventStrategy {
         String driverId = root.path("driverId").asText(null);
         log.info("Delivery Application received {} for order {}. Cleaning up pending dispatches.", eventType, orderId);
         
-        // Cleanup the Redis dispatch payload on any terminal/successful state
-        redisTemplate.delete("order:dispatchPayload:" + orderId);
+        // Only delete dispatch payload for cancellation/failure events — NOT for DRIVER_ASSIGNED.
+        // OutForDeliveryStateStrategy reads order:dispatchPayload to validate pickup OTP,
+        // and DeliveredStateStrategy reads it for delivery OTP validation.
+        // Cleanup happens in DeliveredStateStrategy.postProcess() / DeliveryFailedStateStrategy.postProcess().
+        if (!EventType.DRIVER_ASSIGNED.name().equals(eventType)) {
+            redisTemplate.delete("order:dispatchPayload:" + orderId);
+        }
+        redisTemplate.delete("order:rejected_drivers:" + orderId);
         redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderId.toString());
 
         if (EventType.ORDER_CANCELLED.name().equals(eventType) || EventType.DELIVERY_FAILED.name().equals(eventType) || EventType.ORDER_CANCELLED_BY_RESTAURANT.name().equals(eventType) || EventType.ORDER_CANCELLED_BY_CUSTOMER.name().equals(eventType) || EventType.ORDER_REJECTED.name().equals(eventType) || EventType.ORDER_DELAY_REJECTED.name().equals(eventType)) {
             if (driverId == null || driverId.isEmpty()) {
                 driverId = redisTemplate.opsForValue().get("order:driver:lock:" + orderId);
             }
-            if (driverId == null || driverId.isEmpty()) {
-                driverId = redisTemplate.opsForValue().get("order:ping:pending:" + orderId);
+            
+            String strandedDriver = redisTemplate.opsForValue().get("order:driver:stranded:" + orderId);
+            if (strandedDriver != null) {
+                driverId = strandedDriver;
             }
+            
+            // Read ALL pending drivers BEFORE deleting the set, so we can clean up every driver's state
+            java.util.Set<String> allPendingDrivers = redisTemplate.opsForSet().members("order:ping:pending:" + orderId);
             
             // Clean up any pending pings to prevent timeout poller from penalizing the driver
             redisTemplate.delete("order:ping:pending:" + orderId);
-            if (driverId != null && !driverId.isEmpty()) {
+            
+            // Clean up driver:pending_ping for ALL pinged drivers, not just the one in the event
+            if (allPendingDrivers != null && !allPendingDrivers.isEmpty()) {
+                for (String pendingDriverId : allPendingDrivers) {
+                    redisTemplate.delete("driver:pending_ping:" + pendingDriverId);
+                }
+                // If we didn't get a driverId from the event or lock, use one from the pending set
+                if (driverId == null || driverId.isEmpty()) {
+                    driverId = allPendingDrivers.iterator().next();
+                }
+            } else if (driverId != null && !driverId.isEmpty()) {
                 redisTemplate.delete("driver:pending_ping:" + driverId);
             }
+            
             redisTemplate.opsForZSet().remove("order:ping:timeouts", orderId.toString());
             
             // PREVENT any in-flight ping from being successfully accepted later
             redisTemplate.opsForValue().set("order:driver:lock:" + orderId, com.fooddelivery.common.enums.OrderStatus.CANCELLED.name(), java.time.Duration.ofHours(24));
             
             if (driverId != null && !driverId.isEmpty() && !driverId.equals(com.fooddelivery.common.enums.OrderStatus.CANCELLED.name()) && !driverId.equals("locked")) {
-                logisticsDispatchService.releaseDriverLock(driverId);
+                redisTemplate.opsForValue().set("order:driver:stranded:" + orderId, driverId, java.time.Duration.ofHours(24));
+                
+                try {
+                    logisticsDispatchService.releaseDriverLock(driverId);
+                } catch (Exception e) {
+                    log.error("Failed to release driver lock for driver {} during terminal cleanup", driverId, e);
+                }
                 
                 // Reset driver status in DB
                 final String finalDriverId = driverId;
-                try {
-                    transactionTemplate.executeWithoutResult(status -> {
-                        DeliveryExecutive executive = executiveRepository.findLockedById(UUID.fromString(finalDriverId)).orElse(null);
-                        if (executive != null && executive.getStatus() == DeliveryExecutiveStatus.ON_DELIVERY) {
-                            executive.setStatus(DeliveryExecutiveStatus.ONLINE);
-                            executive.setUpdatedAt(java.time.LocalDateTime.now());
-                            executiveRepository.save(executive);
-                            log.info("Reset driver {} to ONLINE after order {} was cancelled.", finalDriverId, orderId);
-                            
-                            // Add back to available pool
-                            try {
-                                String key = "drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
-                                redisTemplate.opsForSet().add(key, finalDriverId);
-                            } catch (Exception e) {
-                                log.error("Failed to add driver {} back to Redis pool", finalDriverId, e);
-                            }
+                transactionTemplate.executeWithoutResult(status -> {
+                    DeliveryExecutive executive = executiveRepository.findLockedById(UUID.fromString(finalDriverId)).orElse(null);
+                    if (executive != null && executive.getStatus() == DeliveryExecutiveStatus.ON_DELIVERY) {
+                        executive.setStatus(DeliveryExecutiveStatus.ONLINE);
+                        executive.setUpdatedAt(java.time.LocalDateTime.now());
+                        executiveRepository.save(executive);
+                        log.info("Reset driver {} to ONLINE after order {} was cancelled.", finalDriverId, orderId);
+                        
+                        // Add back to available pool
+                        try {
+                            String key = "drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
+                            redisTemplate.opsForSet().add(key, finalDriverId);
+                        } catch (Exception e) {
+                            log.error("Failed to add driver {} back to Redis pool", finalDriverId, e);
                         }
-                    });
-                } catch (Exception ex) {
-                    log.error("Failed to reset driver status in DB", ex);
-                }
+                    }
+                });
+                
+                redisTemplate.delete("order:driver:stranded:" + orderId);
             }
-            // we delete the dispatch lock since the order is cancelled
-            redisTemplate.delete("order:dispatch:lock:" + orderId);
+            // we set the dispatch lock to CANCELLED to prevent new dispatch loops
+            redisTemplate.opsForValue().set("order:dispatch:lock:" + orderId, "CANCELLED", java.time.Duration.ofHours(24));
         }
+        // For ALL terminal events (including DISPATCH_FAILED and DRIVER_ASSIGNED), mark dispatch as complete
+        // This prevents stale Kafka retries of ORDER_DRIVER_REJECTED from re-dispatching
+        redisTemplate.opsForValue().set("order:dispatch:lock:" + orderId, "CANCELLED", java.time.Duration.ofHours(24));
     }
 
     @Override

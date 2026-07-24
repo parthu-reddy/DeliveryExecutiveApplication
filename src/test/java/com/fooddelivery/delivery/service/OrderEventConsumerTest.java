@@ -36,7 +36,7 @@ class OrderEventConsumerTest {
     void testConsumeEvent_Success() throws Exception {
         String payload = "{\"eventType\":\"ORDER_ACCEPTED\",\"orderId\":\"123e4567-e89b-12d3-a456-426614174000\"}";
         
-        orderEventConsumer.consumeOrderEvent(payload, null);
+        orderEventConsumer.consumeOrderEvent(payload, new java.util.HashMap<>());
         
         verify(mockAcceptedStrategy).process(any(), eq(com.fooddelivery.common.constants.EventType.ORDER_ACCEPTED.name()));
     }
@@ -47,7 +47,7 @@ class OrderEventConsumerTest {
         
         String message = String.format("{\"eventType\":\"%s\", \"orderId\":\"%s\"}", com.fooddelivery.common.constants.EventType.ORDER_CREATED.name(), orderId);
 
-        orderEventConsumer.consumeOrderEvent(message, null);
+        orderEventConsumer.consumeOrderEvent(message, new java.util.HashMap<>());
 
         verify(mockAcceptedStrategy, never()).process(any(), anyString());
     }

@@ -29,6 +29,8 @@ import lombok.Data;
 public class DeliveryExecutiveController {
 
     private final DeliveryService deliveryService;
+    private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+    private final org.springframework.data.redis.listener.RedisMessageListenerContainer redisMessageListenerContainer;
 
     @Data
     public static class DeliveryOnboardRequest {
@@ -145,8 +147,12 @@ public class DeliveryExecutiveController {
     @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
     public ResponseEntity<ApiResponse<Void>> acceptOrder(
             @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
-        deliveryService.acceptOrderPing(driverId, orderId);
-        return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order accepted by driver").build());
+        try {
+            deliveryService.acceptOrderPing(driverId, orderId);
+            return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order accepted by driver").build());
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.badRequest().body(ApiResponse.<Void>builder().success(false).message(ex.getMessage()).build());
+        }
     }
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/reject")
@@ -179,7 +185,56 @@ public class DeliveryExecutiveController {
     @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
     public ResponseEntity<ApiResponse<Void>> timeoutDriver(
             @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
-        deliveryService.timeoutDriverPing(driverId, orderId);
+        deliveryService.rejectOrderPing(driverId, orderId);
         return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Driver ping timed out").build());
+    }
+    @GetMapping(value = "/drivers/{driverId}/orders/{orderId}/restaurant-status-stream", produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
+    public org.springframework.web.servlet.mvc.method.annotation.SseEmitter streamRestaurantStatus(
+            @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
+
+        org.springframework.web.servlet.mvc.method.annotation.SseEmitter emitter = 
+                new org.springframework.web.servlet.mvc.method.annotation.SseEmitter(600000L); // 10 minutes timeout
+        
+        String trackingChannel = "restaurant-status:order:" + orderId;
+        
+        org.springframework.data.redis.connection.MessageListener listener = (message, pattern) -> {
+            try {
+                String status = new String(message.getBody());
+                emitter.send(org.springframework.web.servlet.mvc.method.annotation.SseEmitter.event().name("status-update").data(status));
+            } catch (java.io.IOException e) {
+                emitter.completeWithError(e);
+            }
+        };
+        
+        org.springframework.data.redis.listener.ChannelTopic topic = new org.springframework.data.redis.listener.ChannelTopic(trackingChannel);
+        redisMessageListenerContainer.addMessageListener(listener, topic);
+        
+        // Cleanup: remove the listener when the SSE ends
+        Runnable cleanup = () -> {
+            try {
+                redisMessageListenerContainer.removeMessageListener(listener, topic);
+            } catch (Exception e) {
+            }
+        };
+        
+        emitter.onCompletion(cleanup);
+        emitter.onTimeout(() -> {
+            cleanup.run();
+            emitter.complete();
+        });
+        emitter.onError(ex -> {
+            cleanup.run();
+        });
+        
+        // Send initial connection event
+        try {
+            emitter.send(org.springframework.web.servlet.mvc.method.annotation.SseEmitter.event().name("connected").data("Status tracking started for order: " + orderId));
+        } catch (java.io.IOException e) {
+            cleanup.run();
+            emitter.completeWithError(e);
+        }
+        
+        return emitter;
     }
 }

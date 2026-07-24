@@ -26,6 +26,11 @@ public class StaleDriverSweeperDaemon {
 
     @Scheduled(fixedRate = 60_000)
     public void sweepStaleDrivers() {
+        Boolean locked = redisTemplate.opsForValue().setIfAbsent("lock:sweepStaleDrivers", "1", java.time.Duration.ofSeconds(50));
+        if (!Boolean.TRUE.equals(locked)) {
+            return;
+        }
+        
         log.info("Starting StaleDriverSweeperDaemon sweep...");
         long thresholdTimestamp = System.currentTimeMillis() - STALE_THRESHOLD_MS;
 

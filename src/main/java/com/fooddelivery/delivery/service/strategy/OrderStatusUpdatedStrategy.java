@@ -33,8 +33,27 @@ public class OrderStatusUpdatedStrategy implements DeliveryEventStrategy {
         }
 
         if (orderId != null && status != null) {
+            String currentStatusStr = redisTemplate.opsForValue().get("order:restaurantStatus:" + orderId);
+            try {
+                com.fooddelivery.common.enums.OrderStatus newStatus = com.fooddelivery.common.enums.OrderStatus.valueOf(status);
+                if (currentStatusStr != null) {
+                    com.fooddelivery.common.enums.OrderStatus currentStatus = com.fooddelivery.common.enums.OrderStatus.valueOf(currentStatusStr);
+                    if (newStatus.getSequence() <= currentStatus.getSequence() && newStatus != currentStatus) {
+                        log.warn("Ignoring backward transition for order {}. Current: {}, New: {}", orderId, currentStatus, newStatus);
+                        return;
+                    }
+                }
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid status enum: {}", status);
+            }
+
             log.info("Received {} for order {} setting restaurantStatus to {}", eventType, orderId, status);
-            redisTemplate.opsForValue().set("order:restaurantStatus:" + orderId, status);
+            redisTemplate.opsForValue().set("order:restaurantStatus:" + orderId, status, java.time.Duration.ofHours(24));
+            
+            // Publish the new status to a Pub/Sub channel for live updates to the rider
+            String channel = "restaurant-status:order:" + orderId;
+            redisTemplate.convertAndSend(channel, status);
+            log.info("Published restaurant status {} to channel {}", status, channel);
         } else {
             log.warn("Invalid event received: {}", root);
         }

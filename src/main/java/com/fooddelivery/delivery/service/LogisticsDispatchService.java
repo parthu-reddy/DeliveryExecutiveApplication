@@ -53,7 +53,8 @@ public class LogisticsDispatchService {
         try {
             Map<String, Object> request = Map.of(
                 "cityId", com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID,
-                "driverId", driverId
+                "driverId", driverId,
+                "available", true
             );
             mapsClient.releaseDriver(request);
             log.info("Successfully requested driver lock release for driver {}", driverId);

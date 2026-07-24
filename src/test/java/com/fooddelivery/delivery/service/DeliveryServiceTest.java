@@ -44,6 +44,9 @@ class DeliveryServiceTest {
     private org.springframework.data.redis.core.ZSetOperations<String, String> zSetOperations;
 
     @Mock
+    private org.springframework.data.redis.core.SetOperations<String, String> setOperations;
+
+    @Mock
     private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
 
     @org.mockito.Spy
@@ -66,6 +69,7 @@ class DeliveryServiceTest {
         
         org.mockito.Mockito.lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         org.mockito.Mockito.lenient().when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        org.mockito.Mockito.lenient().when(redisTemplate.opsForSet()).thenReturn(setOperations);
         
         org.mockito.Mockito.lenient().when(transactionTemplate.execute(org.mockito.ArgumentMatchers.any())).thenAnswer(invocation -> {
             org.springframework.transaction.support.TransactionCallback<?> callback = invocation.getArgument(0);
@@ -80,9 +84,14 @@ class DeliveryServiceTest {
 
     @Test
     void acceptOrderPing_ShouldPublishEventAndUpdateStatus() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.setIfAbsent(eq("order:driver:lock:" + orderId), eq(driverId.toString()), org.mockito.ArgumentMatchers.any())).thenReturn(true);
+        when(redisTemplate.execute(
+                org.mockito.ArgumentMatchers.<org.springframework.data.redis.core.script.RedisScript<java.util.List>>any(),
+                org.mockito.ArgumentMatchers.anyList(),
+                org.mockito.ArgumentMatchers.anyString()
+        )).thenReturn(java.util.List.of("SUCCESS_EMPTY"));
+
         when(repository.findLockedById(driverId)).thenReturn(Optional.of(executive));
+        when(valueOperations.get("order:driver:lock:" + orderId)).thenReturn(driverId.toString());
 
         deliveryService.acceptOrderPing(driverId, orderId);
 
@@ -96,6 +105,12 @@ class DeliveryServiceTest {
 
     @Test
     void rejectOrderPing_ShouldPublishEventAndReleaseLock() {
+        when(redisTemplate.execute(
+                org.mockito.ArgumentMatchers.<org.springframework.data.redis.core.script.RedisScript<String>>any(),
+                org.mockito.ArgumentMatchers.anyList(),
+                org.mockito.ArgumentMatchers.anyString()
+        )).thenReturn("LAST_REJECT");
+
         deliveryService.rejectOrderPing(driverId, orderId);
 
         verify(logisticsDispatchService).releaseDriverLock(driverId.toString());
@@ -108,20 +123,13 @@ class DeliveryServiceTest {
 
     @Test
     void updateOrderStatus_Delivered_ShouldUpdateDriverStatusAndReleaseLock() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get("order:driver:lock:" + orderId)).thenReturn(driverId.toString());
-        
-        when(repository.findById(driverId)).thenReturn(Optional.of(executive));
-        executive.setStatus(DeliveryExecutiveStatus.ON_DELIVERY);
+        com.fooddelivery.delivery.service.state.order.DeliveryOrderStateFactory mockFactory = org.mockito.Mockito.mock(com.fooddelivery.delivery.service.state.order.DeliveryOrderStateFactory.class);
+        org.springframework.test.util.ReflectionTestUtils.setField(deliveryService, "deliveryOrderStateFactory", mockFactory);
+        com.fooddelivery.delivery.service.state.order.DeliveryOrderStateStrategy mockStrategy = org.mockito.Mockito.mock(com.fooddelivery.delivery.service.state.order.DeliveryOrderStateStrategy.class);
+        when(mockFactory.getStrategy(com.fooddelivery.common.enums.DeliveryStatus.DELIVERED)).thenReturn(mockStrategy);
 
         deliveryService.updateOrderStatus(driverId, orderId, com.fooddelivery.common.enums.DeliveryStatus.DELIVERED, null, null, null);
 
-        ArgumentCaptor<com.fooddelivery.common.outbox.entity.OutboxEventEntity> outboxCaptor = ArgumentCaptor.forClass(com.fooddelivery.common.outbox.entity.OutboxEventEntity.class);
-        verify(outboxEventRepository).save(outboxCaptor.capture());
-
-        assertThat(outboxCaptor.getValue().getPayload()).contains(com.fooddelivery.common.constants.EventType.ORDER_DELIVERED.name());
-        assertThat(executive.getStatus()).isEqualTo(DeliveryExecutiveStatus.ONLINE);
-        verify(repository).save(executive);
-        verify(logisticsDispatchService).releaseDriverLock(driverId.toString());
+        verify(mockStrategy).handleStatusUpdate(driverId, orderId, com.fooddelivery.common.enums.DeliveryStatus.DELIVERED, null, null, null);
     }
 }

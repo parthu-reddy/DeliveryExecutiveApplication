@@ -26,6 +26,14 @@ public class OrderDriverRejectedStrategy implements DeliveryEventStrategy {
     public void process(JsonNode root, String eventType) throws Exception {
         UUID orderId = UUID.fromString(root.path("orderId").asText());
         log.info("Delivery Application received ORDER_DRIVER_REJECTED for order {}. Fetching original payload to retry dispatch...", orderId);
+        
+        // Guard: if the order was cancelled/terminal, the dispatch lock is set to "CANCELLED" — skip redispatch
+        String dispatchLock = redisTemplate.opsForValue().get("order:dispatch:lock:" + orderId);
+        if ("CANCELLED".equals(dispatchLock)) {
+            log.info("Order {} dispatch lock is CANCELLED. Skipping redispatch.", orderId);
+            return;
+        }
+        
         String cachedPayload = redisTemplate.opsForValue().get("order:dispatchPayload:" + orderId);
         if (cachedPayload != null) {
             JsonNode cachedRoot = objectMapper.readTree(cachedPayload);

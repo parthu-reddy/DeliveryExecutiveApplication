@@ -20,6 +20,11 @@ public class DriverPingTimeoutPoller {
 
     @Scheduled(fixedDelay = 5000)
     public void pollPingTimeouts() {
+        Boolean locked = redisTemplate.opsForValue().setIfAbsent("lock:pollPingTimeouts", "1", java.time.Duration.ofSeconds(4));
+        if (!Boolean.TRUE.equals(locked)) {
+            return;
+        }
+        
         long currentTime = System.currentTimeMillis();
         
         Set<String> timedOutOrders = redisTemplate.opsForZSet().rangeByScore("order:ping:timeouts", 0, currentTime);
@@ -27,14 +32,7 @@ public class DriverPingTimeoutPoller {
         if (timedOutOrders != null && !timedOutOrders.isEmpty()) {
             for (String orderIdStr : timedOutOrders) {
                 try {
-                    String driverIdStr = redisTemplate.opsForValue().get("order:ping:pending:" + orderIdStr);
-                    if (driverIdStr != null) {
-                        log.warn("Driver {} ping timed out for order {}. Triggering timeout process.", driverIdStr, orderIdStr);
-                        deliveryService.timeoutDriverPing(UUID.fromString(driverIdStr), UUID.fromString(orderIdStr));
-                    } else {
-                        // Cleanup orphan timeout entries
-                        redisTemplate.opsForZSet().remove("order:ping:timeouts", orderIdStr);
-                    }
+                    deliveryService.timeoutOrderPing(UUID.fromString(orderIdStr));
                 } catch (Exception e) {
                     log.error("Failed to process ping timeout for order {}", orderIdStr, e);
                 }
