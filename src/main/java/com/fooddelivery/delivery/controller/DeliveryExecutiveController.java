@@ -44,7 +44,6 @@ public class DeliveryExecutiveController {
         @NotBlank
         @Size(max = 50)
         private String vehicleNumber;
-        @NotBlank
         @Size(max = 255)
         private String photoUrl;
     }
