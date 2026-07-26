@@ -2,4 +2,16 @@ spring:
   application:
     name: delivery-service
   config:
-    import: "optional:configserver:http://localhost:8888"
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+
+verification:
+  vahan:
+    api:
+      url: "https://api.mock-vahan.gov.in/rc/verify"
+      key: "mock-api-key"
+      timeout-seconds: 10
+  sarathi:
+    api:
+      url: "https://api.mock-sarathi.gov.in/dl/verify"
+      key: "mock-api-key"
+      timeout-seconds: 10

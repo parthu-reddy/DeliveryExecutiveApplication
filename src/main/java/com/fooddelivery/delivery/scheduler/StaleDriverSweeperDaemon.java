@@ -9,8 +9,13 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -26,7 +31,7 @@ public class StaleDriverSweeperDaemon {
 
     @Scheduled(fixedRate = 60_000)
     public void sweepStaleDrivers() {
-        Boolean locked = redisTemplate.opsForValue().setIfAbsent("lock:sweepStaleDrivers", "1", java.time.Duration.ofSeconds(50));
+        Boolean locked = redisTemplate.opsForValue().setIfAbsent(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_SWEEP_STALE_DRIVERS, "1", java.time.Duration.ofSeconds(50));
         if (!Boolean.TRUE.equals(locked)) {
             return;
         }
@@ -40,10 +45,7 @@ public class StaleDriverSweeperDaemon {
 
             if (staleDriverIds != null && !staleDriverIds.isEmpty()) {
                 log.info("Found {} stale drivers. Processing offline status...", staleDriverIds.size());
-
-                for (String driverIdStr : staleDriverIds) {
-                    processStaleDriver(driverIdStr);
-                }
+                processStaleDriversBatch(staleDriverIds);
             } else {
                 log.debug("No stale drivers found in this sweep cycle.");
             }
@@ -52,42 +54,74 @@ public class StaleDriverSweeperDaemon {
         }
     }
 
-    private void processStaleDriver(String driverIdStr) {
-        try {
-            UUID driverId = UUID.fromString(driverIdStr);
+    /**
+     * Batch-processes stale drivers: fetches all entities in a single DB call,
+     * updates their status, saves them all, then cleans up Redis.
+     */
+    private void processStaleDriversBatch(Set<String> staleDriverIdStrings) {
+        // Parse valid UUIDs, skip invalid ones
+        List<UUID> validUuids = new ArrayList<>();
+        List<String> invalidIds = new ArrayList<>();
 
-            // Step 1: Update the database FIRST. Only proceed to Redis cleanup
-            // if the DB write succeeds. This prevents the dual-write inconsistency
-            // where Redis is cleaned but the DB still shows ONLINE.
-            boolean dbUpdateSucceeded = false;
+        for (String idStr : staleDriverIdStrings) {
             try {
-                deliveryExecutiveRepository.findById(driverId).ifPresent(driver -> {
-                    if (driver.getStatus() != DeliveryExecutiveStatus.OFFLINE) {
-                        driver.setStatus(DeliveryExecutiveStatus.OFFLINE);
-                        deliveryExecutiveRepository.save(driver);
-                        log.info("Marked driver {} as OFFLINE due to inactivity", driverIdStr);
-                    }
-                });
-                dbUpdateSucceeded = true;
-            } catch (Exception dbEx) {
-                log.error("DUAL_WRITE_PREVENTION: DB update failed for driver {}. " +
-                        "Skipping Redis cleanup to maintain consistency. Driver remains in Redis " +
-                        "and will be retried on the next sweep cycle.", driverIdStr, dbEx);
+                validUuids.add(UUID.fromString(idStr));
+            } catch (IllegalArgumentException e) {
+                log.error("Invalid UUID format for driverId: {}", idStr);
+                invalidIds.add(idStr);
+            }
+        }
+
+        // Clean up invalid IDs from Redis immediately
+        for (String invalidId : invalidIds) {
+            redisTemplate.opsForGeo().remove(DRIVER_LOCATION_KEY, invalidId);
+            redisTemplate.opsForZSet().remove(DRIVER_LAST_PING_KEY, invalidId);
+        }
+
+        if (validUuids.isEmpty()) return;
+
+        // Batch-fetch all stale driver entities in a single DB call
+        List<DeliveryExecutive> drivers = deliveryExecutiveRepository.findAllById(validUuids);
+        Map<UUID, DeliveryExecutive> driverMap = drivers.stream()
+                .collect(Collectors.toMap(DeliveryExecutive::getId, Function.identity()));
+
+        List<DeliveryExecutive> driversToSave = new ArrayList<>();
+        List<String> successfullyUpdatedIds = new ArrayList<>();
+
+        for (UUID driverId : validUuids) {
+            DeliveryExecutive driver = driverMap.get(driverId);
+            if (driver != null && driver.getStatus() != DeliveryExecutiveStatus.OFFLINE) {
+                driver.setStatus(DeliveryExecutiveStatus.OFFLINE);
+                driversToSave.add(driver);
+                successfullyUpdatedIds.add(driverId.toString());
+                log.info("Marked driver {} as OFFLINE due to inactivity", driverId);
+            } else if (driver == null) {
+                // Driver not in DB but exists in Redis — clean up orphaned Redis entry
+                successfullyUpdatedIds.add(driverId.toString());
+                log.warn("Driver {} found in Redis but not in database. Cleaning up orphaned entry.", driverId);
+            } else {
+                // Already OFFLINE — just clean up Redis
+                successfullyUpdatedIds.add(driverId.toString());
+            }
+        }
+
+        // Batch-save all updated entities
+        try {
+            if (!driversToSave.isEmpty()) {
+                deliveryExecutiveRepository.saveAll(driversToSave);
             }
 
-            // Step 2: Only remove from Redis AFTER the DB update has committed successfully.
-            if (dbUpdateSucceeded) {
+            // Only clean Redis AFTER DB commit succeeds
+            for (String driverIdStr : successfullyUpdatedIds) {
                 redisTemplate.opsForGeo().remove(DRIVER_LOCATION_KEY, driverIdStr);
                 redisTemplate.opsForZSet().remove(DRIVER_LAST_PING_KEY, driverIdStr);
                 redisTemplate.opsForSet().remove("drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID, driverIdStr);
+                redisTemplate.opsForHash().put("drivers:status", driverIdStr, DeliveryExecutiveStatus.OFFLINE.name());
             }
-        } catch (IllegalArgumentException e) {
-            log.error("Invalid UUID format for driverId: {}", driverIdStr, e);
-            // Clean up invalid ID from Redis to prevent infinite loop of errors
-            redisTemplate.opsForGeo().remove(DRIVER_LOCATION_KEY, driverIdStr);
-            redisTemplate.opsForZSet().remove(DRIVER_LAST_PING_KEY, driverIdStr);
-        } catch (Exception e) {
-            log.error("Failed to process stale driver: {}", driverIdStr, e);
+        } catch (Exception dbEx) {
+            log.error("DUAL_WRITE_PREVENTION: DB batch update failed for {} drivers. " +
+                    "Skipping Redis cleanup. Drivers remain in Redis and will be retried next cycle.", 
+                    driversToSave.size(), dbEx);
         }
     }
 }

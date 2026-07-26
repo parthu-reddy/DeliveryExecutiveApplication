@@ -10,4 +10,3 @@ data:
   REDIS_HOST: "managed-redis.aws.com"
   REDIS_PORT: "6379"
   KAFKA_BOOTSTRAP_SERVERS: "managed-msk.aws.com:9092"
-  OLA_MAPS_API_URL: "https://api.olamaps.io"

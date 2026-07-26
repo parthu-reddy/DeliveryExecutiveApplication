@@ -1,8 +1,9 @@
 package com.fooddelivery.delivery.controller;
 
 import com.fooddelivery.common.dto.ApiResponse;
-import com.fooddelivery.delivery.service.DeliveryService;
-import com.fooddelivery.delivery.service.DeliveryService;
+import com.fooddelivery.delivery.service.DeliveryExecutiveProfileService;
+import com.fooddelivery.delivery.service.OrderAssignmentService;
+import com.fooddelivery.delivery.service.OrderExecutionService;
 import com.fooddelivery.common.enums.OrderStatus;
 import com.fooddelivery.common.enums.DeliveryStatus;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +29,9 @@ import lombok.Data;
 @PreAuthorize("hasRole('DELIVERY')")
 public class DeliveryExecutiveController {
 
-    private final DeliveryService deliveryService;
+    private final DeliveryExecutiveProfileService profileService;
+    private final OrderAssignmentService orderAssignmentService;
+    private final OrderExecutionService orderExecutionService;
     private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
     private final org.springframework.data.redis.listener.RedisMessageListenerContainer redisMessageListenerContainer;
 
@@ -46,6 +49,7 @@ public class DeliveryExecutiveController {
         private String vehicleNumber;
         @Size(max = 255)
         private String photoUrl;
+        private com.fooddelivery.common.enums.VehicleClass vehicleType;
     }
 
     @Data
@@ -82,14 +86,15 @@ public class DeliveryExecutiveController {
         String phoneNumber = request.getPhoneNumber();
         String vehicleNumber = request.getVehicleNumber();
         String photoUrl = request.getPhotoUrl();
-        com.fooddelivery.delivery.entity.DeliveryExecutive executive = deliveryService.onboard(UUID.fromString(principal.getName()), fullName, phoneNumber, vehicleNumber, photoUrl);
+        com.fooddelivery.common.enums.VehicleClass vehicleType = request.getVehicleType();
+        com.fooddelivery.delivery.entity.DeliveryExecutive executive = profileService.onboard(UUID.fromString(principal.getName()), fullName, phoneNumber, vehicleNumber, photoUrl, vehicleType);
         return ResponseEntity.ok(ApiResponse.success(executive, "Delivery Executive onboarded successfully"));
     }
 
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<com.fooddelivery.delivery.entity.DeliveryExecutive>> getProfile(
             @RequestParam("phoneNumber") String phoneNumber) {
-        return deliveryService.findByPhoneNumber(phoneNumber)
+        return profileService.findByPhoneNumber(phoneNumber)
                 .map(executive -> ResponseEntity.ok(ApiResponse.success(executive, "Profile fetched successfully")))
                 .orElseGet(() -> ResponseEntity.status(404).body(ApiResponse.<com.fooddelivery.delivery.entity.DeliveryExecutive>builder().success(false).message("Profile not found").build()));
     }
@@ -101,12 +106,12 @@ public class DeliveryExecutiveController {
             return ResponseEntity.status(401).body(ApiResponse.<java.util.List<Map<String, Object>>>builder().success(false).message("Unauthorized").build());
         }
         
-        String pendingOrderId = deliveryService.getPendingPing(driverId);
+        String pendingOrderId = orderAssignmentService.getPendingPing(driverId);
         if (pendingOrderId == null) {
             return ResponseEntity.ok(ApiResponse.success(java.util.Collections.emptyList(), "No pending pings"));
         }
         
-        Long expiresAt = deliveryService.getPingExpiration(UUID.fromString(pendingOrderId));
+        Long expiresAt = orderAssignmentService.getPingExpiration(UUID.fromString(pendingOrderId));
         if (expiresAt == null) {
             return ResponseEntity.ok(ApiResponse.success(java.util.Collections.emptyList(), "No pending pings"));
         }
@@ -130,7 +135,7 @@ public class DeliveryExecutiveController {
         boolean available = request.getAvailable();
         
         try {
-            deliveryService.toggleStatus(driverId, available);
+            profileService.toggleStatus(driverId, available);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(ApiResponse.<Void>builder().success(false).message(e.getMessage()).build());
         }
@@ -147,7 +152,7 @@ public class DeliveryExecutiveController {
     public ResponseEntity<ApiResponse<Void>> acceptOrder(
             @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
         try {
-            deliveryService.acceptOrderPing(driverId, orderId);
+            orderAssignmentService.acceptOrderPing(driverId, orderId);
             return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order accepted by driver").build());
         } catch (IllegalStateException ex) {
             return ResponseEntity.badRequest().body(ApiResponse.<Void>builder().success(false).message(ex.getMessage()).build());
@@ -158,7 +163,7 @@ public class DeliveryExecutiveController {
     @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
     public ResponseEntity<ApiResponse<Void>> rejectOrder(
             @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
-        deliveryService.rejectOrderPing(driverId, orderId);
+        orderAssignmentService.rejectOrderPing(driverId, orderId);
         return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order rejected").build());
     }
 
@@ -166,7 +171,7 @@ public class DeliveryExecutiveController {
     @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
     public ResponseEntity<ApiResponse<Void>> abortOrder(
             @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
-        deliveryService.abortOrder(driverId, orderId);
+        orderExecutionService.abortOrder(driverId, orderId);
         return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order assignment aborted. Looking for a new driver.").build());
     }
 
@@ -176,7 +181,7 @@ public class DeliveryExecutiveController {
             @PathVariable UUID driverId,
             @PathVariable UUID orderId,
             @Valid @RequestBody UpdateOrderStatusRequest request) {
-        deliveryService.updateOrderStatus(driverId, orderId, request.getStatus(), request.getPickupOtp(), request.getDeliveryOtp(), request.getGoOfflineAfter());
+        orderExecutionService.updateOrderStatus(driverId, orderId, request.getStatus(), request.getPickupOtp(), request.getDeliveryOtp(), request.getGoOfflineAfter());
         return ResponseEntity.ok(ApiResponse.<Object>builder().success(true).message("Order status updated").build());
     }
 
@@ -184,7 +189,7 @@ public class DeliveryExecutiveController {
     @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
     public ResponseEntity<ApiResponse<Void>> timeoutDriver(
             @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
-        deliveryService.rejectOrderPing(driverId, orderId);
+        orderAssignmentService.rejectOrderPing(driverId, orderId);
         return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Driver ping timed out").build());
     }
     @GetMapping(value = "/drivers/{driverId}/orders/{orderId}/restaurant-status-stream", produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)

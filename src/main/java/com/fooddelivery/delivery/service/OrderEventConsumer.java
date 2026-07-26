@@ -5,6 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.RetryableTopic;
+import org.springframework.kafka.annotation.DltHandler;
+import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
@@ -34,42 +37,18 @@ public class OrderEventConsumer {
         }
     }
 
+    @RetryableTopic(
+            attempts = "4",
+            backoff = @Backoff(delay = 2000, multiplier = 2.0, maxDelay = 10000)
+    )
     @KafkaListener(topics = com.fooddelivery.common.constants.KafkaConstants.TOPIC_ORDER_EVENTS, groupId = com.fooddelivery.common.constants.KafkaConstants.GROUP_DELIVERY_SERVICE)
     public void consumeOrderEvent(String message, @org.springframework.messaging.handler.annotation.Headers java.util.Map<String, Object> headers) {
         log.info("Consumed event from {}: {}", com.fooddelivery.common.constants.KafkaConstants.TOPIC_ORDER_EVENTS, message);
         
         try {
             JsonNode root = objectMapper.readTree(message);
-            String jsonEventType = root.path("eventType").asText(null);
             
-            String headerEventType = null;
-            Object eventTypeObj = headers.get("eventType");
-            if (eventTypeObj != null) {
-                if (eventTypeObj instanceof byte[]) {
-                    headerEventType = new String((byte[]) eventTypeObj, java.nio.charset.StandardCharsets.UTF_8);
-                } else if (eventTypeObj.getClass().getName().contains("NonTrustedHeaderType")) {
-                    String str = eventTypeObj.toString();
-                    if (str.contains("headerValue=")) {
-                        int start = str.indexOf("\"") + 1;
-                        if (start > 0) {
-                            int end = str.indexOf("\"", start);
-                            if (end > start) {
-                                headerEventType = str.substring(start, end);
-                            } else {
-                                headerEventType = str;
-                            }
-                        } else {
-                            headerEventType = str;
-                        }
-                    } else {
-                        headerEventType = str;
-                    }
-                } else {
-                    headerEventType = eventTypeObj.toString();
-                }
-            }
-            
-            String eventType = headerEventType != null ? headerEventType : jsonEventType;
+            String eventType = com.fooddelivery.common.util.KafkaHeaderUtils.extractEventType(headers, root);
             
             com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy strategy = strategyMap.get(eventType);
             if (strategy != null) {
@@ -81,5 +60,11 @@ public class OrderEventConsumer {
             log.error("Failed to process order event in DeliveryExecutiveApplication", e);
             throw new RuntimeException("Failed to process order event in DeliveryExecutiveApplication", e);
         }
+    }
+
+    @DltHandler
+    public void handleDltMessage(String message, @org.springframework.messaging.handler.annotation.Headers java.util.Map<String, Object> headers) {
+        log.error("Dead Letter Topic: Failed to process order event after retries. Message: {}", message);
+        // Implementation for poison pill storage/alerting goes here
     }
 }

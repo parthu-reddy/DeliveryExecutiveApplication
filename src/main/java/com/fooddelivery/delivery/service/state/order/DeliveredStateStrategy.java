@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
+
 import java.util.UUID;
 
 @Slf4j
@@ -40,7 +40,7 @@ public class DeliveredStateStrategy extends AbstractDeliveryOrderState {
 
     @Override
     protected void validate(UUID driverId, UUID orderId, String pickupOtp, String deliveryOtp) {
-        String payload = redisTemplate.opsForValue().get("order:dispatchPayload:" + orderId);
+        String payload = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId);
         if (payload != null) {
             try {
                 JsonNode root = objectMapper.readTree(payload);
@@ -69,8 +69,9 @@ public class DeliveredStateStrategy extends AbstractDeliveryOrderState {
             executive.setStatus(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.OFFLINE);
         }
 
-        executive.setUpdatedAt(LocalDateTime.now());
+        // updatedAt is auto-managed by @UpdateTimestamp
         repository.save(executive);
+        redisTemplate.opsForHash().put("drivers:status", driverId.toString(), executive.getStatus().name());
     }
 
     @Override
@@ -80,12 +81,12 @@ public class DeliveredStateStrategy extends AbstractDeliveryOrderState {
         } catch (Exception e) {
             log.error("Failed to release driver lock for driver {} after delivery, will be retried by availability poller", driverId, e);
         }
-        redisTemplate.delete("order:driver:lock:" + orderId);
-        redisTemplate.delete("order:ping:pending:" + orderId);
-        redisTemplate.delete("order:dispatchPayload:" + orderId);
-        redisTemplate.delete("order:rejected_drivers:" + orderId);
-        redisTemplate.opsForZSet().remove("order:ping:timeouts", orderId.toString());
-        redisTemplate.opsForValue().set("order:dispatch:lock:" + orderId, getSupportedStatus().name(), Duration.ofHours(24));
+        redisTemplate.delete(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId);
+        redisTemplate.delete(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId);
+        redisTemplate.delete(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId);
+        redisTemplate.delete(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderId);
+        redisTemplate.opsForZSet().remove(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_PING_TIMEOUTS, orderId.toString());
+        redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId, getSupportedStatus().name(), Duration.ofHours(24));
 
         if (!Boolean.TRUE.equals(goOfflineAfter)) {
             try {

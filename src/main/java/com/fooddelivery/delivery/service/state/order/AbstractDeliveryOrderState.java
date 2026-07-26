@@ -47,7 +47,7 @@ public abstract class AbstractDeliveryOrderState implements DeliveryOrderStateSt
     public void handleStatusUpdate(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp, Boolean goOfflineAfter) {
         log.info("Driver {} updating order {} to {}", driverId, orderId, status);
 
-        String currentAssignee = redisTemplate.opsForValue().get("order:driver:lock:" + orderId);
+        String currentAssignee = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId);
         if (currentAssignee != null && !driverId.toString().equals(currentAssignee)) {
             log.info("Idempotent/Invalid update: Order {} is assigned to another driver {}", orderId, currentAssignee);
             return;

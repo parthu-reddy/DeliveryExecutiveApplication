@@ -28,13 +28,13 @@ public class OrderDriverRejectedStrategy implements DeliveryEventStrategy {
         log.info("Delivery Application received ORDER_DRIVER_REJECTED for order {}. Fetching original payload to retry dispatch...", orderId);
         
         // Guard: if the order was cancelled/terminal, the dispatch lock is set to "CANCELLED" — skip redispatch
-        String dispatchLock = redisTemplate.opsForValue().get("order:dispatch:lock:" + orderId);
+        String dispatchLock = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId);
         if ("CANCELLED".equals(dispatchLock)) {
             log.info("Order {} dispatch lock is CANCELLED. Skipping redispatch.", orderId);
             return;
         }
         
-        String cachedPayload = redisTemplate.opsForValue().get("order:dispatchPayload:" + orderId);
+        String cachedPayload = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId);
         if (cachedPayload != null) {
             JsonNode cachedRoot = objectMapper.readTree(cachedPayload);
             double lat = cachedRoot.path("restaurantLat").asDouble(0.0);
@@ -43,7 +43,7 @@ public class OrderDriverRejectedStrategy implements DeliveryEventStrategy {
             double deliveryLng = cachedRoot.path("deliveryLng").asDouble(0.0);
             String deliveryAddress = cachedRoot.path("deliveryAddress").asText("");
             
-            java.util.Set<String> rejectedDrivers = redisTemplate.opsForSet().members("order:rejected_drivers:" + orderId);
+            java.util.Set<String> rejectedDrivers = redisTemplate.opsForSet().members(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderId);
             List<String> excludedDriverIds = rejectedDrivers != null ? new java.util.ArrayList<>(rejectedDrivers) : new java.util.ArrayList<>();
             
             if (lat != 0.0 && lng != 0.0) {

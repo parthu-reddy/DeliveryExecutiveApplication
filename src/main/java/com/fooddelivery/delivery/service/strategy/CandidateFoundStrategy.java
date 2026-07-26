@@ -36,20 +36,20 @@ public class CandidateFoundStrategy implements DeliveryEventStrategy {
         
         log.info("Delivery Application received DISPATCH_CANDIDATE_FOUND for order {}. Drivers {} will be pinged.", orderId, driverIds);
         
-        if (Boolean.TRUE.equals(redisTemplate.hasKey("order:driver:lock:" + orderId))) {
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId))) {
             log.info("Ignoring DISPATCH_CANDIDATE_FOUND for order {} as it is already locked (accepted/cancelled).", orderId);
             return;
         }
         
         // Track the ping in Redis for timeout poller
-        String pendingPingKey = "order:ping:pending:" + orderId;
+        String pendingPingKey = com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId;
         redisTemplate.opsForSet().add(pendingPingKey, driverIds.toArray(new String[0]));
         redisTemplate.expire(pendingPingKey, Duration.ofSeconds(60));
         
-        redisTemplate.opsForZSet().add("order:ping:timeouts", orderId.toString(), System.currentTimeMillis() + 30000);
+        redisTemplate.opsForZSet().add(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_PING_TIMEOUTS, orderId.toString(), System.currentTimeMillis() + 30000);
 
         for (String driverId : driverIds) {
-            redisTemplate.opsForValue().set("driver:pending_ping:" + driverId, orderId.toString(), Duration.ofSeconds(60));
+            redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + driverId, orderId.toString(), Duration.ofSeconds(60));
             log.info("Pinging Driver {} for Order {}...", driverId, orderId);
 
             if (env.acceptsProfiles(org.springframework.core.env.Profiles.of("dev"))) {

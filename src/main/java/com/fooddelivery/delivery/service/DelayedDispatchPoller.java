@@ -22,7 +22,7 @@ public class DelayedDispatchPoller {
 
     @Scheduled(fixedDelay = 5000)
     public void pollDelayedDispatches() {
-        Boolean locked = redisTemplate.opsForValue().setIfAbsent("lock:pollDelayedDispatches", "1", java.time.Duration.ofSeconds(4));
+        Boolean locked = redisTemplate.opsForValue().setIfAbsent(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_POLL_DELAYED_DISPATCHES, "1", java.time.Duration.ofSeconds(4));
         if (!Boolean.TRUE.equals(locked)) {
             return;
         }
@@ -35,14 +35,14 @@ public class DelayedDispatchPoller {
             for (String orderIdStr : orderIds) {
                 try {
                     // Guard: check if order was cancelled while waiting in the delayed queue
-                    String dispatchLock = redisTemplate.opsForValue().get("order:dispatch:lock:" + orderIdStr);
+                    String dispatchLock = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderIdStr);
                     if ("CANCELLED".equals(dispatchLock)) {
                         log.info("Order {} was cancelled while in delayed dispatch queue. Skipping.", orderIdStr);
                         redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderIdStr);
                         continue;
                     }
                     
-                    String payload = redisTemplate.opsForValue().get("order:dispatchPayload:" + orderIdStr);
+                    String payload = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderIdStr);
                     if (payload != null) {
                         JsonNode root = objectMapper.readTree(payload);
                         double lat = root.path("restaurantLat").asDouble(0.0);

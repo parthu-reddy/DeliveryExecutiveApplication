@@ -33,7 +33,7 @@ public class OrderStatusUpdatedStrategy implements DeliveryEventStrategy {
         }
 
         if (orderId != null && status != null) {
-            String currentStatusStr = redisTemplate.opsForValue().get("order:restaurantStatus:" + orderId);
+            String currentStatusStr = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_RESTAURANT_STATUS + orderId);
             try {
                 com.fooddelivery.common.enums.OrderStatus newStatus = com.fooddelivery.common.enums.OrderStatus.valueOf(status);
                 if (currentStatusStr != null) {
@@ -48,7 +48,7 @@ public class OrderStatusUpdatedStrategy implements DeliveryEventStrategy {
             }
 
             log.info("Received {} for order {} setting restaurantStatus to {}", eventType, orderId, status);
-            redisTemplate.opsForValue().set("order:restaurantStatus:" + orderId, status, java.time.Duration.ofHours(24));
+            redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_RESTAURANT_STATUS + orderId, status, java.time.Duration.ofHours(24));
             
             // Publish the new status to a Pub/Sub channel for live updates to the rider
             String channel = "restaurant-status:order:" + orderId;

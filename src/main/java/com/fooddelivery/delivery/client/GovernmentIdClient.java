@@ -1,6 +1,6 @@
 package com.fooddelivery.delivery.client;
 
-import com.fooddelivery.delivery.enums.VerificationStatus;
+import com.fooddelivery.common.enums.VerificationStatus;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

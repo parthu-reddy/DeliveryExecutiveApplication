@@ -22,4 +22,8 @@ public class TelemetryEventRequest {
     @Size(max = 36)
     @Pattern(regexp = "^[0-9a-fA-F\\-]{36}$")
     private String orderId;
+
+    private Double speedKmh;
+    private Boolean isMockLocation;
+    private Long timestampMs;
 }
