@@ -53,7 +53,11 @@ public class DelayedDispatchPoller {
                         
                         if (lat != 0.0 && lng != 0.0) {
                             log.info("Delayed dispatch triggered for order {}. Dispatching nearest driver...", orderIdStr);
-                            logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, UUID.fromString(orderIdStr), null);
+                            
+                            java.util.Set<String> rejectedDrivers = redisTemplate.opsForSet().members(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderIdStr);
+                            java.util.List<String> excludedDriverIds = rejectedDrivers != null ? new java.util.ArrayList<>(rejectedDrivers) : null;
+                            
+                            logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, UUID.fromString(orderIdStr), excludedDriverIds);
                         }
                     }
                     redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderIdStr);

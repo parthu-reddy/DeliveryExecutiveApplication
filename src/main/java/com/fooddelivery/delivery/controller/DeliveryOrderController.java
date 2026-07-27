@@ -18,6 +18,7 @@ import java.util.UUID;
 public class DeliveryOrderController {
 
     private final CustomerServiceClient customerServiceClient;
+    private final com.fooddelivery.delivery.service.OrderAssignmentService orderAssignmentService;
 
     @GetMapping("/active")
     public ResponseEntity<List<JsonNode>> getActiveOrders(Principal principal) {
@@ -27,9 +28,21 @@ public class DeliveryOrderController {
     }
 
     @GetMapping("/available")
-    public ResponseEntity<List<JsonNode>> getAvailableOrders() {
+    public ResponseEntity<List<JsonNode>> getAvailableOrders(Principal principal) {
+        UUID driverId = UUID.fromString(principal.getName());
+        String pendingOrderId = orderAssignmentService.getPendingPing(driverId);
+        if (pendingOrderId == null) {
+            return ResponseEntity.ok(java.util.Collections.emptyList());
+        }
+
         List<JsonNode> orders = customerServiceClient.getUnassignedOrders();
-        return ResponseEntity.ok(mapToUiOrders(orders));
+        List<JsonNode> matchingOrders = orders.stream()
+                .filter(order -> {
+                    JsonNode idNode = order.get("id");
+                    return idNode != null && pendingOrderId.equals(idNode.asText());
+                })
+                .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(mapToUiOrders(matchingOrders));
     }
 
     @GetMapping("/history")

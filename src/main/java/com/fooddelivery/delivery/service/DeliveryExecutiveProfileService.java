@@ -110,8 +110,9 @@ public class DeliveryExecutiveProfileService {
     @Transactional(readOnly = true)
     public java.util.List<com.fooddelivery.delivery.dto.DriverLocationDTO> getAvailableDriversWithLocation(double lat, double lng, double radiusKm) {
         if (lat == 0 && lng == 0) {
-            // Fallback for legacy calls or missing params: fetch a limited set or empty
-            return new java.util.ArrayList<>();
+            // Fallback for legacy calls or missing params: fetch all online drivers
+            java.util.List<DeliveryExecutive> onlineDrivers = repository.findByStatus(DeliveryExecutiveStatus.ONLINE);
+            return fetchDriverLocations(onlineDrivers, true);
         }
 
         String locationKey = "drivers:geo:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
