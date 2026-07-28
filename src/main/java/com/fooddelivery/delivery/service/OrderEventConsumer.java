@@ -22,7 +22,7 @@ public class OrderEventConsumer {
     private final ObjectMapper objectMapper;
     
     private final com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy[] strategies;
-    private final java.util.Map<String, com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy> strategyMap;
+    private final java.util.Map<String, java.util.List<com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy>> strategyMap;
 
     public OrderEventConsumer(
             ObjectMapper objectMapper, 
@@ -32,7 +32,7 @@ public class OrderEventConsumer {
         this.strategyMap = new java.util.HashMap<>();
         for (com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy strategy : strategies) {
             for (String eventType : strategy.getEventTypes()) {
-                this.strategyMap.put(eventType, strategy);
+                this.strategyMap.computeIfAbsent(eventType, k -> new java.util.ArrayList<>()).add(strategy);
             }
         }
     }
@@ -50,9 +50,11 @@ public class OrderEventConsumer {
             
             String eventType = com.fooddelivery.common.util.KafkaHeaderUtils.extractEventType(headers, root);
             
-            com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy strategy = strategyMap.get(eventType);
-            if (strategy != null) {
-                strategy.process(root, eventType);
+            java.util.List<com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy> matchedStrategies = strategyMap.get(eventType);
+            if (matchedStrategies != null && !matchedStrategies.isEmpty()) {
+                for (com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy strategy : matchedStrategies) {
+                    strategy.process(root, eventType);
+                }
             } else {
                 log.info("No strategy mapped for event type: {}. Ignoring in DeliveryExecutiveApplication.", eventType);
             }
