@@ -34,6 +34,13 @@ public class DelayedDispatchPoller {
         if (orderIds != null && !orderIds.isEmpty()) {
             for (String orderIdStr : orderIds) {
                 try {
+                    // Try to acquire a processing lock for this order
+                    String lockKey = "dispatch_processing_lock:" + orderIdStr;
+                    Boolean acquired = redisTemplate.opsForValue().setIfAbsent(lockKey, "locked", java.time.Duration.ofSeconds(30));
+                    if (!Boolean.TRUE.equals(acquired)) {
+                        continue; // Someone else is processing it
+                    }
+
                     // Guard: check if order was cancelled while waiting in the delayed queue
                     String dispatchLock = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderIdStr);
                     if ("CANCELLED".equals(dispatchLock)) {
@@ -60,7 +67,10 @@ public class DelayedDispatchPoller {
                             logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, UUID.fromString(orderIdStr), excludedDriverIds);
                         }
                     }
+
+                    // Remove from queue ONLY after successful processing
                     redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderIdStr);
+
                 } catch (Exception e) {
                     log.error("Failed to process delayed dispatch for order {}", orderIdStr, e);
                 }

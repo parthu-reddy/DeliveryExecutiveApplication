@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fooddelivery.delivery.service.LogisticsDispatchService;
 
 import java.util.Arrays;
 import java.util.List;
@@ -16,6 +18,8 @@ import java.util.List;
 public class OrderStatusUpdatedStrategy implements DeliveryEventStrategy {
 
     private final StringRedisTemplate redisTemplate;
+    private final LogisticsDispatchService logisticsDispatchService;
+    private final ObjectMapper objectMapper;
 
     @Override
     public void process(JsonNode root, String eventType) throws Exception {
@@ -54,6 +58,36 @@ public class OrderStatusUpdatedStrategy implements DeliveryEventStrategy {
             String channel = "restaurant-status:order:" + orderId;
             redisTemplate.convertAndSend(channel, status);
             log.info("Published restaurant status {} to channel {}", status, channel);
+
+            if (com.fooddelivery.common.enums.OrderStatus.READY_FOR_PICKUP.name().equals(status)) {
+                // We check if it is in the queue by looking up its score. If it has a score, it's in the queue.
+                Double score = redisTemplate.opsForZSet().score("delayed_dispatch_queue", orderId);
+                if (score != null) {
+                    // Try to acquire the processing lock for this order
+                    String lockKey = "dispatch_processing_lock:" + orderId;
+                    Boolean acquired = redisTemplate.opsForValue().setIfAbsent(lockKey, "locked", java.time.Duration.ofSeconds(30));
+                    if (Boolean.TRUE.equals(acquired)) {
+                        log.info("Order {} is ready early! Acquired lock, triggering immediate dispatch.", orderId);
+                        String payload = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId);
+                        if (payload != null) {
+                            JsonNode payloadRoot = objectMapper.readTree(payload);
+                            double lat = payloadRoot.path("restaurantLat").asDouble(0.0);
+                            double lng = payloadRoot.path("restaurantLng").asDouble(0.0);
+                            double deliveryLat = payloadRoot.path("deliveryLat").asDouble(0.0);
+                            double deliveryLng = payloadRoot.path("deliveryLng").asDouble(0.0);
+                            String deliveryAddress = payloadRoot.path("deliveryAddress").asText("");
+                            
+                            java.util.Set<String> rejectedDrivers = redisTemplate.opsForSet().members(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderId);
+                            java.util.List<String> excludedDriverIds = rejectedDrivers != null ? new java.util.ArrayList<>(rejectedDrivers) : null;
+                            
+                            logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, java.util.UUID.fromString(orderId), excludedDriverIds);
+                        }
+                        
+                        // Remove from delayed queue ONLY after successful dispatch
+                        redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderId);
+                    }
+                }
+            }
         } else {
             log.warn("Invalid event received: {}", root);
         }
