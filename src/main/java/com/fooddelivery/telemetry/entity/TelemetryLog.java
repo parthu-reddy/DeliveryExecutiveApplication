@@ -18,21 +18,22 @@ public class TelemetryLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "log_id")
     private Long logId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "executive_id")
     private DeliveryExecutive executive;
 
-    @Column(nullable = false, columnDefinition = "geography(Point, 4326)")
+    @Column(name = "location", nullable = false, columnDefinition = "geography(Point, 4326)")
     private Point location;
 
-    @Column(precision = 5, scale = 2)
+    @Column(name = "speed_kmh", precision = 5, scale = 2)
     private BigDecimal speedKmh;
 
-    @Column(nullable = false)
+    @Column(name = "is_mock_location", nullable = false)
     private boolean isMockLocation = false;
 
-    @Column(nullable = false)
+    @Column(name = "recorded_at", nullable = false)
     private OffsetDateTime recordedAt;
 }
