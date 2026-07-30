@@ -139,7 +139,7 @@ public class OrderAssignmentService {
             if (result != null && !result.isEmpty() && !AssignmentResult.SUCCESS_EMPTY.name().equals(result.get(0))) {
                 redisTemplate.opsForSet().add(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId, result.toArray(new String[0]));
                 // Edge case: Add TTL to pending ping if we revert
-                redisTemplate.expire(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId, java.time.Duration.ofSeconds(60));
+                redisTemplate.expire(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId, java.time.Duration.ofMinutes(5));
             }
             throw e;
         }
@@ -194,7 +194,7 @@ public class OrderAssignmentService {
             } catch (Exception e) {
                 log.error("Failed to save ORDER_DRIVER_REJECTED event to outbox. Reverting Redis state for order {}", orderId, e);
                 redisTemplate.opsForSet().add(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId, driverId.toString());
-                redisTemplate.expire(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId, java.time.Duration.ofSeconds(60));
+                redisTemplate.expire(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId, java.time.Duration.ofMinutes(5));
                 throw e;
             }
         }
@@ -261,7 +261,7 @@ public class OrderAssignmentService {
             log.error("Failed to save ORDER_DRIVER_REJECTED event to outbox. Reverting Redis state for order {}", orderIdStr, e);
             if (result != null && !result.isEmpty()) {
                 redisTemplate.opsForSet().add(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderIdStr, result.toArray(new String[0]));
-                redisTemplate.expire(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderIdStr, java.time.Duration.ofSeconds(60));
+                redisTemplate.expire(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderIdStr, java.time.Duration.ofMinutes(5));
             }
             throw e;
         }

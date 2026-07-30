@@ -44,14 +44,14 @@ public class CandidateFoundStrategy implements DeliveryEventStrategy {
         // Track the ping in Redis for timeout poller
         String pendingPingKey = com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId;
         redisTemplate.opsForSet().add(pendingPingKey, driverIds.toArray(new String[0]));
-        redisTemplate.expire(pendingPingKey, Duration.ofSeconds(60));
+        redisTemplate.expire(pendingPingKey, Duration.ofMinutes(5));
         redisTemplate.opsForZSet().add(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_PING_TIMEOUTS, orderId.toString(), System.currentTimeMillis() + 60000);
 
         // Reset failed cycles since we found candidates
         redisTemplate.delete("order:dispatch_failed_cycles:" + orderId);
 
         for (String driverId : driverIds) {
-            redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + driverId, orderId.toString(), Duration.ofSeconds(60));
+            redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + driverId, orderId.toString(), Duration.ofMinutes(5));
             log.info("Pinging Driver {} for Order {}...", driverId, orderId);
 
             if (env.acceptsProfiles(org.springframework.core.env.Profiles.of("dev"))) {

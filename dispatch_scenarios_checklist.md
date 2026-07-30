@@ -163,6 +163,7 @@
   - (a) Accept Lua executes first → Lock set → Timeout Lua finds lock → Returns `ALREADY_ACCEPTED` → Timeout is no-op → Acceptance wins.
   - (b) Timeout Lua executes first → Pending set deleted → Accept Lua finds driver not in set → Returns `INVALID` → Accept fails → Timeout fires `ORDER_DRIVER_REJECTED` → Re-dispatch begins.
 - [ ] **Timeout When Order Already Accepted**: Another driver accepted seconds before timeout → `order:driver:lock` exists → Timeout Lua returns `ALREADY_ACCEPTED` → Deletes orphaned pending set → No re-dispatch.
+- [x] **Silent Expiration Bug (Fixed)**: PREVIOUSLY: The `order:ping:pending` TTL was set to 60s, exactly matching the business logic timeout. The UI sequentially polled drivers (e.g. driver 1 rejects after 30s, driver 2 times out at 60s). Because the Redis key naturally expired at exactly 60s, the UI's `/timeout` API and the backend's `DriverPingTimeoutPoller` both ran the Lua script *after* the key had vanished, skipping the `LAST_REJECT` state and swallowing the `ORDER_DRIVER_REJECTED` event entirely (stalling the dispatch indefinitely). NOW: TTLs for pending ping keys are set to 5 minutes, ensuring the key survives long enough for the business logic (which fires at 60s) to evaluate the remaining drivers and emit the necessary re-dispatch events.
 
 ---
 
