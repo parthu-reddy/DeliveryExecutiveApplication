@@ -42,9 +42,13 @@ public class OrderAssignmentService {
             "local pendingKey = KEYS[1]\n" +
             "local lockKey = KEYS[2]\n" +
             "local driverId = ARGV[1]\n" +
-            "if redis.call('EXISTS', lockKey) == 1 then return {'ALREADY_ACCEPTED'} end\n" +
+            "if redis.call('EXISTS', lockKey) == 1 then\n" +
+            "    local lockVal = redis.call('GET', lockKey)\n" +
+            "    if lockVal == 'CANCELLED' then return {'CANCELLED'} end\n" +
+            "    return {'ALREADY_ACCEPTED'}\n" +
+            "end\n" +
             "if redis.call('SISMEMBER', pendingKey, driverId) == 0 then return {'INVALID'} end\n" +
-            "redis.call('SET', lockKey, driverId, 'EX', 3600)\n" +
+            "redis.call('SET', lockKey, driverId, 'EX', 86400)\n" +
             "local allPinged = redis.call('SMEMBERS', pendingKey)\n" +
             "redis.call('DEL', pendingKey)\n" +
             "if #allPinged == 0 then return {'SUCCESS_EMPTY'} end\n" +
@@ -58,6 +62,10 @@ public class OrderAssignmentService {
 
         if (result == null) {
             throw new IllegalStateException("Order is no longer available.");
+        }
+        if (result.size() == 1 && AssignmentResult.CANCELLED.name().equals(result.get(0))) {
+            log.warn("Order {} was cancelled. Driver {} cannot accept.", orderId, driverId);
+            throw new IllegalStateException("Order was cancelled.");
         }
         if (result.size() == 1 && AssignmentResult.ALREADY_ACCEPTED.name().equals(result.get(0))) {
             log.warn("Order {} was already accepted by another driver. Driver {} ping rejected.", orderId, driverId);
@@ -101,6 +109,14 @@ public class OrderAssignmentService {
             if (result.size() > 0 && !AssignmentResult.SUCCESS_EMPTY.name().equals(result.get(0))) {
                 for (String pingedDriver : result) {
                     redisTemplate.delete(RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + pingedDriver);
+                    // NEW: Release lock for OTHER drivers who didn't win the race
+                    if (!pingedDriver.equals(driverId.toString())) {
+                        try {
+                            logisticsDispatchService.releaseDriverLock(pingedDriver);
+                        } catch (Exception e) {
+                            log.error("Failed to release driver lock for driver {} on assignment, will be retried by availability poller", pingedDriver, e);
+                        }
+                    }
                 }
             }
             redisTemplate.opsForZSet().remove(RedisKeyConstants.PREFIX_ORDER_PING_TIMEOUTS, orderId.toString());
@@ -150,9 +166,10 @@ public class OrderAssignmentService {
         String result = redisTemplate.execute(script, Arrays.asList(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId, RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId), driverId.toString());
 
         redisTemplate.delete(RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + driverId);
-        redisTemplate.opsForSet().add(RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderId, driverId.toString());
+        redisTemplate.opsForHash().increment(RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderId, driverId.toString(), 1);
         redisTemplate.expire(RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderId, java.time.Duration.ofHours(2));
         try {
+            log.info("Releasing driver lock for driver {} after rejection so they can receive future dispatches...", driverId);
             logisticsDispatchService.releaseDriverLock(driverId.toString());
         } catch (Exception e) {
             log.error("Failed to release driver lock for driver {} on reject, will be retried by availability poller", driverId, e);
@@ -213,11 +230,13 @@ public class OrderAssignmentService {
             return;
         }
 
+        log.info("Order {} ping timed out for {} drivers: {}", orderId, result.size(), result);
         for (String driverIdStr : result) {
             redisTemplate.delete(RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + driverIdStr);
-            redisTemplate.opsForSet().add(RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderIdStr, driverIdStr);
+            redisTemplate.opsForHash().increment(RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderIdStr, driverIdStr, 1);
             redisTemplate.expire(RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderIdStr, java.time.Duration.ofHours(2));
             try {
+                log.info("Releasing driver lock for driver {} after timeout so they can receive future dispatches...", driverIdStr);
                 logisticsDispatchService.releaseDriverLock(driverIdStr);
             } catch (Exception e) {
                 log.error("Failed to release driver lock for driver {} on timeout, will be retried by availability poller", driverIdStr, e);
@@ -257,14 +276,23 @@ public class OrderAssignmentService {
         if (pendingDrivers != null) {
             for (String pendingDriverId : pendingDrivers) {
                 redisTemplate.delete(RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + pendingDriverId);
+                if (!pendingDriverId.equals(driverId.toString())) {
+                    try {
+                        logisticsDispatchService.releaseDriverLock(pendingDriverId);
+                    } catch (Exception e) {
+                        log.error("Failed to release driver lock for driver {} on force assignment", pendingDriverId, e);
+                    }
+                }
             }
         }
         redisTemplate.opsForZSet().remove(RedisKeyConstants.PREFIX_ORDER_PING_TIMEOUTS, orderId.toString());
         redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderId.toString());
 
         // Force set the order driver lock
-        redisTemplate.opsForValue().set(RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId, driverId.toString(), java.time.Duration.ofMinutes(60));
+        redisTemplate.opsForValue().set(RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId, driverId.toString(), java.time.Duration.ofHours(24));
         redisTemplate.opsForValue().set(RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + driverId, orderId.toString(), java.time.Duration.ofHours(24));
+        // Prevent stale ORDER_DRIVER_REJECTED events from re-dispatching after force-assign
+        redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId, "CANCELLED", java.time.Duration.ofHours(24));
 
         try {
             transactionTemplate.executeWithoutResult(status -> {

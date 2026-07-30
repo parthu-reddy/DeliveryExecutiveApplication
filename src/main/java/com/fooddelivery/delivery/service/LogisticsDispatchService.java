@@ -56,10 +56,11 @@ public class LogisticsDispatchService {
                 "driverId", driverId,
                 "available", true
             );
-            mapsClient.releaseDriver(request);
-            log.info("Successfully requested driver lock release for driver {}", driverId);
+            log.info("Sending request to MapsIntegration /api/fleet/release: {}", request);
+            org.springframework.http.ResponseEntity<String> response = mapsClient.releaseDriver(request);
+            log.info("Successfully requested driver lock release for driver {}. Response: {}", driverId, response.getStatusCode());
         } catch (Exception e) {
-            log.error("Failed to release driver lock for driver {}", driverId, e);
+            log.error("Failed to release driver lock for driver {} via FeignClient. Error: {}", driverId, e.getMessage(), e);
             throw new RuntimeException("Failed to release driver lock", e);
         }
     }

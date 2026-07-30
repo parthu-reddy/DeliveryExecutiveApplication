@@ -43,11 +43,11 @@ public class OrderDriverRejectedStrategy implements DeliveryEventStrategy {
             double deliveryLng = cachedRoot.path("deliveryLng").asDouble(0.0);
             String deliveryAddress = cachedRoot.path("deliveryAddress").asText("");
             
-            java.util.Set<String> rejectedDrivers = redisTemplate.opsForSet().members(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderId);
-            List<String> excludedDriverIds = rejectedDrivers != null ? new java.util.ArrayList<>(rejectedDrivers) : new java.util.ArrayList<>();
-            
             if (lat != 0.0 && lng != 0.0) {
-                logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, orderId, excludedDriverIds);
+                long delayMs = 10_000; // 10-second cooldown between batch re-dispatches
+                long dispatchAt = System.currentTimeMillis() + delayMs;
+                log.info("Queueing order {} for priority dispatch retry via poller. Will dispatch at {} ({}ms delay).", orderId, dispatchAt, delayMs);
+                redisTemplate.opsForZSet().add("delayed_dispatch_queue", orderId.toString(), dispatchAt);
             } else {
                 log.warn("Cached payload for order {} has missing coordinates. Cannot redispatch.", orderId);
             }

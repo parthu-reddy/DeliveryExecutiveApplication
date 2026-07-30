@@ -72,7 +72,7 @@ public class OrderExecutionService {
         // 2. Redis ops AFTER DB commit — if these fail, the outbox event still fires correctly
         redisTemplate.delete(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId);
         redisTemplate.delete(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + driverId);
-        redisTemplate.opsForSet().add(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderId, driverId.toString());
+        redisTemplate.opsForHash().increment(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderId, driverId.toString(), 1);
         redisTemplate.expire(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderId, java.time.Duration.ofHours(2));
         
         // Add back to pool

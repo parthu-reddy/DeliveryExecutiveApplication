@@ -47,6 +47,9 @@ public class CandidateFoundStrategy implements DeliveryEventStrategy {
         redisTemplate.expire(pendingPingKey, Duration.ofSeconds(60));
         redisTemplate.opsForZSet().add(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_PING_TIMEOUTS, orderId.toString(), System.currentTimeMillis() + 60000);
 
+        // Reset failed cycles since we found candidates
+        redisTemplate.delete("order:dispatch_failed_cycles:" + orderId);
+
         for (String driverId : driverIds) {
             redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + driverId, orderId.toString(), Duration.ofSeconds(60));
             log.info("Pinging Driver {} for Order {}...", driverId, orderId);

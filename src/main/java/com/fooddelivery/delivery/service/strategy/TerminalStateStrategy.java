@@ -39,9 +39,14 @@ public class TerminalStateStrategy implements DeliveryEventStrategy {
             redisTemplate.delete(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId);
         }
         redisTemplate.delete(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderId);
+        
+        if (!EventType.DISPATCH_FAILED.name().equals(eventType)) {
+            redisTemplate.delete("order:dispatch_failed_cycles:" + orderId);
+        }
+        
         redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderId.toString());
 
-        if (EventType.ORDER_CANCELLED.name().equals(eventType) || EventType.DELIVERY_FAILED.name().equals(eventType) || EventType.ORDER_CANCELLED_BY_RESTAURANT.name().equals(eventType) || EventType.ORDER_CANCELLED_BY_CUSTOMER.name().equals(eventType) || EventType.ORDER_REJECTED.name().equals(eventType) || EventType.ORDER_DELAY_REJECTED.name().equals(eventType)) {
+        if (EventType.ORDER_CANCELLED.name().equals(eventType) || EventType.DELIVERY_FAILED.name().equals(eventType) || EventType.ORDER_CANCELLED_BY_RESTAURANT.name().equals(eventType) || EventType.ORDER_CANCELLED_BY_CUSTOMER.name().equals(eventType) || EventType.ORDER_CANCELLED_BY_ADMIN.name().equals(eventType) || EventType.ORDER_REJECTED.name().equals(eventType) || EventType.ORDER_DELAY_REJECTED.name().equals(eventType) || EventType.PRIORITY_DISPATCH_FAILED.name().equals(eventType)) {
             if (driverId == null || driverId.isEmpty()) {
                 driverId = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId);
             }
@@ -109,9 +114,17 @@ public class TerminalStateStrategy implements DeliveryEventStrategy {
             // we set the dispatch lock to CANCELLED to prevent new dispatch loops
             redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId, "CANCELLED", java.time.Duration.ofHours(24));
         }
-        // For ALL terminal events (including DISPATCH_FAILED and DRIVER_ASSIGNED), mark dispatch as complete
-        // This prevents stale Kafka retries of ORDER_DRIVER_REJECTED from re-dispatching
-        redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId, "CANCELLED", java.time.Duration.ofHours(24));
+        if (EventType.DISPATCH_FAILED.name().equals(eventType)) {
+            // If dispatch failed (no drivers available), we should retry in 10 seconds.
+            Long failedCycles = redisTemplate.opsForValue().increment("order:dispatch_failed_cycles:" + orderId);
+            redisTemplate.expire("order:dispatch_failed_cycles:" + orderId, java.time.Duration.ofHours(2));
+            log.info("Dispatch failed for order {} (Consecutive Failures: {}). Retrying in 10 seconds...", orderId, failedCycles);
+            redisTemplate.opsForZSet().add("delayed_dispatch_queue", orderId.toString(), System.currentTimeMillis() + 10000);
+        } else {
+            // For ALL terminal events (excluding DISPATCH_FAILED), mark dispatch as complete
+            // This prevents stale Kafka retries of ORDER_DRIVER_REJECTED from re-dispatching
+            redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId, "CANCELLED", java.time.Duration.ofHours(24));
+        }
     }
 
     @Override
@@ -123,8 +136,10 @@ public class TerminalStateStrategy implements DeliveryEventStrategy {
                 EventType.DELIVERY_FAILED.name(), 
                 EventType.ORDER_CANCELLED_BY_RESTAURANT.name(), 
                 EventType.ORDER_CANCELLED_BY_CUSTOMER.name(),
+                EventType.ORDER_CANCELLED_BY_ADMIN.name(),
                 EventType.ORDER_REJECTED.name(), 
-                EventType.ORDER_DELAY_REJECTED.name()
+                EventType.ORDER_DELAY_REJECTED.name(),
+                EventType.PRIORITY_DISPATCH_FAILED.name()
         );
     }
 }

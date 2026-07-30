@@ -39,8 +39,17 @@ public class RedisLockReaperTask {
 
         log.info("Starting Redis Lock Reaper Task to clean up orphaned locks...");
         try {
-            // Find all active order keys
-            Set<String> keys = redisTemplate.keys(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + "*");
+            // Find all active order keys using SCAN (non-blocking) instead of KEYS
+            Set<String> keys = new java.util.HashSet<>();
+            try (var cursor = redisTemplate.getConnectionFactory().getConnection().scan(
+                    org.springframework.data.redis.core.ScanOptions.scanOptions()
+                            .match(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + "*")
+                            .count(100)
+                            .build())) {
+                while (cursor.hasNext()) {
+                    keys.add(new String(cursor.next()));
+                }
+            }
             if (keys != null && !keys.isEmpty()) {
                 for (String key : keys) {
                     String driverIdStr = key.replace(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER, "");
@@ -70,7 +79,16 @@ public class RedisLockReaperTask {
             
             // Note: the "order:driver:lock:*" could also be orphaned without com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + "*" 
             // if acceptOrderPing crashed right after lock script but before com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + "*" was set.
-            Set<String> lockKeys = redisTemplate.keys("order:driver:lock:*");
+            Set<String> lockKeys = new java.util.HashSet<>();
+            try (var cursor = redisTemplate.getConnectionFactory().getConnection().scan(
+                    org.springframework.data.redis.core.ScanOptions.scanOptions()
+                            .match("order:driver:lock:*")
+                            .count(100)
+                            .build())) {
+                while (cursor.hasNext()) {
+                    lockKeys.add(new String(cursor.next()));
+                }
+            }
             if (lockKeys != null) {
                 for (String lockKey : lockKeys) {
                     String orderIdStr = lockKey.replace("order:driver:lock:", "");
