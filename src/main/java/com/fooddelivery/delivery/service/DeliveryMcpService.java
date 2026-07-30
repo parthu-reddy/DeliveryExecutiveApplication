@@ -90,14 +90,6 @@ public class DeliveryMcpService {
         }
     }
 
-    @Tool(description = "Timeout a driver ping for an order. Provide driverId and orderId.")
-    public String timeoutDriverPing(String driverId, String orderId) {
-        try {
-            return objectMapper.writeValueAsString(deliveryController.timeoutDriver(UUID.fromString(driverId), UUID.fromString(orderId)).getBody());
-        } catch (Exception e) {
-            return "Failed to timeout driver ping: " + e.getMessage();
-        }
-    }
 
     @Tool(description = "Process batch telemetry for drivers. Provide JSON string of list of telemetry events.")
     public String processBatchTelemetry(String telemetryBatchJson) {

@@ -185,13 +185,6 @@ public class DeliveryExecutiveController {
         return ResponseEntity.ok(ApiResponse.<Object>builder().success(true).message("Order status updated").build());
     }
 
-    @PostMapping("/drivers/{driverId}/orders/{orderId}/timeout")
-    @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
-    public ResponseEntity<ApiResponse<Void>> timeoutDriver(
-            @PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
-        orderAssignmentService.rejectOrderPing(driverId, orderId);
-        return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Driver ping timed out").build());
-    }
     @GetMapping(value = "/drivers/{driverId}/orders/{orderId}/restaurant-status-stream", produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
     @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
     public org.springframework.web.servlet.mvc.method.annotation.SseEmitter streamRestaurantStatus(
