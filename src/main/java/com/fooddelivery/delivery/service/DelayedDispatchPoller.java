@@ -56,20 +56,20 @@ public class DelayedDispatchPoller {
                     int failedCycles = failedCyclesStr != null ? Integer.parseInt(failedCyclesStr) : 0;
                     log.info("Processing delayed dispatch for order {}. dispatch_failed_cycles={}", orderIdStr, failedCycles);
                     if (failedCycles >= 5) {
-                        log.error("Order {} failed to find any drivers 5 consecutive times. Emitting PRIORITY_DISPATCH_FAILED", orderIdStr);
+                        log.error("Order {} failed to find any drivers 5 consecutive times. Emitting MANUAL_INTERVENTION_REQUIRED", orderIdStr);
                         redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderIdStr);
                         redisTemplate.delete("order:dispatch_failed_cycles:" + orderIdStr);
                         
                         java.util.Map<String, Object> eventPayload = java.util.Map.of(
                                 "orderId", orderIdStr,
-                                "eventType", com.fooddelivery.common.constants.EventType.PRIORITY_DISPATCH_FAILED.name()
+                                "eventType", com.fooddelivery.common.constants.EventType.MANUAL_INTERVENTION_REQUIRED.name()
                         );
                         
                         org.springframework.messaging.Message<String> message = org.springframework.messaging.support.MessageBuilder
                                 .withPayload(objectMapper.writeValueAsString(eventPayload))
                                 .setHeader(org.springframework.kafka.support.KafkaHeaders.TOPIC, com.fooddelivery.common.constants.KafkaConstants.TOPIC_ORDER_EVENTS)
                                 .setHeader(org.springframework.kafka.support.KafkaHeaders.KEY, orderIdStr)
-                                .setHeader("eventType", com.fooddelivery.common.constants.EventType.PRIORITY_DISPATCH_FAILED.name())
+                                .setHeader("eventType", com.fooddelivery.common.constants.EventType.MANUAL_INTERVENTION_REQUIRED.name())
                                 .build();
                         
                         kafkaTemplate.send(message);

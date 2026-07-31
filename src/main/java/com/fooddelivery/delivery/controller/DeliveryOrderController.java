@@ -42,6 +42,19 @@ public class DeliveryOrderController {
                     return idNode != null && pendingOrderId.equals(idNode.asText());
                 })
                 .collect(java.util.stream.Collectors.toList());
+                
+        // Add remainingPingSeconds
+        Long timeoutAt = orderAssignmentService.getPingExpiration(UUID.fromString(pendingOrderId));
+        if (timeoutAt != null) {
+            long remaining = (timeoutAt - System.currentTimeMillis()) / 1000;
+            if (remaining < 0) remaining = 0;
+            for (JsonNode node : matchingOrders) {
+                if (node instanceof com.fasterxml.jackson.databind.node.ObjectNode) {
+                    ((com.fasterxml.jackson.databind.node.ObjectNode) node).put("remainingPingSeconds", remaining);
+                }
+            }
+        }
+                
         return ResponseEntity.ok(mapToUiOrders(matchingOrders));
     }
 

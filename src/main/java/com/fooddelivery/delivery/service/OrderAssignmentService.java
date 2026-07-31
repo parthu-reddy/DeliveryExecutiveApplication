@@ -92,8 +92,7 @@ public class OrderAssignmentService {
                         java.util.Map.of(
                             "orderId", orderId.toString(),
                             "driverId", driverId.toString(),
-                            "driverName", executive.getFullName(),
-                            "driverPhone", executive.getPhoneNumber()
+                            "driverName", executive.getFullName()
                         )
                 );
                 log.info("Triggering event: DRIVER_ASSIGNED for executive: {}", executive.getId());
@@ -305,8 +304,7 @@ public class OrderAssignmentService {
                         java.util.Map.of(
                             "orderId", orderId.toString(),
                             "driverId", driverId.toString(),
-                            "driverName", executive.getFullName(),
-                            "driverPhone", executive.getPhoneNumber()
+                            "driverName", executive.getFullName()
                         )
                 );
                 log.info("Triggering event: DRIVER_ASSIGNED for executive: {}", driverId);
