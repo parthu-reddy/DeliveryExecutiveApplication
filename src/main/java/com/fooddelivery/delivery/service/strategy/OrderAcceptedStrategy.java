@@ -35,14 +35,19 @@ public class OrderAcceptedStrategy implements DeliveryEventStrategy {
         if (lat != 0.0 && lng != 0.0) {
             Boolean isNewDispatch = redisTemplate.opsForValue().setIfAbsent(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId, "locked", java.time.Duration.ofHours(24));
             if (Boolean.TRUE.equals(isNewDispatch)) {
-                // ALWAYS store the payload with a TTL so retries can work if drivers reject/timeout
-                redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId, root.toString(), java.time.Duration.ofHours(24));
-                if (System.currentTimeMillis() >= dispatchTime) {
-                    log.info("Delivery Application received ORDER_ACCEPTED for order {}. Dispatching nearest driver immediately...", orderId);
-                    logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, orderId, null);
-                } else {
-                    log.info("Delivery Application received ORDER_ACCEPTED for order {}. Scheduling dispatch at {}.", orderId, dispatchTime);
-                    redisTemplate.opsForZSet().add("delayed_dispatch_queue", orderId.toString(), dispatchTime);
+                try {
+                    // ALWAYS store the payload with a TTL so retries can work if drivers reject/timeout
+                    redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId, root.toString(), java.time.Duration.ofHours(24));
+                    if (System.currentTimeMillis() >= dispatchTime) {
+                        log.info("Delivery Application received ORDER_ACCEPTED for order {}. Dispatching nearest driver immediately...", orderId);
+                        logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, orderId, null);
+                    } else {
+                        log.info("Delivery Application received ORDER_ACCEPTED for order {}. Scheduling dispatch at {}.", orderId, dispatchTime);
+                        redisTemplate.opsForZSet().add("delayed_dispatch_queue", orderId.toString(), dispatchTime);
+                    }
+                } catch (Exception e) {
+                    redisTemplate.delete(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId);
+                    throw e;
                 }
             } else {
                 log.info("Duplicate ORDER_ACCEPTED dispatch event ignored for order {}", orderId);

@@ -20,15 +20,27 @@ public class DeliveryMcpService {
     private final DeliveryExecutiveController deliveryController;
     private final DeliveryTelemetryController telemetryController;
     private final LogisticsController logisticsController;
+    private final com.fooddelivery.delivery.controller.AdminDeliveryController adminDeliveryController;
+    private final com.fooddelivery.delivery.controller.DeliveryOrderController deliveryOrderController;
+    private final com.fooddelivery.delivery.controller.InternalDeliveryController internalDeliveryController;
+    private final com.fooddelivery.delivery.controller.DeliveryVerificationController deliveryVerificationController;
     private final ObjectMapper objectMapper;
 
     public DeliveryMcpService(DeliveryExecutiveController deliveryController,
                               DeliveryTelemetryController telemetryController,
                               LogisticsController logisticsController,
+                              com.fooddelivery.delivery.controller.AdminDeliveryController adminDeliveryController,
+                              com.fooddelivery.delivery.controller.DeliveryOrderController deliveryOrderController,
+                              com.fooddelivery.delivery.controller.InternalDeliveryController internalDeliveryController,
+                              com.fooddelivery.delivery.controller.DeliveryVerificationController deliveryVerificationController,
                               ObjectMapper objectMapper) {
         this.deliveryController = deliveryController;
         this.telemetryController = telemetryController;
         this.logisticsController = logisticsController;
+        this.adminDeliveryController = adminDeliveryController;
+        this.deliveryOrderController = deliveryOrderController;
+        this.internalDeliveryController = internalDeliveryController;
+        this.deliveryVerificationController = deliveryVerificationController;
         this.objectMapper = objectMapper;
     }
 
@@ -108,6 +120,122 @@ public class DeliveryMcpService {
             return objectMapper.writeValueAsString(logisticsController.getRoute(sourceLat, sourceLng, destLat, destLng).getBody());
         } catch (Exception e) {
             return "Failed to get route: " + e.getMessage();
+        }
+    }
+
+    // AdminDeliveryController
+
+    @Tool(description = "Admin: Get available drivers.")
+    public String getAvailableDrivers() {
+        try {
+            return objectMapper.writeValueAsString(adminDeliveryController.getAvailableDrivers().getBody());
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    @Tool(description = "Admin: Get available drivers with location. Provide lat, lng, and radiusKm.")
+    public String getAvailableDriversWithLocation(double lat, double lng, double radiusKm) {
+        try {
+            return objectMapper.writeValueAsString(adminDeliveryController.getAvailableDriversWithLocation(lat, lng, radiusKm).getBody());
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    @Tool(description = "Admin: Get all drivers with location.")
+    public String getAllDriversWithLocation() {
+        try {
+            return objectMapper.writeValueAsString(adminDeliveryController.getAllDriversWithLocation().getBody());
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    @Tool(description = "Admin: Force assign order. Provide orderId and driverId.")
+    public String forceAssignOrder(String orderId, String driverId) {
+        try {
+            return objectMapper.writeValueAsString(adminDeliveryController.forceAssignOrder(UUID.fromString(orderId), UUID.fromString(driverId)).getBody());
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    @Tool(description = "Admin: Get driver by ID. Provide driverId.")
+    public String getDriverById(String driverId) {
+        try {
+            return objectMapper.writeValueAsString(adminDeliveryController.getDriverById(UUID.fromString(driverId)).getBody());
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    // DeliveryOrderController
+
+    @Tool(description = "Driver: Get active orders. Provide driverId.")
+    public String getDriverActiveOrders(String driverId) {
+        try {
+            return objectMapper.writeValueAsString(deliveryOrderController.getActiveOrders(createMockPrincipal(driverId)).getBody());
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    @Tool(description = "Driver: Get available orders. Provide driverId.")
+    public String getDriverAvailableOrders(String driverId) {
+        try {
+            return objectMapper.writeValueAsString(deliveryOrderController.getAvailableOrders(createMockPrincipal(driverId)).getBody());
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    @Tool(description = "Driver: Get order history. Provide driverId and date (optional).")
+    public String getDriverOrderHistory(String driverId, String date) {
+        try {
+            return objectMapper.writeValueAsString(deliveryOrderController.getOrderHistory(createMockPrincipal(driverId), date).getBody());
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    // InternalDeliveryController
+
+    @Tool(description = "Internal: Suspend driver. Provide driverId.")
+    public String suspendDriver(String driverId) {
+        try {
+            return objectMapper.writeValueAsString(internalDeliveryController.suspendDriver(UUID.fromString(driverId)).getBody());
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    // DeliveryVerificationController
+
+    @Tool(description = "Driver: Get verification status. Provide driverId.")
+    public String getDriverVerificationStatus(String driverId) {
+        try {
+            return objectMapper.writeValueAsString(deliveryVerificationController.getVerificationStatus(createMockPrincipal(driverId)).getBody());
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    @Tool(description = "Driver: Get presigned upload URL. Provide docType and contentType.")
+    public String getDriverPresignedUploadUrl(String docType, String contentType) {
+        try {
+            return objectMapper.writeValueAsString(deliveryVerificationController.getPresignedUploadUrl(docType, contentType).getBody());
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    @Tool(description = "Driver: Get presigned download URL. Provide objectKey.")
+    public String getDriverPresignedDownloadUrl(String objectKey) {
+        try {
+            return objectMapper.writeValueAsString(deliveryVerificationController.getPresignedDownloadUrl(objectKey).getBody());
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
         }
     }
 }

@@ -73,6 +73,22 @@ public class DeliveryOrderController {
                     if (obj.has("deliveryExecutiveId")) {
                         obj.set("riderId", obj.get("deliveryExecutiveId"));
                     }
+                    
+                    // Extract dynamic payout from charges where payeeType == DRIVER
+                    if (obj.has("charges") && obj.get("charges").isArray()) {
+                        double totalPayout = 0.0;
+                        for (JsonNode charge : obj.get("charges")) {
+                            if (charge.has("payeeType") && "DRIVER".equals(charge.get("payeeType").asText())
+                                && charge.has("amount")) {
+                                totalPayout += charge.get("amount").asDouble();
+                            }
+                        }
+                        if (totalPayout > 0) {
+                            obj.put("payout", totalPayout);
+                        }
+                        // SECURITY: Strip full financial ledger — driver should only see their payout
+                        obj.remove("charges");
+                    }
                 }
             });
         }

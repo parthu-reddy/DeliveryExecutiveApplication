@@ -50,35 +50,26 @@ public class RedisLockReaperTask {
                     keys.add(new String(cursor.next()));
                 }
             }
+            // Parse first set of keys
+            java.util.Map<String, String> keyToOrderId = new java.util.HashMap<>();
+            java.util.Set<UUID> driverIdsToFetch = new java.util.HashSet<>();
+            
             if (keys != null && !keys.isEmpty()) {
                 for (String key : keys) {
                     String driverIdStr = key.replace(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER, "");
                     String orderIdStr = redisTemplate.opsForValue().get(key);
-                    
                     if (orderIdStr != null) {
                         try {
-                            UUID driverId = UUID.fromString(driverIdStr);
-                            repository.findById(driverId).ifPresent(executive -> {
-                                // If the driver is ONLINE or OFFLINE, they should NOT have an active order lock
-                                if (executive.getStatus() == DeliveryExecutiveStatus.ONLINE || 
-                                    executive.getStatus() == DeliveryExecutiveStatus.OFFLINE) {
-                                    
-                                    log.warn("Reaper Task: Found orphaned lock for driver {} (status: {}) on order {}. Removing locks.", 
-                                            driverId, executive.getStatus(), orderIdStr);
-                                    
-                                    redisTemplate.delete(key);
-                                    redisTemplate.delete(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderIdStr);
-                                }
-                            });
+                            driverIdsToFetch.add(UUID.fromString(driverIdStr));
+                            keyToOrderId.put(key, orderIdStr);
                         } catch (Exception e) {
-                            log.error("Reaper Task: Error processing key {}", key, e);
+                            log.error("Reaper Task: Error parsing UUID from key {}", key, e);
                         }
                     }
                 }
             }
-            
-            // Note: the "order:driver:lock:*" could also be orphaned without com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + "*" 
-            // if acceptOrderPing crashed right after lock script but before com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + "*" was set.
+
+            // Note: the "order:driver:lock:*" could also be orphaned without PREFIX_DRIVER_ACTIVE_ORDER
             Set<String> lockKeys = new java.util.HashSet<>();
             try (var cursor = redisTemplate.getConnectionFactory().getConnection().scan(
                     org.springframework.data.redis.core.ScanOptions.scanOptions()
@@ -89,27 +80,66 @@ public class RedisLockReaperTask {
                     lockKeys.add(new String(cursor.next()));
                 }
             }
+            
+            java.util.Map<String, String> lockKeyToDriverIdStr = new java.util.HashMap<>();
             if (lockKeys != null) {
                 for (String lockKey : lockKeys) {
-                    String orderIdStr = lockKey.replace("order:driver:lock:", "");
                     String driverIdStr = redisTemplate.opsForValue().get(lockKey);
                     if (driverIdStr != null) {
                         try {
-                            UUID driverId = UUID.fromString(driverIdStr);
-                            repository.findById(driverId).ifPresent(executive -> {
-                                if (executive.getStatus() == DeliveryExecutiveStatus.ONLINE || 
-                                    executive.getStatus() == DeliveryExecutiveStatus.OFFLINE) {
-                                    
-                                    log.warn("Reaper Task: Found orphaned order lock for driver {} (status: {}) on order {}. Removing lock.", 
-                                            driverId, executive.getStatus(), orderIdStr);
-                                    
-                                    redisTemplate.delete(lockKey);
-                                }
-                            });
+                            driverIdsToFetch.add(UUID.fromString(driverIdStr));
+                            lockKeyToDriverIdStr.put(lockKey, driverIdStr);
                         } catch (Exception e) {
-                             log.error("Reaper Task: Error processing lockKey {}", lockKey, e);
+                            log.error("Reaper Task: Error parsing UUID from lockKey {}", lockKey, e);
                         }
                     }
+                }
+            }
+            
+            // Batch fetch all drivers at once
+            java.util.Map<UUID, DeliveryExecutive> driverMap = new java.util.HashMap<>();
+            if (!driverIdsToFetch.isEmpty()) {
+                repository.findAllById(driverIdsToFetch).forEach(d -> driverMap.put(d.getId(), d));
+            }
+            
+            // Process first set of keys
+            for (java.util.Map.Entry<String, String> entry : keyToOrderId.entrySet()) {
+                String key = entry.getKey();
+                String orderIdStr = entry.getValue();
+                String driverIdStr = key.replace(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER, "");
+                try {
+                    UUID driverId = UUID.fromString(driverIdStr);
+                    DeliveryExecutive executive = driverMap.get(driverId);
+                    
+                    if (executive != null && (executive.getStatus() == DeliveryExecutiveStatus.ONLINE || 
+                                              executive.getStatus() == DeliveryExecutiveStatus.OFFLINE)) {
+                        log.warn("Reaper Task: Found orphaned lock for driver {} (status: {}) on order {}. Removing locks.", 
+                                driverId, executive.getStatus(), orderIdStr);
+                        redisTemplate.delete(key);
+                        redisTemplate.delete(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderIdStr);
+                    }
+                } catch (Exception e) {
+                    log.error("Reaper Task: Error processing key {}", key, e);
+                }
+            }
+
+            // Process second set of keys
+            for (java.util.Map.Entry<String, String> entry : lockKeyToDriverIdStr.entrySet()) {
+                String lockKey = entry.getKey();
+                String driverIdStr = entry.getValue();
+                String orderIdStr = lockKey.replace("order:driver:lock:", "");
+                try {
+                    UUID driverId = UUID.fromString(driverIdStr);
+                    DeliveryExecutive executive = driverMap.get(driverId);
+                    
+                    if (executive != null && (executive.getStatus() == DeliveryExecutiveStatus.ONLINE || 
+                                              executive.getStatus() == DeliveryExecutiveStatus.OFFLINE)) {
+                        log.warn("Reaper Task: Found orphaned order lock for driver {} (status: {}) on order {}. Removing lock.", 
+                                driverId, executive.getStatus(), orderIdStr);
+                        redisTemplate.delete(lockKey);
+                    }
+                } catch (Exception e) {
+                     log.error("Reaper Task: Error processing lockKey {}", lockKey, e);
                 }
             }
             
