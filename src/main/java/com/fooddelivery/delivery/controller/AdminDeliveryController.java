@@ -12,10 +12,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/v1/internal/admin/delivery")
 @RequiredArgsConstructor
+@Slf4j
 public class AdminDeliveryController {
 
     private final IDeliveryExecutiveRepository repository;

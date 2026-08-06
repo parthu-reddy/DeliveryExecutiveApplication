@@ -10,11 +10,13 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/v1/delivery/orders")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('DELIVERY')")
+@Slf4j
 public class DeliveryOrderController {
 
     private final CustomerServiceClient customerServiceClient;

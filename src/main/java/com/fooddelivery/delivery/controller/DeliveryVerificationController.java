@@ -10,11 +10,13 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 import java.util.Map;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/delivery/verification")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('DELIVERY')")
+@Slf4j
 public class DeliveryVerificationController {
 
     private final GovernmentIdClient governmentIdClient;

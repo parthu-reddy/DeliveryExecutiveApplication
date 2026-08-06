@@ -12,11 +12,13 @@ import com.fooddelivery.delivery.client.MapsClient;
 import java.util.Map;
 
 import org.springframework.security.access.prepost.PreAuthorize;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/v1/logistics")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('DELIVERY')")
+@Slf4j
 public class LogisticsController {
 
     private final MapsClient mapsClient;

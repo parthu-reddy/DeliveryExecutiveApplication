@@ -14,7 +14,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.HashMap;
 import com.fooddelivery.common.enums.OrderStatus;
+import lombok.extern.slf4j.Slf4j;
 @Service
+@Slf4j
 public class DeliveryMcpService {
 
     private final DeliveryExecutiveController deliveryController;
