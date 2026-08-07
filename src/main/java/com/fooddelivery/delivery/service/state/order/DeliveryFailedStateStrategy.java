@@ -10,18 +10,16 @@ import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
 import com.fooddelivery.delivery.service.LogisticsDispatchService;
 import com.fooddelivery.delivery.service.state.DeliveryExecutiveState;
 import com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
-
 import java.time.Duration;
-
 import java.util.UUID;
 
-@Slf4j
 @Component
 public class DeliveryFailedStateStrategy extends AbstractDeliveryOrderState {
+    @java.lang.SuppressWarnings("all")
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DeliveryFailedStateStrategy.class);
 
     public DeliveryFailedStateStrategy(StringRedisTemplate redisTemplate, ObjectMapper objectMapper, TransactionTemplate transactionTemplate, OutboxEventRepository outboxEventRepository, IDeliveryExecutiveRepository repository, LogisticsDispatchService logisticsDispatchService) {
         super(redisTemplate, objectMapper, transactionTemplate, outboxEventRepository, repository, logisticsDispatchService);
@@ -39,16 +37,13 @@ public class DeliveryFailedStateStrategy extends AbstractDeliveryOrderState {
 
     @Override
     protected void updateExecutiveState(UUID driverId, Boolean goOfflineAfter) {
-        DeliveryExecutive executive = repository.findLockedById(driverId)
-                .orElseThrow(() -> new IllegalArgumentException("Driver not found"));
+        DeliveryExecutive executive = repository.findLockedById(driverId).orElseThrow(() -> new IllegalArgumentException("Driver not found"));
         DeliveryExecutiveState state = DeliveryExecutiveStateFactory.getState(executive.getStatus());
         state.completeDelivery(executive);
-        
         if (Boolean.TRUE.equals(goOfflineAfter)) {
             log.info("Driver {} opted to go offline after delivery failed", driverId);
             executive.setStatus(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.OFFLINE);
         }
-        
         // updatedAt is auto-managed by @UpdateTimestamp
         repository.save(executive);
         redisTemplate.opsForHash().put("drivers:status", driverId.toString(), executive.getStatus().name());
@@ -67,7 +62,6 @@ public class DeliveryFailedStateStrategy extends AbstractDeliveryOrderState {
         redisTemplate.delete(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderId);
         redisTemplate.opsForZSet().remove(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_PING_TIMEOUTS, orderId.toString());
         redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId, getSupportedStatus().name(), Duration.ofHours(24));
-
         if (!Boolean.TRUE.equals(goOfflineAfter)) {
             try {
                 String key = "drivers:available:" + AppConstants.DEFAULT_CITY_ID;

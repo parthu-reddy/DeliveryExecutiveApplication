@@ -12,16 +12,14 @@ import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
 import com.fooddelivery.delivery.service.LogisticsDispatchService;
 import com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Slf4j
 public abstract class AbstractDeliveryOrderState implements DeliveryOrderStateStrategy {
-
+    @java.lang.SuppressWarnings("all")
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AbstractDeliveryOrderState.class);
     protected final StringRedisTemplate redisTemplate;
     protected final ObjectMapper objectMapper;
     protected final TransactionTemplate transactionTemplate;
@@ -29,12 +27,7 @@ public abstract class AbstractDeliveryOrderState implements DeliveryOrderStateSt
     protected final IDeliveryExecutiveRepository repository;
     protected final LogisticsDispatchService logisticsDispatchService;
 
-    public AbstractDeliveryOrderState(StringRedisTemplate redisTemplate,
-                                      ObjectMapper objectMapper,
-                                      TransactionTemplate transactionTemplate,
-                                      OutboxEventRepository outboxEventRepository,
-                                      IDeliveryExecutiveRepository repository,
-                                      LogisticsDispatchService logisticsDispatchService) {
+    public AbstractDeliveryOrderState(StringRedisTemplate redisTemplate, ObjectMapper objectMapper, TransactionTemplate transactionTemplate, OutboxEventRepository outboxEventRepository, IDeliveryExecutiveRepository repository, LogisticsDispatchService logisticsDispatchService) {
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
         this.transactionTemplate = transactionTemplate;
@@ -46,21 +39,17 @@ public abstract class AbstractDeliveryOrderState implements DeliveryOrderStateSt
     @Override
     public void handleStatusUpdate(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp, Boolean goOfflineAfter) {
         log.info("Driver {} updating order {} to {}", driverId, orderId, status);
-
         String currentAssignee = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId);
         if (currentAssignee != null && !driverId.toString().equals(currentAssignee)) {
             log.info("Idempotent/Invalid update: Order {} is assigned to another driver {}", orderId, currentAssignee);
             return;
         }
-
         validate(driverId, orderId, pickupOtp, deliveryOtp);
-
         transactionTemplate.execute(txStatus -> {
             saveOutboxEvent(orderId, status, pickupOtp, deliveryOtp);
             updateExecutiveState(driverId, goOfflineAfter);
             return null;
         });
-
         postProcess(driverId, orderId, goOfflineAfter);
     }
 
@@ -73,30 +62,19 @@ public abstract class AbstractDeliveryOrderState implements DeliveryOrderStateSt
         payloadNode.put("eventType", getEventType().name());
         payloadNode.put("orderId", orderId.toString());
         payloadNode.put("status", status.name());
-        
         if (pickupOtp != null && !pickupOtp.isEmpty()) {
             payloadNode.put("pickupOtp", pickupOtp);
         }
         if (deliveryOtp != null && !deliveryOtp.isEmpty()) {
             payloadNode.put("deliveryOtp", deliveryOtp);
         }
-
         String payload;
         try {
             payload = objectMapper.writeValueAsString(payloadNode);
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize status update payload", e);
         }
-
-        OutboxEventEntity outboxEvent = OutboxEventEntity.builder()
-                .id(UUID.randomUUID())
-                .aggregateType(com.fooddelivery.common.constants.AggregateType.ORDER)
-                .aggregateId(orderId.toString())
-                .eventType(getEventType())
-                .payload(payload)
-                .createdAt(LocalDateTime.now())
-                .status(OutboxStatus.UNPROCESSED)
-                .build();
+        OutboxEventEntity outboxEvent = OutboxEventEntity.builder().id(UUID.randomUUID()).aggregateType(com.fooddelivery.common.constants.AggregateType.ORDER).aggregateId(orderId.toString()).eventType(getEventType()).payload(payload).createdAt(LocalDateTime.now()).status(OutboxStatus.UNPROCESSED).build();
         log.info("Triggering event: {} for order: {}", getEventType().name(), orderId);
         outboxEventRepository.save(outboxEvent);
     }

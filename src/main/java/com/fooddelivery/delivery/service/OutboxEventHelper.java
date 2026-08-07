@@ -6,10 +6,7 @@ import com.fooddelivery.common.constants.AggregateType;
 import com.fooddelivery.common.constants.EventType;
 import com.fooddelivery.common.enums.OutboxStatus;
 import com.fooddelivery.common.outbox.entity.OutboxEventEntity;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
@@ -18,11 +15,10 @@ import java.util.UUID;
  * Reusable helper to construct OutboxEventEntity instances.
  * Eliminates the 5 identical copy-pasted blocks in DeliveryService.
  */
-@Slf4j
 @Component
-@RequiredArgsConstructor
 public class OutboxEventHelper {
-
+    @java.lang.SuppressWarnings("all")
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OutboxEventHelper.class);
     private final ObjectMapper objectMapper;
 
     /**
@@ -34,27 +30,21 @@ public class OutboxEventHelper {
      * @param payloadMap    Key-value pairs to serialize as JSON payload
      * @return A ready-to-persist OutboxEventEntity
      */
-    public OutboxEventEntity createOutboxEvent(AggregateType aggregateType, String aggregateId,
-                                                EventType eventType, Map<String, String> payloadMap) {
+    public OutboxEventEntity createOutboxEvent(AggregateType aggregateType, String aggregateId, EventType eventType, Map<String, String> payloadMap) {
         ObjectNode payloadNode = objectMapper.createObjectNode();
         payloadNode.put("eventType", eventType.name());
         payloadMap.forEach(payloadNode::put);
-
         String payload;
         try {
             payload = objectMapper.writeValueAsString(payloadNode);
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize " + eventType + " payload", e);
         }
+        return OutboxEventEntity.builder().id(UUID.randomUUID()).aggregateType(aggregateType).aggregateId(aggregateId).eventType(eventType).payload(payload).createdAt(LocalDateTime.now()).status(OutboxStatus.UNPROCESSED).build();
+    }
 
-        return OutboxEventEntity.builder()
-                .id(UUID.randomUUID())
-                .aggregateType(aggregateType)
-                .aggregateId(aggregateId)
-                .eventType(eventType)
-                .payload(payload)
-                .createdAt(LocalDateTime.now())
-                .status(OutboxStatus.UNPROCESSED)
-                .build();
+    @java.lang.SuppressWarnings("all")
+    public OutboxEventHelper(final ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
     }
 }

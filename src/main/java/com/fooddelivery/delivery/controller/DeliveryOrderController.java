@@ -2,23 +2,19 @@ package com.fooddelivery.delivery.controller;
 
 import com.fooddelivery.delivery.client.CustomerServiceClient;
 import com.fasterxml.jackson.databind.JsonNode;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
-
 import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/v1/delivery/orders")
-@RequiredArgsConstructor
-@PreAuthorize("hasRole('DELIVERY')")
-@Slf4j
+@PreAuthorize("hasRole(\'DELIVERY\')")
 public class DeliveryOrderController {
-
+    @java.lang.SuppressWarnings("all")
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DeliveryOrderController.class);
     private final CustomerServiceClient customerServiceClient;
     private final com.fooddelivery.delivery.service.OrderAssignmentService orderAssignmentService;
 
@@ -36,15 +32,11 @@ public class DeliveryOrderController {
         if (pendingOrderId == null) {
             return ResponseEntity.ok(java.util.Collections.emptyList());
         }
-
         List<JsonNode> orders = customerServiceClient.getUnassignedOrders();
-        List<JsonNode> matchingOrders = orders.stream()
-                .filter(order -> {
-                    JsonNode idNode = order.get("id");
-                    return idNode != null && pendingOrderId.equals(idNode.asText());
-                })
-                .collect(java.util.stream.Collectors.toList());
-                
+        List<JsonNode> matchingOrders = orders.stream().filter(order -> {
+            JsonNode idNode = order.get("id");
+            return idNode != null && pendingOrderId.equals(idNode.asText());
+        }).collect(java.util.stream.Collectors.toList());
         // Add remainingPingSeconds
         Long timeoutAt = orderAssignmentService.getPingExpiration(UUID.fromString(pendingOrderId));
         if (timeoutAt != null) {
@@ -56,7 +48,6 @@ public class DeliveryOrderController {
                 }
             }
         }
-                
         return ResponseEntity.ok(mapToUiOrders(matchingOrders));
     }
 
@@ -75,13 +66,11 @@ public class DeliveryOrderController {
                     if (obj.has("deliveryExecutiveId")) {
                         obj.set("riderId", obj.get("deliveryExecutiveId"));
                     }
-                    
                     // Extract dynamic payout from charges where payeeType == DRIVER
                     if (obj.has("charges") && obj.get("charges").isArray()) {
                         double totalPayout = 0.0;
                         for (JsonNode charge : obj.get("charges")) {
-                            if (charge.has("payeeType") && "DRIVER".equals(charge.get("payeeType").asText())
-                                && charge.has("amount")) {
+                            if (charge.has("payeeType") && "DRIVER".equals(charge.get("payeeType").asText()) && charge.has("amount")) {
                                 totalPayout += charge.get("amount").asDouble();
                             }
                         }
@@ -95,5 +84,11 @@ public class DeliveryOrderController {
             });
         }
         return orders;
+    }
+
+    @java.lang.SuppressWarnings("all")
+    public DeliveryOrderController(final CustomerServiceClient customerServiceClient, final com.fooddelivery.delivery.service.OrderAssignmentService orderAssignmentService) {
+        this.customerServiceClient = customerServiceClient;
+        this.orderAssignmentService = orderAssignmentService;
     }
 }

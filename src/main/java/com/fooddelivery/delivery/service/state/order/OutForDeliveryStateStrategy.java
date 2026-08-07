@@ -7,16 +7,15 @@ import com.fooddelivery.common.enums.DeliveryStatus;
 import com.fooddelivery.common.outbox.repository.OutboxEventRepository;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
 import com.fooddelivery.delivery.service.LogisticsDispatchService;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
-
 import java.util.UUID;
 
-@Slf4j
 @Component
 public class OutForDeliveryStateStrategy extends AbstractDeliveryOrderState {
+    @java.lang.SuppressWarnings("all")
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OutForDeliveryStateStrategy.class);
 
     public OutForDeliveryStateStrategy(StringRedisTemplate redisTemplate, ObjectMapper objectMapper, TransactionTemplate transactionTemplate, OutboxEventRepository outboxEventRepository, IDeliveryExecutiveRepository repository, LogisticsDispatchService logisticsDispatchService) {
         super(redisTemplate, objectMapper, transactionTemplate, outboxEventRepository, repository, logisticsDispatchService);
@@ -38,7 +37,6 @@ public class OutForDeliveryStateStrategy extends AbstractDeliveryOrderState {
         if (restaurantStatus == null || !(restaurantStatus.equals(com.fooddelivery.common.enums.OrderStatus.READY_FOR_PICKUP.name()))) {
             throw new IllegalArgumentException("Restaurant has not marked the order as ready yet.");
         }
-
         String payload = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId);
         if (payload != null) {
             try {

@@ -3,20 +3,16 @@ package com.fooddelivery.delivery.service.strategy;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fooddelivery.common.constants.EventType;
 import com.fooddelivery.delivery.service.LogisticsDispatchService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
-@Slf4j
 @Component
-@RequiredArgsConstructor
 public class OrderAcceptedStrategy implements DeliveryEventStrategy {
-
+    @java.lang.SuppressWarnings("all")
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OrderAcceptedStrategy.class);
     private final LogisticsDispatchService logisticsDispatchService;
     private final StringRedisTemplate redisTemplate;
 
@@ -29,9 +25,7 @@ public class OrderAcceptedStrategy implements DeliveryEventStrategy {
         double deliveryLng = root.path("deliveryLng").asDouble(0.0);
         String deliveryAddress = root.path("deliveryAddress").asText("");
         long estimatedCompletionTime = root.path("estimatedCompletionTime").asLong(0L);
-        
         long dispatchTime = estimatedCompletionTime > 0 ? estimatedCompletionTime - (15 * 60 * 1000L) : System.currentTimeMillis();
-        
         if (lat != 0.0 && lng != 0.0) {
             Boolean isNewDispatch = redisTemplate.opsForValue().setIfAbsent(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId, "locked", java.time.Duration.ofHours(24));
             if (Boolean.TRUE.equals(isNewDispatch)) {
@@ -60,5 +54,11 @@ public class OrderAcceptedStrategy implements DeliveryEventStrategy {
     @Override
     public List<String> getEventTypes() {
         return Collections.singletonList(EventType.ORDER_ACCEPTED.name());
+    }
+
+    @java.lang.SuppressWarnings("all")
+    public OrderAcceptedStrategy(final LogisticsDispatchService logisticsDispatchService, final StringRedisTemplate redisTemplate) {
+        this.logisticsDispatchService = logisticsDispatchService;
+        this.redisTemplate = redisTemplate;
     }
 }

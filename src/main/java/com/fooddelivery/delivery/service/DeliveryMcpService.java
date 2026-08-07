@@ -14,11 +14,11 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.HashMap;
 import com.fooddelivery.common.enums.OrderStatus;
-import lombok.extern.slf4j.Slf4j;
-@Service
-@Slf4j
-public class DeliveryMcpService {
 
+@Service
+public class DeliveryMcpService {
+    @java.lang.SuppressWarnings("all")
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DeliveryMcpService.class);
     private final DeliveryExecutiveController deliveryController;
     private final DeliveryTelemetryController telemetryController;
     private final LogisticsController logisticsController;
@@ -28,14 +28,7 @@ public class DeliveryMcpService {
     private final com.fooddelivery.delivery.controller.DeliveryVerificationController deliveryVerificationController;
     private final ObjectMapper objectMapper;
 
-    public DeliveryMcpService(DeliveryExecutiveController deliveryController,
-                              DeliveryTelemetryController telemetryController,
-                              LogisticsController logisticsController,
-                              com.fooddelivery.delivery.controller.AdminDeliveryController adminDeliveryController,
-                              com.fooddelivery.delivery.controller.DeliveryOrderController deliveryOrderController,
-                              com.fooddelivery.delivery.controller.InternalDeliveryController internalDeliveryController,
-                              com.fooddelivery.delivery.controller.DeliveryVerificationController deliveryVerificationController,
-                              ObjectMapper objectMapper) {
+    public DeliveryMcpService(DeliveryExecutiveController deliveryController, DeliveryTelemetryController telemetryController, LogisticsController logisticsController, com.fooddelivery.delivery.controller.AdminDeliveryController adminDeliveryController, com.fooddelivery.delivery.controller.DeliveryOrderController deliveryOrderController, com.fooddelivery.delivery.controller.InternalDeliveryController internalDeliveryController, com.fooddelivery.delivery.controller.DeliveryVerificationController deliveryVerificationController, ObjectMapper objectMapper) {
         this.deliveryController = deliveryController;
         this.telemetryController = telemetryController;
         this.logisticsController = logisticsController;
@@ -104,11 +97,11 @@ public class DeliveryMcpService {
         }
     }
 
-
     @Tool(description = "Process batch telemetry for drivers. Provide JSON string of list of telemetry events.")
     public String processBatchTelemetry(String telemetryBatchJson) {
         try {
-            List<com.fooddelivery.delivery.dto.TelemetryEventRequest> batch = objectMapper.readValue(telemetryBatchJson, new TypeReference<List<com.fooddelivery.delivery.dto.TelemetryEventRequest>>() {});
+            List<com.fooddelivery.delivery.dto.TelemetryEventRequest> batch = objectMapper.readValue(telemetryBatchJson, new TypeReference<List<com.fooddelivery.delivery.dto.TelemetryEventRequest>>() {
+            });
             String authId = batch.isEmpty() ? "mock-driver-id" : batch.get(0).getDriverId();
             return objectMapper.writeValueAsString(telemetryController.processBatchTelemetry(createMockPrincipal(authId), batch).getBody());
         } catch (Exception e) {
@@ -126,7 +119,6 @@ public class DeliveryMcpService {
     }
 
     // AdminDeliveryController
-
     @Tool(description = "Admin: Get available drivers.")
     public String getAvailableDrivers() {
         try {
@@ -173,7 +165,6 @@ public class DeliveryMcpService {
     }
 
     // DeliveryOrderController
-
     @Tool(description = "Driver: Get active orders. Provide driverId.")
     public String getDriverActiveOrders(String driverId) {
         try {
@@ -202,7 +193,6 @@ public class DeliveryMcpService {
     }
 
     // InternalDeliveryController
-
     @Tool(description = "Internal: Suspend driver. Provide driverId.")
     public String suspendDriver(String driverId) {
         try {
@@ -213,7 +203,6 @@ public class DeliveryMcpService {
     }
 
     // DeliveryVerificationController
-
     @Tool(description = "Driver: Get verification status. Provide driverId.")
     public String getDriverVerificationStatus(String driverId) {
         try {

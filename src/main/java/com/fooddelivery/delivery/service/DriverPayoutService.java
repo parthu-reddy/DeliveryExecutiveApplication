@@ -4,15 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fooddelivery.delivery.client.WalletClient;
 import com.fooddelivery.delivery.dto.WalletDto;
 import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
 
 @Service
-@Slf4j
 public class DriverPayoutService {
-private final WalletClient walletClient;
+    @java.lang.SuppressWarnings("all")
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DriverPayoutService.class);
+    private final WalletClient walletClient;
 
     public DriverPayoutService(WalletClient walletClient) {
         this.walletClient = walletClient;

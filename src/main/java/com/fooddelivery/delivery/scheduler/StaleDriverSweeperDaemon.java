@@ -3,12 +3,9 @@ package com.fooddelivery.delivery.scheduler;
 import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import com.fooddelivery.delivery.enums.DeliveryExecutiveStatus;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -18,31 +15,26 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Component
-@RequiredArgsConstructor
-@Slf4j
 public class StaleDriverSweeperDaemon {
-
+    @java.lang.SuppressWarnings("all")
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(StaleDriverSweeperDaemon.class);
     private final StringRedisTemplate redisTemplate;
     private final IDeliveryExecutiveRepository deliveryExecutiveRepository;
-
     private static final String DRIVER_LOCATION_KEY = "drivers:geo:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
     private static final String DRIVER_LAST_PING_KEY = "driver_last_ping";
-    private static final long STALE_THRESHOLD_MS = 60_000; // 60 seconds
+    private static final long STALE_THRESHOLD_MS = 60000; // 60 seconds
 
-    @Scheduled(fixedRate = 60_000)
+    @Scheduled(fixedRate = 60000)
     public void sweepStaleDrivers() {
         Boolean locked = redisTemplate.opsForValue().setIfAbsent(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_SWEEP_STALE_DRIVERS, "1", java.time.Duration.ofSeconds(50));
         if (!Boolean.TRUE.equals(locked)) {
             return;
         }
-        
         log.info("Starting StaleDriverSweeperDaemon sweep...");
         long thresholdTimestamp = System.currentTimeMillis() - STALE_THRESHOLD_MS;
-
         try {
             // Find all driver IDs whose last ping was older than the threshold
             Set<String> staleDriverIds = redisTemplate.opsForZSet().rangeByScore(DRIVER_LAST_PING_KEY, 0, thresholdTimestamp);
-
             if (staleDriverIds != null && !staleDriverIds.isEmpty()) {
                 log.info("Found {} stale drivers. Processing offline status...", staleDriverIds.size());
                 processStaleDriversBatch(staleDriverIds);
@@ -62,7 +54,6 @@ public class StaleDriverSweeperDaemon {
         // Parse valid UUIDs, skip invalid ones
         List<UUID> validUuids = new ArrayList<>();
         List<String> invalidIds = new ArrayList<>();
-
         for (String idStr : staleDriverIdStrings) {
             try {
                 validUuids.add(UUID.fromString(idStr));
@@ -71,23 +62,17 @@ public class StaleDriverSweeperDaemon {
                 invalidIds.add(idStr);
             }
         }
-
         // Clean up invalid IDs from Redis immediately
         for (String invalidId : invalidIds) {
             redisTemplate.opsForGeo().remove(DRIVER_LOCATION_KEY, invalidId);
             redisTemplate.opsForZSet().remove(DRIVER_LAST_PING_KEY, invalidId);
         }
-
         if (validUuids.isEmpty()) return;
-
         // Batch-fetch all stale driver entities in a single DB call
         List<DeliveryExecutive> drivers = deliveryExecutiveRepository.findAllById(validUuids);
-        Map<UUID, DeliveryExecutive> driverMap = drivers.stream()
-                .collect(Collectors.toMap(DeliveryExecutive::getId, Function.identity()));
-
+        Map<UUID, DeliveryExecutive> driverMap = drivers.stream().collect(Collectors.toMap(DeliveryExecutive::getId, Function.identity()));
         List<DeliveryExecutive> driversToSave = new ArrayList<>();
         List<String> successfullyUpdatedIds = new ArrayList<>();
-
         for (UUID driverId : validUuids) {
             DeliveryExecutive driver = driverMap.get(driverId);
             if (driver != null && driver.getStatus() != DeliveryExecutiveStatus.OFFLINE) {
@@ -104,13 +89,11 @@ public class StaleDriverSweeperDaemon {
                 successfullyUpdatedIds.add(driverId.toString());
             }
         }
-
         // Batch-save all updated entities
         try {
             if (!driversToSave.isEmpty()) {
                 deliveryExecutiveRepository.saveAll(driversToSave);
             }
-
             // Only clean Redis AFTER DB commit succeeds
             for (String driverIdStr : successfullyUpdatedIds) {
                 redisTemplate.opsForGeo().remove(DRIVER_LOCATION_KEY, driverIdStr);
@@ -119,9 +102,13 @@ public class StaleDriverSweeperDaemon {
                 redisTemplate.opsForHash().put("drivers:status", driverIdStr, DeliveryExecutiveStatus.OFFLINE.name());
             }
         } catch (Exception dbEx) {
-            log.error("DUAL_WRITE_PREVENTION: DB batch update failed for {} drivers. " +
-                    "Skipping Redis cleanup. Drivers remain in Redis and will be retried next cycle.", 
-                    driversToSave.size(), dbEx);
+            log.error("DUAL_WRITE_PREVENTION: DB batch update failed for {} drivers. " + "Skipping Redis cleanup. Drivers remain in Redis and will be retried next cycle.", driversToSave.size(), dbEx);
         }
+    }
+
+    @java.lang.SuppressWarnings("all")
+    public StaleDriverSweeperDaemon(final StringRedisTemplate redisTemplate, final IDeliveryExecutiveRepository deliveryExecutiveRepository) {
+        this.redisTemplate = redisTemplate;
+        this.deliveryExecutiveRepository = deliveryExecutiveRepository;
     }
 }

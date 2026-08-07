@@ -2,21 +2,17 @@ package com.fooddelivery.delivery.service.strategy;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fooddelivery.common.constants.EventType;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fooddelivery.delivery.service.LogisticsDispatchService;
-
 import java.util.Arrays;
 import java.util.List;
 
-@Slf4j
 @Component
-@RequiredArgsConstructor
 public class OrderStatusUpdatedStrategy implements DeliveryEventStrategy {
-
+    @java.lang.SuppressWarnings("all")
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OrderStatusUpdatedStrategy.class);
     private final StringRedisTemplate redisTemplate;
     private final LogisticsDispatchService logisticsDispatchService;
     private final ObjectMapper objectMapper;
@@ -25,7 +21,6 @@ public class OrderStatusUpdatedStrategy implements DeliveryEventStrategy {
     public void process(JsonNode root, String eventType) throws Exception {
         String orderId = root.path("orderId").asText(null);
         String status = null;
-
         if (EventType.ORDER_STATUS_UPDATED.name().equals(eventType)) {
             status = root.path("status").asText(null);
         } else if (EventType.ORDER_READY.name().equals(eventType)) {
@@ -35,7 +30,6 @@ public class OrderStatusUpdatedStrategy implements DeliveryEventStrategy {
         } else if (EventType.ORDER_ACCEPTED.name().equals(eventType)) {
             status = com.fooddelivery.common.enums.OrderStatus.ACCEPTED.name();
         }
-
         if (orderId != null && status != null) {
             String currentStatusStr = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_RESTAURANT_STATUS + orderId);
             try {
@@ -50,15 +44,12 @@ public class OrderStatusUpdatedStrategy implements DeliveryEventStrategy {
             } catch (IllegalArgumentException e) {
                 log.warn("Invalid status enum: {}", status);
             }
-
             log.info("Received {} for order {} setting restaurantStatus to {}", eventType, orderId, status);
             redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_RESTAURANT_STATUS + orderId, status, java.time.Duration.ofHours(24));
-            
             // Publish the new status to a Pub/Sub channel for live updates to the rider
             String channel = "restaurant-status:order:" + orderId;
             redisTemplate.convertAndSend(channel, status);
             log.info("Published restaurant status {} to channel {}", status, channel);
-
             if (com.fooddelivery.common.enums.OrderStatus.READY_FOR_PICKUP.name().equals(status)) {
                 // We check if it is in the queue by looking up its score. If it has a score, it's in the queue.
                 Double score = redisTemplate.opsForZSet().score("delayed_dispatch_queue", orderId);
@@ -77,13 +68,10 @@ public class OrderStatusUpdatedStrategy implements DeliveryEventStrategy {
                                 double deliveryLat = payloadRoot.path("deliveryLat").asDouble(0.0);
                                 double deliveryLng = payloadRoot.path("deliveryLng").asDouble(0.0);
                                 String deliveryAddress = payloadRoot.path("deliveryAddress").asText("");
-                                
                                 java.util.Set<String> rejectedDrivers = redisTemplate.opsForSet().members(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderId);
                                 java.util.List<String> excludedDriverIds = rejectedDrivers != null ? new java.util.ArrayList<>(rejectedDrivers) : null;
-                                
                                 logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, java.util.UUID.fromString(orderId), excludedDriverIds);
                             }
-                            
                             // Remove from delayed queue ONLY after successful dispatch
                             redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderId);
                         } catch (Exception e) {
@@ -100,11 +88,13 @@ public class OrderStatusUpdatedStrategy implements DeliveryEventStrategy {
 
     @Override
     public List<String> getEventTypes() {
-        return Arrays.asList(
-            EventType.ORDER_STATUS_UPDATED.name(),
-            EventType.ORDER_READY.name(),
-            EventType.ORDER_PREPARING.name(),
-            EventType.ORDER_ACCEPTED.name()
-        );
+        return Arrays.asList(EventType.ORDER_STATUS_UPDATED.name(), EventType.ORDER_READY.name(), EventType.ORDER_PREPARING.name(), EventType.ORDER_ACCEPTED.name());
+    }
+
+    @java.lang.SuppressWarnings("all")
+    public OrderStatusUpdatedStrategy(final StringRedisTemplate redisTemplate, final LogisticsDispatchService logisticsDispatchService, final ObjectMapper objectMapper) {
+        this.redisTemplate = redisTemplate;
+        this.logisticsDispatchService = logisticsDispatchService;
+        this.objectMapper = objectMapper;
     }
 }

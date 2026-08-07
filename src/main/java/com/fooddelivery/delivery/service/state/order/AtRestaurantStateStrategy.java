@@ -6,16 +6,15 @@ import com.fooddelivery.common.enums.DeliveryStatus;
 import com.fooddelivery.common.outbox.repository.OutboxEventRepository;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
 import com.fooddelivery.delivery.service.LogisticsDispatchService;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
-
 import java.util.UUID;
 
-@Slf4j
 @Component
 public class AtRestaurantStateStrategy extends AbstractDeliveryOrderState {
+    @java.lang.SuppressWarnings("all")
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AtRestaurantStateStrategy.class);
 
     public AtRestaurantStateStrategy(StringRedisTemplate redisTemplate, ObjectMapper objectMapper, TransactionTemplate transactionTemplate, OutboxEventRepository outboxEventRepository, IDeliveryExecutiveRepository repository, LogisticsDispatchService logisticsDispatchService) {
         super(redisTemplate, objectMapper, transactionTemplate, outboxEventRepository, repository, logisticsDispatchService);
