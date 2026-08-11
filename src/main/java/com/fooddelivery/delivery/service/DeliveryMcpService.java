@@ -122,7 +122,7 @@ public class DeliveryMcpService {
     @Tool(description = "Admin: Get available drivers.")
     public String getAvailableDrivers() {
         try {
-            return objectMapper.writeValueAsString(adminDeliveryController.getAvailableDrivers().getBody());
+            return objectMapper.writeValueAsString(adminDeliveryController.getAvailableDrivers(org.springframework.data.domain.PageRequest.of(0, 100)).getBody());
         } catch (Exception e) {
             return "Error: " + e.getMessage();
         }
@@ -140,7 +140,7 @@ public class DeliveryMcpService {
     @Tool(description = "Admin: Get all drivers with location.")
     public String getAllDriversWithLocation() {
         try {
-            return objectMapper.writeValueAsString(adminDeliveryController.getAllDriversWithLocation().getBody());
+            return objectMapper.writeValueAsString(adminDeliveryController.getAllDriversWithLocation(org.springframework.data.domain.PageRequest.of(0, 100)).getBody());
         } catch (Exception e) {
             return "Error: " + e.getMessage();
         }
@@ -168,7 +168,7 @@ public class DeliveryMcpService {
     @Tool(description = "Driver: Get active orders. Provide driverId.")
     public String getDriverActiveOrders(String driverId) {
         try {
-            return objectMapper.writeValueAsString(deliveryOrderController.getActiveOrders(createMockPrincipal(driverId)).getBody());
+            return objectMapper.writeValueAsString(deliveryOrderController.getActiveOrders(createMockPrincipal(driverId), 0, 100).getBody());
         } catch (Exception e) {
             return "Error: " + e.getMessage();
         }
@@ -186,7 +186,7 @@ public class DeliveryMcpService {
     @Tool(description = "Driver: Get order history. Provide driverId and date (optional).")
     public String getDriverOrderHistory(String driverId, String date) {
         try {
-            return objectMapper.writeValueAsString(deliveryOrderController.getOrderHistory(createMockPrincipal(driverId), date).getBody());
+            return objectMapper.writeValueAsString(deliveryOrderController.getOrderHistory(createMockPrincipal(driverId), date, 0, 100).getBody());
         } catch (Exception e) {
             return "Error: " + e.getMessage();
         }

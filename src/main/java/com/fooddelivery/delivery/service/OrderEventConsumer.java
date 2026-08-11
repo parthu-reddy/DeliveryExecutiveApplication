@@ -50,7 +50,7 @@ public class OrderEventConsumer {
         String eventId = com.fooddelivery.common.util.KafkaHeaderUtils.extractHeaderValue(headers, "eventId");
         if (eventId == null) {
             Long offset = (Long) headers.get(org.springframework.kafka.support.KafkaHeaders.OFFSET);
-            Integer partition = (Integer) headers.get(org.springframework.kafka.support.KafkaHeaders.RECEIVED_PARTITION_ID);
+            Integer partition = (Integer) headers.get(org.springframework.kafka.support.KafkaHeaders.RECEIVED_PARTITION);
             String topic = (String) headers.get(org.springframework.kafka.support.KafkaHeaders.RECEIVED_TOPIC);
             if (offset != null && partition != null && topic != null) {
                 eventId = topic + "-" + partition + "-" + offset;
