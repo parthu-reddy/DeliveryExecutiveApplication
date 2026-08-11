@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import java.util.UUID;
 
-@FeignClient(name = "wallet-service", path = "/api/v1/wallets")
+@FeignClient(name = "wallet-service", path = "/api/v1/wallets", fallback = WalletClientFallback.class)
 public interface WalletClient {
 
     @GetMapping("/{entityType}/{entityId}")

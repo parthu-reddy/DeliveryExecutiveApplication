@@ -7,7 +7,8 @@ import com.fooddelivery.common.outbox.config.EnableOutbox;
 
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.fooddelivery", "com.fooddelivery.common"})
+
 @EnableScheduling
 @EnableOutbox
 @EnableFeignClients

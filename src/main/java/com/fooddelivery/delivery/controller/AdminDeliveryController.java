@@ -21,9 +21,10 @@ public class AdminDeliveryController {
     private final OrderAssignmentService orderAssignmentService;
 
     @GetMapping("/drivers/available")
-    @PreAuthorize("hasRole(\'ADMIN\')")
-    public ResponseEntity<List<DeliveryExecutive>> getAvailableDrivers() {
-        List<DeliveryExecutive> availableDrivers = repository.findByStatus(DeliveryExecutiveStatus.ONLINE);
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<org.springframework.data.domain.Page<DeliveryExecutive>> getAvailableDrivers(
+            @org.springframework.data.web.PageableDefault(size = 50) org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<DeliveryExecutive> availableDrivers = repository.findByStatus(DeliveryExecutiveStatus.ONLINE, pageable);
         return ResponseEntity.ok(availableDrivers);
     }
 

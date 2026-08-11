@@ -8,14 +8,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.UUID;
 
-@FeignClient(name = "customer-service", contextId = "customerServiceClient")
+@FeignClient(name = "customer-service", contextId = "customerServiceClient", fallback = CustomerServiceClientFallback.class)
 public interface CustomerServiceClient {
 
     @GetMapping("/api/v1/internal/orders/driver/{driverId}/active")
-    List<JsonNode> getActiveOrdersForDriver(@PathVariable("driverId") UUID driverId);
+    JsonNode getActiveOrdersForDriver(@PathVariable("driverId") UUID driverId, @RequestParam("page") int page, @RequestParam("size") int size);
 
     @GetMapping("/api/v1/internal/orders/driver/{driverId}/history")
-    List<JsonNode> getOrderHistoryForDriver(@PathVariable("driverId") UUID driverId, @RequestParam(value = "date", required = false) String date);
+    JsonNode getOrderHistoryForDriver(@PathVariable("driverId") UUID driverId, @RequestParam(value = "date", required = false) String date, @RequestParam("page") int page, @RequestParam("size") int size);
 
     @GetMapping("/api/v1/internal/orders/unassigned")
     List<JsonNode> getUnassignedOrders();

@@ -16,5 +16,7 @@ public interface IDeliveryExecutiveRepository extends JpaRepository<DeliveryExec
     
     java.util.List<DeliveryExecutive> findByStatus(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus status);
     
+    Page<DeliveryExecutive> findByStatus(DeliveryExecutiveStatus status, Pageable pageable);
+    
     java.util.Optional<DeliveryExecutive> findByPhoneNumber(String phoneNumber);
 }

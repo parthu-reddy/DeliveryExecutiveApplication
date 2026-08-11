@@ -14,7 +14,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.util.UUID;
 
 @Entity
-@Table(name = "delivery_executives")
+@Table(name = "delivery_executives", indexes = {
+    @jakarta.persistence.Index(name = "idx_delivery_exec_location", columnList = "last_known_location")
+})
 public class DeliveryExecutive {
     @java.lang.SuppressWarnings("all")
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DeliveryExecutive.class);

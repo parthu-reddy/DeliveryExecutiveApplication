@@ -19,10 +19,11 @@ public class DeliveryOrderController {
     private final com.fooddelivery.delivery.service.OrderAssignmentService orderAssignmentService;
 
     @GetMapping("/active")
-    public ResponseEntity<List<JsonNode>> getActiveOrders(Principal principal) {
+    public ResponseEntity<JsonNode> getActiveOrders(Principal principal, @RequestParam(value = "page", defaultValue = "0") int page, @RequestParam(value = "size", defaultValue = "20") int size) {
         UUID driverId = UUID.fromString(principal.getName());
-        List<JsonNode> orders = customerServiceClient.getActiveOrdersForDriver(driverId);
-        return ResponseEntity.ok(mapToUiOrders(orders));
+        JsonNode pageNode = customerServiceClient.getActiveOrdersForDriver(driverId, page, size);
+        mapToUiOrdersInPage(pageNode);
+        return ResponseEntity.ok(pageNode);
     }
 
     @GetMapping("/available")
@@ -52,10 +53,11 @@ public class DeliveryOrderController {
     }
 
     @GetMapping("/history")
-    public ResponseEntity<List<JsonNode>> getOrderHistory(Principal principal, @RequestParam(value = "date", required = false) String date) {
+    public ResponseEntity<JsonNode> getOrderHistory(Principal principal, @RequestParam(value = "date", required = false) String date, @RequestParam(value = "page", defaultValue = "0") int page, @RequestParam(value = "size", defaultValue = "20") int size) {
         UUID driverId = UUID.fromString(principal.getName());
-        List<JsonNode> orders = customerServiceClient.getOrderHistoryForDriver(driverId, date);
-        return ResponseEntity.ok(mapToUiOrders(orders));
+        JsonNode pageNode = customerServiceClient.getOrderHistoryForDriver(driverId, date, page, size);
+        mapToUiOrdersInPage(pageNode);
+        return ResponseEntity.ok(pageNode);
     }
 
     private List<JsonNode> mapToUiOrders(List<JsonNode> orders) {
@@ -84,6 +86,14 @@ public class DeliveryOrderController {
             });
         }
         return orders;
+    }
+
+    private void mapToUiOrdersInPage(JsonNode pageNode) {
+        if (pageNode != null && pageNode.has("content") && pageNode.get("content").isArray()) {
+            java.util.List<JsonNode> items = new java.util.ArrayList<>();
+            for (JsonNode n : pageNode.get("content")) { items.add(n); }
+            mapToUiOrders(items);
+        }
     }
 
     @java.lang.SuppressWarnings("all")

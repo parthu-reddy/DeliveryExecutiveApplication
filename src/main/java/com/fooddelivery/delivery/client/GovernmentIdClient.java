@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.UUID;
 
-@FeignClient(name = "government-id-validation-service")
+@FeignClient(name = "government-id-validation-service", fallback = GovernmentIdClientFallback.class)
 public interface GovernmentIdClient {
 
     @GetMapping("/api/v1/verification/status/{executiveId}")
