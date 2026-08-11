@@ -5,6 +5,7 @@ import com.fooddelivery.telemetry.entity.TelemetryLog;
 import com.fooddelivery.telemetry.repository.TelemetryLogRepository;
 import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
+import com.fooddelivery.delivery.service.DeliveryExecutiveProfileService;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -28,6 +29,7 @@ public class TelemetryIngestionService {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(TelemetryIngestionService.class);
     private final TelemetryLogRepository telemetryLogRepository;
     private final IDeliveryExecutiveRepository deliveryExecutiveRepository;
+    private final DeliveryExecutiveProfileService profileService;
     private final StringRedisTemplate redisTemplate;
     private static final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
     private static final double MAX_LOGICAL_VELOCITY_KMH = 120.0; // Impossible speed for city logistics
@@ -49,8 +51,7 @@ public class TelemetryIngestionService {
             log.warn("Account exceeded maximum spoofing strikes. Deactivating Executive ID: {}", executiveId);
             DeliveryExecutive executive = deliveryExecutiveRepository.findById(executiveId).orElse(null);
             if (executive != null) {
-                executive.setActive(false);
-                deliveryExecutiveRepository.save(executive);
+                profileService.deactivateDriver(executiveId);
             } else {
                 log.error("SECURITY: Spoofing alert for non-existent executive ID: {}. " + "Possible forged telemetry payload. Lat: {}, Lng: {}", executiveId, payload.latitude(), payload.longitude());
             }
@@ -168,9 +169,10 @@ public class TelemetryIngestionService {
     }
 
     @java.lang.SuppressWarnings("all")
-    public TelemetryIngestionService(final TelemetryLogRepository telemetryLogRepository, final IDeliveryExecutiveRepository deliveryExecutiveRepository, final StringRedisTemplate redisTemplate) {
+    public TelemetryIngestionService(final TelemetryLogRepository telemetryLogRepository, final IDeliveryExecutiveRepository deliveryExecutiveRepository, final DeliveryExecutiveProfileService profileService, final StringRedisTemplate redisTemplate) {
         this.telemetryLogRepository = telemetryLogRepository;
         this.deliveryExecutiveRepository = deliveryExecutiveRepository;
+        this.profileService = profileService;
         this.redisTemplate = redisTemplate;
     }
 }

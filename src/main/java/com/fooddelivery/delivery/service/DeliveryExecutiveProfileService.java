@@ -128,10 +128,11 @@ public class DeliveryExecutiveProfileService {
     }
 
     @Transactional(readOnly = true)
-    public java.util.List<com.fooddelivery.delivery.dto.DriverLocationDTO> getAllDriversWithLocation() {
-        java.util.List<DeliveryExecutive> allDrivers = repository.findAll();
-        log.debug("getAllDriversWithLocation: found {} drivers", allDrivers.size());
-        return fetchDriverLocations(allDrivers, true);
+    public org.springframework.data.domain.Page<com.fooddelivery.delivery.dto.DriverLocationDTO> getAllDriversWithLocation(org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<DeliveryExecutive> allDrivers = repository.findAll(pageable);
+        log.debug("getAllDriversWithLocation: found {} drivers on page", allDrivers.getNumberOfElements());
+        java.util.List<com.fooddelivery.delivery.dto.DriverLocationDTO> dtoList = fetchDriverLocations(allDrivers.getContent(), true);
+        return new org.springframework.data.domain.PageImpl<>(dtoList, pageable, allDrivers.getTotalElements());
     }
 
     /**
@@ -163,6 +164,29 @@ public class DeliveryExecutiveProfileService {
             log.warn("Failed to batch fetch driver locations from Redis", e);
         }
         return result;
+    }
+
+    @Transactional
+    public void deactivateDriver(UUID driverId) {
+        DeliveryExecutive executive = repository.findById(driverId).orElse(null);
+        if (executive != null) {
+            executive.setActive(false);
+            if (executive.getStatus() == DeliveryExecutiveStatus.ONLINE) {
+                executive.setStatus(DeliveryExecutiveStatus.OFFLINE);
+            }
+            repository.save(executive);
+            
+            // Clean up Redis
+            try {
+                String key = "drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
+                redisTemplate.opsForSet().remove(key, driverId.toString());
+                redisTemplate.opsForZSet().remove("driver_last_ping", driverId.toString());
+                redisTemplate.opsForHash().delete("drivers:status", driverId.toString());
+            } catch (Exception e) {
+                log.error("Failed to clean up Redis for deactivated driver {}", driverId, e);
+            }
+            log.info("Driver {} deactivated and removed from active tracking", driverId);
+        }
     }
 
     @java.lang.SuppressWarnings("all")

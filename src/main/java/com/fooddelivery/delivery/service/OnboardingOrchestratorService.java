@@ -3,6 +3,7 @@ package com.fooddelivery.delivery.service;
 import com.fooddelivery.delivery.client.GovernmentIdClient;
 import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
+import com.fooddelivery.delivery.service.DeliveryExecutiveProfileService;
 import com.fooddelivery.common.enums.VehicleClass;
 import com.fooddelivery.common.enums.VerificationStatus;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ public class OnboardingOrchestratorService {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OnboardingOrchestratorService.class);
     private final IDeliveryExecutiveRepository executiveRepository;
     private final GovernmentIdClient governmentIdClient;
+    private final DeliveryExecutiveProfileService profileService;
 
     @Transactional
     public void evaluateOnboardingStatus(UUID executiveId) {
@@ -36,8 +38,8 @@ public class OnboardingOrchestratorService {
                     if (!isVehicleClassCompatible(vehicleType, summary.dlVehicleClass())) {
                         log.warn("Executive {} vehicle class mismatch! Registered: {}, DL allows: {}", executiveId, vehicleType, summary.dlVehicleClass());
                         executive.setVerificationStatus(VerificationStatus.REJECTED);
-                        executive.setActive(false);
                         executiveRepository.save(executive);
+                        profileService.deactivateDriver(executiveId);
                         return;
                     }
                 }
@@ -49,12 +51,8 @@ public class OnboardingOrchestratorService {
                 if (executive.getVerificationStatus() == VerificationStatus.APPROVED) {
                     log.warn("Executive {} no longer has all docs approved. Suspending account.", executiveId);
                     executive.setVerificationStatus(VerificationStatus.PENDING);
-                    executive.setActive(false);
-                    // Force offline if they are online
-                    if (executive.getStatus() == com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.ONLINE) {
-                        executive.setStatus(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.OFFLINE);
-                    }
                     executiveRepository.save(executive);
+                    profileService.deactivateDriver(executiveId);
                 } else if (summary.lastBiometricVerificationAt() != null) {
                     executiveRepository.save(executive); // Save anyway if biometric updated
                 }
@@ -82,8 +80,9 @@ public class OnboardingOrchestratorService {
     }
 
     @java.lang.SuppressWarnings("all")
-    public OnboardingOrchestratorService(final IDeliveryExecutiveRepository executiveRepository, final GovernmentIdClient governmentIdClient) {
+    public OnboardingOrchestratorService(final IDeliveryExecutiveRepository executiveRepository, final GovernmentIdClient governmentIdClient, final DeliveryExecutiveProfileService profileService) {
         this.executiveRepository = executiveRepository;
         this.governmentIdClient = governmentIdClient;
+        this.profileService = profileService;
     }
 }

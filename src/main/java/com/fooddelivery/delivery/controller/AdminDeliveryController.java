@@ -35,9 +35,10 @@ public class AdminDeliveryController {
     }
 
     @GetMapping("/drivers/all-with-location")
-    @PreAuthorize("hasRole(\'ADMIN\')")
-    public ResponseEntity<List<com.fooddelivery.delivery.dto.DriverLocationDTO>> getAllDriversWithLocation() {
-        return ResponseEntity.ok(profileService.getAllDriversWithLocation());
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<org.springframework.data.domain.Page<com.fooddelivery.delivery.dto.DriverLocationDTO>> getAllDriversWithLocation(
+            @org.springframework.data.web.PageableDefault(size = 50) org.springframework.data.domain.Pageable pageable) {
+        return ResponseEntity.ok(profileService.getAllDriversWithLocation(pageable));
     }
 
     @PostMapping("/orders/{orderId}/assign")
