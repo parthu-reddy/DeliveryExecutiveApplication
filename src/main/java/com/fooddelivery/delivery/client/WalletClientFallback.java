@@ -5,7 +5,7 @@ import com.fooddelivery.delivery.dto.TransactionRequest;
 import org.springframework.stereotype.Component;
 import java.util.UUID;
 
-@Component
+@Component("deliveryexecutiveWalletClientFallback")
 public class WalletClientFallback implements WalletClient {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(WalletClientFallback.class);
 

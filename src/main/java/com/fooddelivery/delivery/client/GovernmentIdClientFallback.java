@@ -4,7 +4,7 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 import java.util.UUID;
 
-@Component
+@Component("deliveryexecutiveGovernmentIdClientFallback")
 public class GovernmentIdClientFallback implements GovernmentIdClient {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GovernmentIdClientFallback.class);
 

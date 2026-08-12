@@ -13,7 +13,7 @@ import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import com.fooddelivery.delivery.enums.DeliveryExecutiveStatus;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
 import com.fooddelivery.delivery.repository.IdempotencyKeyRepository;
-import com.fooddelivery.delivery.entity.IdempotencyKey;
+import com.fooddelivery.common.entity.IdempotencyKey;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Service

@@ -4,7 +4,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.http.ResponseEntity;
 import java.util.Map;
 
-@Component
+@Component("deliveryexecutiveMapsClientFallback")
 public class MapsClientFallback implements MapsClient {
     @Override
     public ResponseEntity<String> setDriverAvailability(Map<String, Object> request) {

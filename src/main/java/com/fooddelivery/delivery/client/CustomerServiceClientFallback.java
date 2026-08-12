@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.UUID;
 import com.fasterxml.jackson.databind.JsonNode;
 
-@Component
+@Component("deliveryexecutiveCustomerServiceClientFallback")
 public class CustomerServiceClientFallback implements CustomerServiceClient {
     @Override
     public JsonNode getActiveOrdersForDriver(UUID driverId, int page, int size) {

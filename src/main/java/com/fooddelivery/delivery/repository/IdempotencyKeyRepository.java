@@ -1,6 +1,6 @@
 package com.fooddelivery.delivery.repository;
 
-import com.fooddelivery.delivery.entity.IdempotencyKey;
+import com.fooddelivery.common.entity.IdempotencyKey;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

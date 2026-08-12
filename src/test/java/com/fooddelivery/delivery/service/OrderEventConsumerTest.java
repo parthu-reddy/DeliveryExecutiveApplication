@@ -18,6 +18,12 @@ class OrderEventConsumerTest {
 
     private ObjectMapper objectMapper;
     private OrderEventConsumer orderEventConsumer;
+    
+    @Mock
+    private com.fooddelivery.delivery.repository.IdempotencyKeyRepository idempotencyKeyRepository;
+    
+    @Mock
+    private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
 
     @Mock
     private DeliveryEventStrategy mockAcceptedStrategy;
@@ -29,7 +35,13 @@ class OrderEventConsumerTest {
         
         when(mockAcceptedStrategy.getEventTypes()).thenReturn(java.util.Collections.singletonList(com.fooddelivery.common.constants.EventType.ORDER_ACCEPTED.name()));
 
-        orderEventConsumer = new OrderEventConsumer(objectMapper, new DeliveryEventStrategy[]{mockAcceptedStrategy});
+        orderEventConsumer = new OrderEventConsumer(
+            objectMapper, 
+            new DeliveryEventStrategy[]{mockAcceptedStrategy},
+            idempotencyKeyRepository,
+            transactionTemplate,
+            new io.micrometer.core.instrument.simple.SimpleMeterRegistry()
+        );
     }
 
     @Test
