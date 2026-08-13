@@ -68,18 +68,26 @@ public class DeliveryOrderController {
                     if (obj.has("deliveryExecutiveId")) {
                         obj.set("riderId", obj.get("deliveryExecutiveId"));
                     }
-                    // Extract dynamic payout from charges where payeeType == DRIVER
-                    if (obj.has("charges") && obj.get("charges").isArray()) {
-                        double totalPayout = 0.0;
-                        for (JsonNode charge : obj.get("charges")) {
-                            if (charge.has("payeeType") && "DRIVER".equals(charge.get("payeeType").asText()) && charge.has("amount")) {
-                                totalPayout += charge.get("amount").asDouble();
-                            }
+                    // Extract dynamic payout from the top-level entity fields (which are now denormalized)
+                    double totalPayout = obj.has("driverGrossPayout") ? obj.get("driverGrossPayout").asDouble() : 0.0;
+                    double driverTaxes = obj.has("driverTaxes") ? obj.get("driverTaxes").asDouble() : 0.0;
+                    double payout = obj.has("driverNetPayout") ? obj.get("driverNetPayout").asDouble() : 0.0;
+                    double customerContribution = obj.has("deliveryFee") ? obj.get("deliveryFee").asDouble() : 0.0;
+                    double restaurantContribution = obj.has("restaurantDeliveryContribution") ? obj.get("restaurantDeliveryContribution").asDouble() : 0.0;
+                    
+                    if (totalPayout > 0) {
+                        obj.put("grossPayout", totalPayout);
+                        obj.put("driverTaxes", driverTaxes);
+                        obj.put("payout", payout);
+                        obj.put("driverCustomerContribution", customerContribution);
+                        obj.put("driverRestaurantContribution", restaurantContribution);
+                        // Optional tip field if it gets added in the future
+                        if (obj.has("driverTip")) {
+                            obj.put("driverTip", obj.get("driverTip").asDouble());
                         }
-                        if (totalPayout > 0) {
-                            obj.put("payout", totalPayout);
-                        }
-                        // SECURITY: Strip full financial ledger — driver should only see their payout
+                    }
+                    // SECURITY: Strip full financial ledger — driver should only see their payout
+                    if (obj.has("charges")) {
                         obj.remove("charges");
                     }
                 }

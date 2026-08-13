@@ -65,6 +65,9 @@ public class RedisLockReaperTask {
                 for (String lockKey : lockKeys) {
                     String driverIdStr = redisTemplate.opsForValue().get(lockKey);
                     if (driverIdStr != null) {
+                        if ("CANCELLED".equals(driverIdStr)) {
+                            continue;
+                        }
                         try {
                             driverIdsToFetch.add(UUID.fromString(driverIdStr));
                             lockKeyToDriverIdStr.put(lockKey, driverIdStr);
