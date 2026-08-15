@@ -8,6 +8,10 @@ spring:
     name: delivery-service
   config:
     import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+
+springdoc:
+  packages-to-scan: com.fooddelivery.delivery,com.fooddelivery.common.dto.governmentid
+
   cloud:
     openfeign:
       client:

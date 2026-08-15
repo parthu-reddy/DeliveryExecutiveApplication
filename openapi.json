@@ -1,1 +1,1650 @@
-{"openapi":"3.0.1","info":{"title":"OpenAPI definition","version":"v0"},"servers":[{"url":"http://localhost:8095","description":"Generated server url"}],"paths":{"/api/v1/internal/delivery/drivers/{driverId}/suspend":{"post":{"tags":["internal-delivery-controller"],"operationId":"suspendDriver","parameters":[{"name":"driverId","in":"path","required":true,"schema":{"type":"string","format":"uuid"}}],"responses":{"200":{"description":"OK"}}}},"/api/v1/internal/admin/delivery/orders/{orderId}/assign":{"post":{"tags":["admin-delivery-controller"],"operationId":"forceAssignOrder","parameters":[{"name":"orderId","in":"path","required":true,"schema":{"type":"string","format":"uuid"}},{"name":"driverId","in":"query","required":true,"schema":{"type":"string","format":"uuid"}}],"responses":{"200":{"description":"OK"}}}},"/api/v1/internal/admin/delivery/drivers/batch":{"post":{"tags":["admin-delivery-controller"],"operationId":"getDriversByIds","requestBody":{"content":{"application/json":{"schema":{"type":"array","items":{"type":"string","format":"uuid"}}}},"required":true},"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"array","items":{"$ref":"#/components/schemas/DeliveryExecutive"}}}}}}}},"/api/v1/delivery/telemetry/sync":{"post":{"tags":["delivery-telemetry-controller"],"operationId":"syncLocation","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/LocationPayload"}}},"required":true},"responses":{"200":{"description":"OK"}}}},"/api/v1/delivery/telemetry/batch":{"post":{"tags":["delivery-telemetry-controller"],"operationId":"processBatchTelemetry","requestBody":{"content":{"application/json":{"schema":{"type":"array","items":{"$ref":"#/components/schemas/TelemetryEventRequest"}}}},"required":true},"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"string"}}}}}}},"/api/delivery/verification/vehicle-rc":{"post":{"tags":["delivery-verification-controller"],"operationId":"verifyVehicleRC","requestBody":{"content":{"application/json":{"schema":{"type":"object","additionalProperties":{"type":"object"}}}},"required":true},"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ApiResponseObject"}}}}}}},"/api/delivery/verification/driving-license":{"post":{"tags":["delivery-verification-controller"],"operationId":"verifyDrivingLicense","requestBody":{"content":{"application/json":{"schema":{"type":"object","additionalProperties":{"type":"object"}}}},"required":true},"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ApiResponseObject"}}}}}}},"/api/delivery/verification/biometric":{"post":{"tags":["delivery-verification-controller"],"operationId":"verifyBiometric","requestBody":{"content":{"application/json":{"schema":{"type":"object","additionalProperties":{"type":"object"}}}},"required":true},"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ApiResponseObject"}}}}}}},"/api/delivery/verification/bank-account":{"post":{"tags":["delivery-verification-controller"],"operationId":"verifyBankAccount","requestBody":{"content":{"application/json":{"schema":{"type":"object","additionalProperties":{"type":"object"}}}},"required":true},"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ApiResponseObject"}}}}}}},"/api/delivery/status":{"post":{"tags":["delivery-executive-controller"],"operationId":"toggleStatus","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ToggleStatusRequest"}}},"required":true},"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ApiResponseVoid"}}}}}}},"/api/delivery/onboard":{"post":{"tags":["delivery-executive-controller"],"operationId":"onboardDriver","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/DeliveryOnboardRequest"}}},"required":true},"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ApiResponseDeliveryExecutive"}}}}}}},"/api/delivery/drivers/{driverId}/orders/{orderId}/status":{"post":{"tags":["delivery-executive-controller"],"operationId":"updateOrderStatus","parameters":[{"name":"driverId","in":"path","required":true,"schema":{"type":"string","format":"uuid"}},{"name":"orderId","in":"path","required":true,"schema":{"type":"string","format":"uuid"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/UpdateOrderStatusRequest"}}},"required":true},"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ApiResponseObject"}}}}}}},"/api/delivery/drivers/{driverId}/orders/{orderId}/reject":{"post":{"tags":["delivery-executive-controller"],"operationId":"rejectOrder","parameters":[{"name":"driverId","in":"path","required":true,"schema":{"type":"string","format":"uuid"}},{"name":"orderId","in":"path","required":true,"schema":{"type":"string","format":"uuid"}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ApiResponseVoid"}}}}}}},"/api/delivery/drivers/{driverId}/orders/{orderId}/accept":{"post":{"tags":["delivery-executive-controller"],"operationId":"acceptOrder","parameters":[{"name":"driverId","in":"path","required":true,"schema":{"type":"string","format":"uuid"}},{"name":"orderId","in":"path","required":true,"schema":{"type":"string","format":"uuid"}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ApiResponseVoid"}}}}}}},"/api/delivery/drivers/{driverId}/orders/{orderId}/abort":{"post":{"tags":["delivery-executive-controller"],"operationId":"abortOrder","parameters":[{"name":"driverId","in":"path","required":true,"schema":{"type":"string","format":"uuid"}},{"name":"orderId","in":"path","required":true,"schema":{"type":"string","format":"uuid"}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ApiResponseVoid"}}}}}}},"/api/v1/logistics/route":{"get":{"tags":["logistics-controller"],"operationId":"getRoute","parameters":[{"name":"sourceLat","in":"query","required":true,"schema":{"type":"number","format":"double"}},{"name":"sourceLng","in":"query","required":true,"schema":{"type":"number","format":"double"}},{"name":"destLat","in":"query","required":true,"schema":{"type":"number","format":"double"}},{"name":"destLng","in":"query","required":true,"schema":{"type":"number","format":"double"}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"object"}}}}}}},"/api/v1/internal/admin/delivery/drivers/{driverId}":{"get":{"tags":["admin-delivery-controller"],"operationId":"getDriverById","parameters":[{"name":"driverId","in":"path","required":true,"schema":{"type":"string","format":"uuid"}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/DeliveryExecutive"}}}}}}},"/api/v1/internal/admin/delivery/drivers/available":{"get":{"tags":["admin-delivery-controller"],"operationId":"getAvailableDrivers","parameters":[{"name":"pageable","in":"query","required":true,"schema":{"$ref":"#/components/schemas/Pageable"}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/PageDeliveryExecutive"}}}}}}},"/api/v1/internal/admin/delivery/drivers/available-with-location":{"get":{"tags":["admin-delivery-controller"],"operationId":"getAvailableDriversWithLocation","parameters":[{"name":"lat","in":"query","required":false,"schema":{"type":"number","format":"double","default":0.0}},{"name":"lng","in":"query","required":false,"schema":{"type":"number","format":"double","default":0.0}},{"name":"radiusKm","in":"query","required":false,"schema":{"type":"number","format":"double","default":50.0}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"array","items":{"$ref":"#/components/schemas/DriverLocationDTO"}}}}}}}},"/api/v1/internal/admin/delivery/drivers/all-with-location":{"get":{"tags":["admin-delivery-controller"],"operationId":"getAllDriversWithLocation","parameters":[{"name":"pageable","in":"query","required":true,"schema":{"$ref":"#/components/schemas/Pageable"}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/PageDriverLocationDTO"}}}}}}},"/api/v1/delivery/orders/history":{"get":{"tags":["delivery-order-controller"],"operationId":"getOrderHistory","parameters":[{"name":"date","in":"query","required":false,"schema":{"type":"string"}},{"name":"page","in":"query","required":false,"schema":{"type":"integer","format":"int32","default":0}},{"name":"size","in":"query","required":false,"schema":{"type":"integer","format":"int32","default":20}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/JsonNode"}}}}}}},"/api/v1/delivery/orders/available":{"get":{"tags":["delivery-order-controller"],"operationId":"getAvailableOrders","responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"type":"array","items":{"$ref":"#/components/schemas/JsonNode"}}}}}}}},"/api/v1/delivery/orders/active":{"get":{"tags":["delivery-order-controller"],"operationId":"getActiveOrders","parameters":[{"name":"page","in":"query","required":false,"schema":{"type":"integer","format":"int32","default":0}},{"name":"size","in":"query","required":false,"schema":{"type":"integer","format":"int32","default":20}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/JsonNode"}}}}}}},"/api/delivery/verification/upload-url":{"get":{"tags":["delivery-verification-controller"],"operationId":"getPresignedUploadUrl","parameters":[{"name":"docType","in":"query","required":true,"schema":{"type":"string"}},{"name":"contentType","in":"query","required":true,"schema":{"type":"string"}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ApiResponseMapStringString"}}}}}}},"/api/delivery/verification/status":{"get":{"tags":["delivery-verification-controller"],"operationId":"getVerificationStatus","responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ApiResponseObject"}}}}}}},"/api/delivery/verification/download-url":{"get":{"tags":["delivery-verification-controller"],"operationId":"getPresignedDownloadUrl","parameters":[{"name":"objectKey","in":"query","required":true,"schema":{"type":"string"}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ApiResponseMapStringString"}}}}}}},"/api/delivery/profile":{"get":{"tags":["delivery-executive-controller"],"operationId":"getProfile","parameters":[{"name":"phoneNumber","in":"query","required":true,"schema":{"type":"string"}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ApiResponseDeliveryExecutive"}}}}}}},"/api/delivery/drivers/{driverId}/pings":{"get":{"tags":["delivery-executive-controller"],"operationId":"getPendingPings","parameters":[{"name":"driverId","in":"path","required":true,"schema":{"type":"string","format":"uuid"}}],"responses":{"200":{"description":"OK","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ApiResponseListMapStringObject"}}}}}}},"/api/delivery/drivers/{driverId}/orders/{orderId}/restaurant-status-stream":{"get":{"tags":["delivery-executive-controller"],"operationId":"streamRestaurantStatus","parameters":[{"name":"driverId","in":"path","required":true,"schema":{"type":"string","format":"uuid"}},{"name":"orderId","in":"path","required":true,"schema":{"type":"string","format":"uuid"}}],"responses":{"200":{"description":"OK","content":{"text/event-stream":{"schema":{"$ref":"#/components/schemas/SseEmitter"}}}}}}}},"components":{"schemas":{"DeliveryExecutive":{"type":"object","properties":{"id":{"type":"string","format":"uuid"},"fullName":{"type":"string"},"phoneNumber":{"type":"string"},"vehicleNumber":{"type":"string"},"photoUrl":{"type":"string"},"email":{"type":"string"},"status":{"type":"string","enum":["OFFLINE","ONLINE","ON_DELIVERY"]},"verificationStatus":{"type":"string","enum":["PENDING","APPROVED","VERIFIED","REJECTED","MANUAL_REVIEW","FAILED"]},"vehicleType":{"type":"string","enum":["BICYCLE","MCWG","LMV","EV_TWO_WHEELER"]},"active":{"type":"boolean"},"lastBiometricVerificationAt":{"type":"string","format":"date-time"},"version":{"type":"integer","format":"int32"},"createdAt":{"type":"string","format":"date-time"},"updatedAt":{"type":"string","format":"date-time"}}},"LocationPayload":{"type":"object","properties":{"latitude":{"type":"number","format":"double"},"longitude":{"type":"number","format":"double"},"speedKmh":{"type":"number","format":"double"},"isMockLocation":{"type":"boolean"},"timestampMs":{"type":"integer","format":"int64"}}},"TelemetryEventRequest":{"required":["driverId","lat","lng"],"type":"object","properties":{"driverId":{"maxLength":36,"minLength":0,"pattern":"^[0-9a-fA-F\\-]{36}$","type":"string"},"lat":{"type":"number","format":"double"},"lng":{"type":"number","format":"double"},"orderId":{"maxLength":36,"minLength":0,"pattern":"^[0-9a-fA-F\\-]{36}$","type":"string"},"speedKmh":{"type":"number","format":"double"},"isMockLocation":{"type":"boolean"},"timestampMs":{"type":"integer","format":"int64"}}},"ApiResponseObject":{"type":"object","properties":{"success":{"type":"boolean"},"message":{"type":"string"},"data":{"type":"object"},"timestamp":{"type":"string","format":"date-time"}}},"ToggleStatusRequest":{"required":["available","driverId"],"type":"object","properties":{"driverId":{"maxLength":36,"minLength":0,"pattern":"^[0-9a-fA-F\\-]{36}$","type":"string"},"available":{"type":"boolean"}}},"ApiResponseVoid":{"type":"object","properties":{"success":{"type":"boolean"},"message":{"type":"string"},"data":{"type":"object"},"timestamp":{"type":"string","format":"date-time"}}},"DeliveryOnboardRequest":{"required":["fullName","phoneNumber","vehicleNumber"],"type":"object","properties":{"fullName":{"maxLength":100,"minLength":0,"type":"string"},"phoneNumber":{"maxLength":20,"minLength":0,"pattern":"^\\+?[1-9]\\d{1,14}$","type":"string"},"vehicleNumber":{"maxLength":50,"minLength":0,"type":"string"},"photoUrl":{"maxLength":255,"minLength":0,"type":"string"},"vehicleType":{"type":"string","enum":["BICYCLE","MCWG","LMV","EV_TWO_WHEELER"]}}},"ApiResponseDeliveryExecutive":{"type":"object","properties":{"success":{"type":"boolean"},"message":{"type":"string"},"data":{"$ref":"#/components/schemas/DeliveryExecutive"},"timestamp":{"type":"string","format":"date-time"}}},"UpdateOrderStatusRequest":{"required":["status"],"type":"object","properties":{"status":{"type":"string","enum":["PENDING","SEARCHING_FOR_DRIVER","MANUAL_INTERVENTION_REQUIRED","ASSIGNED","AT_RESTAURANT","OUT_FOR_DELIVERY","DELIVERED","CANCELLED","FAILED"]},"pickupOtp":{"maxLength":10,"minLength":0,"pattern":"^\\d+$","type":"string"},"deliveryOtp":{"maxLength":10,"minLength":0,"pattern":"^\\d+$","type":"string"},"goOfflineAfter":{"type":"boolean"}}},"Pageable":{"type":"object","properties":{"page":{"minimum":0,"type":"integer","format":"int32"},"size":{"minimum":1,"type":"integer","format":"int32"},"sort":{"type":"array","items":{"type":"string"}}}},"PageDeliveryExecutive":{"type":"object","properties":{"totalElements":{"type":"integer","format":"int64"},"totalPages":{"type":"integer","format":"int32"},"size":{"type":"integer","format":"int32"},"content":{"type":"array","items":{"$ref":"#/components/schemas/DeliveryExecutive"}},"number":{"type":"integer","format":"int32"},"sort":{"type":"array","items":{"$ref":"#/components/schemas/SortObject"}},"first":{"type":"boolean"},"pageable":{"$ref":"#/components/schemas/PageableObject"},"last":{"type":"boolean"},"numberOfElements":{"type":"integer","format":"int32"},"empty":{"type":"boolean"}}},"PageableObject":{"type":"object","properties":{"offset":{"type":"integer","format":"int64"},"sort":{"type":"array","items":{"$ref":"#/components/schemas/SortObject"}},"paged":{"type":"boolean"},"pageNumber":{"type":"integer","format":"int32"},"pageSize":{"type":"integer","format":"int32"},"unpaged":{"type":"boolean"}}},"SortObject":{"type":"object","properties":{"direction":{"type":"string"},"nullHandling":{"type":"string"},"ascending":{"type":"boolean"},"property":{"type":"string"},"ignoreCase":{"type":"boolean"}}},"DriverLocationDTO":{"type":"object","properties":{"id":{"type":"string","format":"uuid"},"fullName":{"type":"string"},"phoneNumber":{"type":"string"},"lat":{"type":"number","format":"double"},"lng":{"type":"number","format":"double"},"status":{"type":"string"}}},"PageDriverLocationDTO":{"type":"object","properties":{"totalElements":{"type":"integer","format":"int64"},"totalPages":{"type":"integer","format":"int32"},"size":{"type":"integer","format":"int32"},"content":{"type":"array","items":{"$ref":"#/components/schemas/DriverLocationDTO"}},"number":{"type":"integer","format":"int32"},"sort":{"type":"array","items":{"$ref":"#/components/schemas/SortObject"}},"first":{"type":"boolean"},"pageable":{"$ref":"#/components/schemas/PageableObject"},"last":{"type":"boolean"},"numberOfElements":{"type":"integer","format":"int32"},"empty":{"type":"boolean"}}},"JsonNode":{"type":"object"},"ApiResponseMapStringString":{"type":"object","properties":{"success":{"type":"boolean"},"message":{"type":"string"},"data":{"type":"object","additionalProperties":{"type":"string"}},"timestamp":{"type":"string","format":"date-time"}}},"ApiResponseListMapStringObject":{"type":"object","properties":{"success":{"type":"boolean"},"message":{"type":"string"},"data":{"type":"array","items":{"type":"object","additionalProperties":{"type":"object"}}},"timestamp":{"type":"string","format":"date-time"}}},"SseEmitter":{"type":"object","properties":{"timeout":{"type":"integer","format":"int64"}}}}}}
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "OpenAPI definition",
+    "version": "v0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8095",
+      "description": "Generated server url"
+    }
+  ],
+  "paths": {
+    "/api/v1/internal/delivery/drivers/{driverId}/suspend": {
+      "post": {
+        "tags": [
+          "internal-delivery-controller"
+        ],
+        "operationId": "suspendDriver",
+        "parameters": [
+          {
+            "name": "driverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/internal/admin/delivery/orders/{orderId}/assign": {
+      "post": {
+        "tags": [
+          "admin-delivery-controller"
+        ],
+        "operationId": "forceAssignOrder",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "driverId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/internal/admin/delivery/drivers/batch": {
+      "post": {
+        "tags": [
+          "admin-delivery-controller"
+        ],
+        "operationId": "getDriversByIds",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeliveryExecutive"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/delivery/telemetry/sync": {
+      "post": {
+        "tags": [
+          "delivery-telemetry-controller"
+        ],
+        "operationId": "syncLocation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/delivery/telemetry/batch": {
+      "post": {
+        "tags": [
+          "delivery-telemetry-controller"
+        ],
+        "operationId": "processBatchTelemetry",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TelemetryEventRequest"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/delivery/verification/vehicle-rc": {
+      "post": {
+        "tags": [
+          "delivery-verification-controller"
+        ],
+        "operationId": "verifyVehicleRC",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RCRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseObject"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/delivery/verification/driving-license": {
+      "post": {
+        "tags": [
+          "delivery-verification-controller"
+        ],
+        "operationId": "verifyDrivingLicense",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DLRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseObject"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/delivery/verification/biometric": {
+      "post": {
+        "tags": [
+          "delivery-verification-controller"
+        ],
+        "operationId": "verifyBiometric",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BiometricRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseObject"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/delivery/verification/bank-account": {
+      "post": {
+        "tags": [
+          "delivery-verification-controller"
+        ],
+        "operationId": "verifyBankAccount",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BankRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseObject"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/delivery/status": {
+      "post": {
+        "tags": [
+          "delivery-executive-controller"
+        ],
+        "operationId": "toggleStatus",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToggleStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/delivery/onboard": {
+      "post": {
+        "tags": [
+          "delivery-executive-controller"
+        ],
+        "operationId": "onboardDriver",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliveryOnboardRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseDeliveryExecutive"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/delivery/drivers/{driverId}/orders/{orderId}/status": {
+      "post": {
+        "tags": [
+          "delivery-executive-controller"
+        ],
+        "operationId": "updateOrderStatus",
+        "parameters": [
+          {
+            "name": "driverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrderStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseObject"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/delivery/drivers/{driverId}/orders/{orderId}/reject": {
+      "post": {
+        "tags": [
+          "delivery-executive-controller"
+        ],
+        "operationId": "rejectOrder",
+        "parameters": [
+          {
+            "name": "driverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/delivery/drivers/{driverId}/orders/{orderId}/accept": {
+      "post": {
+        "tags": [
+          "delivery-executive-controller"
+        ],
+        "operationId": "acceptOrder",
+        "parameters": [
+          {
+            "name": "driverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/delivery/drivers/{driverId}/orders/{orderId}/abort": {
+      "post": {
+        "tags": [
+          "delivery-executive-controller"
+        ],
+        "operationId": "abortOrder",
+        "parameters": [
+          {
+            "name": "driverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/logistics/route": {
+      "get": {
+        "tags": [
+          "logistics-controller"
+        ],
+        "operationId": "getRoute",
+        "parameters": [
+          {
+            "name": "sourceLat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "sourceLng",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "destLat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "destLng",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/admin/delivery/drivers/{driverId}": {
+      "get": {
+        "tags": [
+          "admin-delivery-controller"
+        ],
+        "operationId": "getDriverById",
+        "parameters": [
+          {
+            "name": "driverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryExecutive"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/admin/delivery/drivers/available": {
+      "get": {
+        "tags": [
+          "admin-delivery-controller"
+        ],
+        "operationId": "getAvailableDrivers",
+        "parameters": [
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Pageable"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageDeliveryExecutive"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/admin/delivery/drivers/available-with-location": {
+      "get": {
+        "tags": [
+          "admin-delivery-controller"
+        ],
+        "operationId": "getAvailableDriversWithLocation",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "double",
+              "default": 0.0
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "double",
+              "default": 0.0
+            }
+          },
+          {
+            "name": "radiusKm",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "double",
+              "default": 50.0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DriverLocationDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/admin/delivery/drivers/all-with-location": {
+      "get": {
+        "tags": [
+          "admin-delivery-controller"
+        ],
+        "operationId": "getAllDriversWithLocation",
+        "parameters": [
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Pageable"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageDriverLocationDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/delivery/orders/history": {
+      "get": {
+        "tags": [
+          "delivery-order-controller"
+        ],
+        "operationId": "getOrderHistory",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonNode"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/delivery/orders/available": {
+      "get": {
+        "tags": [
+          "delivery-order-controller"
+        ],
+        "operationId": "getAvailableOrders",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JsonNode"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/delivery/orders/active": {
+      "get": {
+        "tags": [
+          "delivery-order-controller"
+        ],
+        "operationId": "getActiveOrders",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonNode"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/delivery/verification/upload-url": {
+      "get": {
+        "tags": [
+          "delivery-verification-controller"
+        ],
+        "operationId": "getPresignedUploadUrl",
+        "parameters": [
+          {
+            "name": "docType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "contentType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMapStringString"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/delivery/verification/status": {
+      "get": {
+        "tags": [
+          "delivery-verification-controller"
+        ],
+        "operationId": "getVerificationStatus",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseObject"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/delivery/verification/download-url": {
+      "get": {
+        "tags": [
+          "delivery-verification-controller"
+        ],
+        "operationId": "getPresignedDownloadUrl",
+        "parameters": [
+          {
+            "name": "objectKey",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMapStringString"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/delivery/profile": {
+      "get": {
+        "tags": [
+          "delivery-executive-controller"
+        ],
+        "operationId": "getProfile",
+        "parameters": [
+          {
+            "name": "phoneNumber",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseDeliveryExecutive"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/delivery/drivers/{driverId}/pings": {
+      "get": {
+        "tags": [
+          "delivery-executive-controller"
+        ],
+        "operationId": "getPendingPings",
+        "parameters": [
+          {
+            "name": "driverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListMapStringObject"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/delivery/drivers/{driverId}/orders/{orderId}/restaurant-status-stream": {
+      "get": {
+        "tags": [
+          "delivery-executive-controller"
+        ],
+        "operationId": "streamRestaurantStatus",
+        "parameters": [
+          {
+            "name": "driverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/SseEmitter"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DeliveryExecutive": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "phoneNumber": {
+            "type": "string"
+          },
+          "vehicleNumber": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OFFLINE",
+              "ONLINE",
+              "ON_DELIVERY"
+            ]
+          },
+          "verificationStatus": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "VERIFIED",
+              "REJECTED",
+              "MANUAL_REVIEW",
+              "FAILED"
+            ]
+          },
+          "vehicleType": {
+            "type": "string",
+            "enum": [
+              "BICYCLE",
+              "MCWG",
+              "LMV",
+              "EV_TWO_WHEELER"
+            ]
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "lastBiometricVerificationAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LocationPayload": {
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "speedKmh": {
+            "type": "number",
+            "format": "double"
+          },
+          "isMockLocation": {
+            "type": "boolean"
+          },
+          "timestampMs": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "TelemetryEventRequest": {
+        "required": [
+          "driverId",
+          "lat",
+          "lng"
+        ],
+        "type": "object",
+        "properties": {
+          "driverId": {
+            "maxLength": 36,
+            "minLength": 0,
+            "pattern": "^[0-9a-fA-F\\-]{36}$",
+            "type": "string"
+          },
+          "lat": {
+            "type": "number",
+            "format": "double"
+          },
+          "lng": {
+            "type": "number",
+            "format": "double"
+          },
+          "orderId": {
+            "maxLength": 36,
+            "minLength": 0,
+            "pattern": "^[0-9a-fA-F\\-]{36}$",
+            "type": "string"
+          },
+          "speedKmh": {
+            "type": "number",
+            "format": "double"
+          },
+          "isMockLocation": {
+            "type": "boolean"
+          },
+          "timestampMs": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ApiResponseObject": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ToggleStatusRequest": {
+        "required": [
+          "available",
+          "driverId"
+        ],
+        "type": "object",
+        "properties": {
+          "driverId": {
+            "maxLength": 36,
+            "minLength": 0,
+            "pattern": "^[0-9a-fA-F\\-]{36}$",
+            "type": "string"
+          },
+          "available": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseVoid": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DeliveryOnboardRequest": {
+        "required": [
+          "fullName",
+          "phoneNumber",
+          "vehicleNumber"
+        ],
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "maxLength": 100,
+            "minLength": 0,
+            "type": "string"
+          },
+          "phoneNumber": {
+            "maxLength": 20,
+            "minLength": 0,
+            "pattern": "^\\+?[1-9]\\d{1,14}$",
+            "type": "string"
+          },
+          "vehicleNumber": {
+            "maxLength": 50,
+            "minLength": 0,
+            "type": "string"
+          },
+          "photoUrl": {
+            "maxLength": 255,
+            "minLength": 0,
+            "type": "string"
+          },
+          "vehicleType": {
+            "type": "string",
+            "enum": [
+              "BICYCLE",
+              "MCWG",
+              "LMV",
+              "EV_TWO_WHEELER"
+            ]
+          }
+        }
+      },
+      "ApiResponseDeliveryExecutive": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/DeliveryExecutive"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "UpdateOrderStatusRequest": {
+        "required": [
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "SEARCHING_FOR_DRIVER",
+              "MANUAL_INTERVENTION_REQUIRED",
+              "ASSIGNED",
+              "AT_RESTAURANT",
+              "OUT_FOR_DELIVERY",
+              "DELIVERED",
+              "CANCELLED",
+              "FAILED"
+            ]
+          },
+          "pickupOtp": {
+            "maxLength": 10,
+            "minLength": 0,
+            "pattern": "^\\d+$",
+            "type": "string"
+          },
+          "deliveryOtp": {
+            "maxLength": 10,
+            "minLength": 0,
+            "pattern": "^\\d+$",
+            "type": "string"
+          },
+          "goOfflineAfter": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Pageable": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "minimum": 0,
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "PageDeliveryExecutive": {
+        "type": "object",
+        "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeliveryExecutive"
+            }
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SortObject"
+            }
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "empty": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PageableObject": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sort": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SortObject"
+            }
+          },
+          "paged": {
+            "type": "boolean"
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unpaged": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SortObject": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string"
+          },
+          "nullHandling": {
+            "type": "string"
+          },
+          "ascending": {
+            "type": "boolean"
+          },
+          "property": {
+            "type": "string"
+          },
+          "ignoreCase": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DriverLocationDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "phoneNumber": {
+            "type": "string"
+          },
+          "lat": {
+            "type": "number",
+            "format": "double"
+          },
+          "lng": {
+            "type": "number",
+            "format": "double"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "PageDriverLocationDTO": {
+        "type": "object",
+        "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DriverLocationDTO"
+            }
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SortObject"
+            }
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "empty": {
+            "type": "boolean"
+          }
+        }
+      },
+      "JsonNode": {
+        "type": "object"
+      },
+      "ApiResponseMapStringString": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ApiResponseListMapStringObject": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object"
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SseEmitter": {
+        "type": "object",
+        "properties": {
+          "timeout": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "DLRequest": {
+        "type": "object",
+        "properties": {
+          "dlNumber": {
+            "type": "string"
+          },
+          "documentUrl": {
+            "type": "string"
+          },
+          "dob": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "dlNumber",
+          "dob",
+          "documentUrl"
+        ]
+      },
+      "AadharRequest": {
+        "type": "object",
+        "properties": {
+          "aadharNumber": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "aadharNumber"
+        ]
+      },
+      "PanRequest": {
+        "type": "object",
+        "properties": {
+          "panNumber": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "panNumber"
+        ]
+      },
+      "RCRequest": {
+        "type": "object",
+        "properties": {
+          "registrationNumber": {
+            "type": "string"
+          },
+          "documentUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "registrationNumber",
+          "documentUrl"
+        ]
+      },
+      "BankRequest": {
+        "type": "object",
+        "properties": {
+          "accountNumber": {
+            "type": "string"
+          },
+          "ifscCode": {
+            "type": "string"
+          },
+          "kycFullName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "accountNumber",
+          "ifscCode",
+          "kycFullName"
+        ]
+      },
+      "BiometricRequest": {
+        "type": "object",
+        "properties": {
+          "selfieUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "selfieUrl"
+        ]
+      }
+    }
+  }
+}
