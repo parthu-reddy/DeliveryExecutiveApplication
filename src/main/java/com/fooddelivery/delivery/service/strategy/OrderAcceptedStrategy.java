@@ -10,9 +10,10 @@ import java.util.List;
 import java.util.UUID;
 
 @Component
+@lombok.extern.slf4j.Slf4j
 public class OrderAcceptedStrategy implements DeliveryEventStrategy {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OrderAcceptedStrategy.class);
+
     private final LogisticsDispatchService logisticsDispatchService;
     private final StringRedisTemplate redisTemplate;
 

@@ -1,4 +1,9 @@
 spring:
+  kafka:
+    listener:
+      observation-enabled: true
+    template:
+      observation-enabled: true
   application:
     name: delivery-service
   config:
@@ -74,3 +79,13 @@ verification:
       url: "https://api.mock-sarathi.gov.in/dl/verify"
       key: "mock-api-key"
       timeout-seconds: 10
+
+
+management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces

@@ -10,9 +10,10 @@ import java.util.List;
 import java.util.UUID;
 
 @Component
+@lombok.extern.slf4j.Slf4j
 public class CandidateFoundStrategy implements DeliveryEventStrategy {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(CandidateFoundStrategy.class);
+
     private final StringRedisTemplate redisTemplate;
     private final com.fooddelivery.common.service.NotificationRouterService notificationRouterService;
     private final org.springframework.core.env.Environment env;

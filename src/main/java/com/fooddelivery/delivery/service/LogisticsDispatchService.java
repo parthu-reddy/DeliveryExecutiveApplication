@@ -7,15 +7,16 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import java.util.Map;
 import java.util.UUID;
-import com.fooddelivery.delivery.client.MapsClient;
+import com.fooddelivery.common.client.MapsServiceClient;
 
 @Service
+@lombok.extern.slf4j.Slf4j
 public class LogisticsDispatchService {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(LogisticsDispatchService.class);
+
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
-    private final MapsClient mapsClient;
+    private final MapsServiceClient mapsClient;
 
     public void dispatchNearestDriver(double restaurantLat, double restaurantLng, double deliveryLat, double deliveryLng, String deliveryAddress, UUID orderId, java.util.List<String> excludedDriverIds) {
         log.info("Requesting driver dispatch for order {} via MapsIntegration service", orderId);
@@ -43,10 +44,13 @@ public class LogisticsDispatchService {
     public void releaseDriverLock(String driverId) {
         log.info("Requesting driver lock release for driver {} via MapsIntegration service", driverId);
         try {
-            Map<String, Object> request = Map.of("cityId", com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID, "driverId", driverId, "available", true);
+            com.fooddelivery.common.dto.maps.SetAvailabilityRequest request = new com.fooddelivery.common.dto.maps.SetAvailabilityRequest();
+            request.setCityId(com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID);
+            request.setDriverId(driverId);
+            request.setAvailable(true);
             log.info("Sending request to MapsIntegration /api/fleet/release: {}", request);
-            org.springframework.http.ResponseEntity<String> response = mapsClient.releaseDriver(request);
-            log.info("Successfully requested driver lock release for driver {}. Response: {}", driverId, response.getStatusCode());
+            Map<String, Object> response = mapsClient.releaseDriver(request);
+            log.info("Successfully requested driver lock release for driver {}. Response: {}", driverId, response);
         } catch (Exception e) {
             log.error("Failed to release driver lock for driver {} via FeignClient. Error: {}", driverId, e.getMessage(), e);
             throw new RuntimeException("Failed to release driver lock", e);
@@ -54,7 +58,7 @@ public class LogisticsDispatchService {
     }
 
     @java.lang.SuppressWarnings("all")
-    public LogisticsDispatchService(final KafkaTemplate<String, String> kafkaTemplate, final ObjectMapper objectMapper, final MapsClient mapsClient) {
+    public LogisticsDispatchService(final KafkaTemplate<String, String> kafkaTemplate, final ObjectMapper objectMapper, final MapsServiceClient mapsClient) {
         this.kafkaTemplate = kafkaTemplate;
         this.objectMapper = objectMapper;
         this.mapsClient = mapsClient;

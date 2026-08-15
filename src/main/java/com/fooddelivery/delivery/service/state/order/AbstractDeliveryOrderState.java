@@ -16,10 +16,11 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 import java.time.LocalDateTime;
 import java.util.UUID;
+@lombok.extern.slf4j.Slf4j
 
 public abstract class AbstractDeliveryOrderState implements DeliveryOrderStateStrategy {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AbstractDeliveryOrderState.class);
+
     protected final StringRedisTemplate redisTemplate;
     protected final ObjectMapper objectMapper;
     protected final TransactionTemplate transactionTemplate;

@@ -9,9 +9,10 @@ import java.util.Set;
 import java.util.UUID;
 
 @Service
+@lombok.extern.slf4j.Slf4j
 public class DelayedDispatchPoller {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DelayedDispatchPoller.class);
+
     private final StringRedisTemplate redisTemplate;
     private final LogisticsDispatchService logisticsDispatchService;
     private final ObjectMapper objectMapper;

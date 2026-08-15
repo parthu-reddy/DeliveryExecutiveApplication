@@ -17,9 +17,9 @@ import java.time.Duration;
 import java.util.UUID;
 
 @Component
+@lombok.extern.slf4j.Slf4j
 public class DeliveryFailedStateStrategy extends AbstractDeliveryOrderState {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DeliveryFailedStateStrategy.class);
 
     public DeliveryFailedStateStrategy(StringRedisTemplate redisTemplate, ObjectMapper objectMapper, TransactionTemplate transactionTemplate, OutboxEventRepository outboxEventRepository, IDeliveryExecutiveRepository repository, LogisticsDispatchService logisticsDispatchService) {
         super(redisTemplate, objectMapper, transactionTemplate, outboxEventRepository, repository, logisticsDispatchService);

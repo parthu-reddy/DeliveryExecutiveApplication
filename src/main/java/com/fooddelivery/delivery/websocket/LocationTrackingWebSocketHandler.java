@@ -14,9 +14,10 @@ import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
+@lombok.extern.slf4j.Slf4j
 public class LocationTrackingWebSocketHandler extends TextWebSocketHandler {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(LocationTrackingWebSocketHandler.class);
+
     private final ObjectMapper objectMapper;
     private final StringRedisTemplate redisTemplate;
     private final ConcurrentHashMap<String, WebSocketSession> activeSessions = new ConcurrentHashMap<>();

@@ -8,10 +8,14 @@ import com.fooddelivery.common.enums.DeliveryStatus;
 import org.springframework.stereotype.Service;
 import java.util.UUID;
 
+import io.micrometer.observation.annotation.Observed;
+
 @Service
+@lombok.extern.slf4j.Slf4j
+@Observed(name = "delivery.order.execution")
 public class OrderExecutionService {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OrderExecutionService.class);
+
     private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
     private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
     private final OutboxEventRepository outboxEventRepository;

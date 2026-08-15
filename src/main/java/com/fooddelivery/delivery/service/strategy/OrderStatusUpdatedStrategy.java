@@ -10,9 +10,10 @@ import java.util.Arrays;
 import java.util.List;
 
 @Component
+@lombok.extern.slf4j.Slf4j
 public class OrderStatusUpdatedStrategy implements DeliveryEventStrategy {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OrderStatusUpdatedStrategy.class);
+
     private final StringRedisTemplate redisTemplate;
     private final LogisticsDispatchService logisticsDispatchService;
     private final ObjectMapper objectMapper;

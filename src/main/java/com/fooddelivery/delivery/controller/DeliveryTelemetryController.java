@@ -22,9 +22,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 @RestController
 @RequestMapping("/api/v1/delivery/telemetry")
 @PreAuthorize("hasRole(\'DELIVERY\')")
+@lombok.extern.slf4j.Slf4j
 public class DeliveryTelemetryController {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DeliveryTelemetryController.class);
+
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final TelemetryIngestionService telemetryService;

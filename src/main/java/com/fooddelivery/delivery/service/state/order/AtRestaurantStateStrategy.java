@@ -12,9 +12,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.util.UUID;
 
 @Component
+@lombok.extern.slf4j.Slf4j
 public class AtRestaurantStateStrategy extends AbstractDeliveryOrderState {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AtRestaurantStateStrategy.class);
 
     public AtRestaurantStateStrategy(StringRedisTemplate redisTemplate, ObjectMapper objectMapper, TransactionTemplate transactionTemplate, OutboxEventRepository outboxEventRepository, IDeliveryExecutiveRepository repository, LogisticsDispatchService logisticsDispatchService) {
         super(redisTemplate, objectMapper, transactionTemplate, outboxEventRepository, repository, logisticsDispatchService);

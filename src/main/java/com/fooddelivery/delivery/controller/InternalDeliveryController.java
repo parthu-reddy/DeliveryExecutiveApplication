@@ -7,9 +7,10 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/internal/delivery")
+@lombok.extern.slf4j.Slf4j
 public class InternalDeliveryController {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(InternalDeliveryController.class);
+
     private final DeliveryExecutiveProfileService profileService;
 
     @PostMapping("/drivers/{driverId}/suspend")

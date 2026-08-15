@@ -15,9 +15,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Component
+@lombok.extern.slf4j.Slf4j
 public class StaleDriverSweeperDaemon {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(StaleDriverSweeperDaemon.class);
+
     private final StringRedisTemplate redisTemplate;
     private final IDeliveryExecutiveRepository deliveryExecutiveRepository;
     private static final String DRIVER_LOCATION_KEY = "drivers:geo:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;

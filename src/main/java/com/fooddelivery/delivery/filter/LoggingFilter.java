@@ -16,9 +16,10 @@ import com.fooddelivery.common.constants.HeaderConstants;
 
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
+@lombok.extern.slf4j.Slf4j
 public class LoggingFilter extends OncePerRequestFilter {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(LoggingFilter.class);
+
     /**
      * Headers that must NEVER be logged to prevent credential leakage.
      */

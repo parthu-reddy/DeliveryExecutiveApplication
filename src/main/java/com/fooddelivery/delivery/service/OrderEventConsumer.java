@@ -17,9 +17,10 @@ import com.fooddelivery.common.entity.IdempotencyKey;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
+@lombok.extern.slf4j.Slf4j
 public class OrderEventConsumer {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OrderEventConsumer.class);
+
     private final ObjectMapper objectMapper;
     private final com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy[] strategies;
     private final java.util.Map<String, java.util.List<com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy>> strategyMap;

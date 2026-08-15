@@ -6,32 +6,33 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import com.fooddelivery.delivery.client.MapsClient;
+import com.fooddelivery.common.client.MapsServiceClient;
 import java.util.Map;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/v1/logistics")
 @PreAuthorize("hasRole(\'DELIVERY\')")
+@lombok.extern.slf4j.Slf4j
 public class LogisticsController {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(LogisticsController.class);
-    private final MapsClient mapsClient;
+
+    private final MapsServiceClient mapsClient;
 
     @GetMapping("/route")
     public ResponseEntity<?> getRoute(@RequestParam double sourceLat, @RequestParam double sourceLng, @RequestParam double destLat, @RequestParam double destLng) {
         try {
             String origin = sourceLat + "," + sourceLng;
             String destination = destLat + "," + destLng;
-            ResponseEntity<Map> response = mapsClient.getRoute(origin, destination);
-            return ResponseEntity.status(response.getStatusCode()).body(response.getBody());
+            Map<String, Object> response = mapsClient.getRoute(origin, destination);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(ApiResponse.error("Failed to calculate route: " + e.getMessage()));
         }
     }
 
     @java.lang.SuppressWarnings("all")
-    public LogisticsController(final MapsClient mapsClient) {
+    public LogisticsController(final MapsServiceClient mapsClient) {
         this.mapsClient = mapsClient;
     }
 }

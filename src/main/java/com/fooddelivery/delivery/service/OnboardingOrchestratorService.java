@@ -1,6 +1,6 @@
 package com.fooddelivery.delivery.service;
 
-import com.fooddelivery.delivery.client.GovernmentIdClient;
+import com.fooddelivery.common.client.GovernmentIdServiceClient;
 import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
 import com.fooddelivery.delivery.service.DeliveryExecutiveProfileService;
@@ -11,11 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 
 @Service
+@lombok.extern.slf4j.Slf4j
 public class OnboardingOrchestratorService {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OnboardingOrchestratorService.class);
+
     private final IDeliveryExecutiveRepository executiveRepository;
-    private final GovernmentIdClient governmentIdClient;
+    private final GovernmentIdServiceClient governmentIdClient;
     private final DeliveryExecutiveProfileService profileService;
 
     @Transactional
@@ -24,7 +25,7 @@ public class OnboardingOrchestratorService {
     }
 
     @Transactional
-    public void evaluateOnboardingStatus(UUID executiveId, GovernmentIdClient.VerificationSummary preloadedSummary) {
+    public void evaluateOnboardingStatus(UUID executiveId, GovernmentIdServiceClient.VerificationSummary preloadedSummary) {
         DeliveryExecutive executive = executiveRepository.findById(executiveId).orElseThrow(() -> new IllegalArgumentException("Executive not found"));
         try {
             var summary = preloadedSummary != null ? preloadedSummary : governmentIdClient.getVerificationSummary(executiveId);
@@ -80,7 +81,7 @@ public class OnboardingOrchestratorService {
     }
 
     @java.lang.SuppressWarnings("all")
-    public OnboardingOrchestratorService(final IDeliveryExecutiveRepository executiveRepository, final GovernmentIdClient governmentIdClient, final DeliveryExecutiveProfileService profileService) {
+    public OnboardingOrchestratorService(final IDeliveryExecutiveRepository executiveRepository, final GovernmentIdServiceClient governmentIdClient, final DeliveryExecutiveProfileService profileService) {
         this.executiveRepository = executiveRepository;
         this.governmentIdClient = governmentIdClient;
         this.profileService = profileService;

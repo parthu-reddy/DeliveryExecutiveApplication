@@ -16,9 +16,10 @@ import java.util.HashMap;
 import com.fooddelivery.common.enums.OrderStatus;
 
 @Service
+@lombok.extern.slf4j.Slf4j
 public class DeliveryMcpService {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DeliveryMcpService.class);
+
     private final DeliveryExecutiveController deliveryController;
     private final DeliveryTelemetryController telemetryController;
     private final LogisticsController logisticsController;

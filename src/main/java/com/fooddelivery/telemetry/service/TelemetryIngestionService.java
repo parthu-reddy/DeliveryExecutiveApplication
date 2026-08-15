@@ -24,9 +24,10 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import java.util.concurrent.TimeUnit;
 
 @Service
+@lombok.extern.slf4j.Slf4j
 public class TelemetryIngestionService {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(TelemetryIngestionService.class);
+
     private final TelemetryLogRepository telemetryLogRepository;
     private final IDeliveryExecutiveRepository deliveryExecutiveRepository;
     private final DeliveryExecutiveProfileService profileService;

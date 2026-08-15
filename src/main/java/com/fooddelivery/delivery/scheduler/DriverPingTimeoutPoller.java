@@ -8,9 +8,10 @@ import java.util.Set;
 import java.util.UUID;
 
 @Component
+@lombok.extern.slf4j.Slf4j
 public class DriverPingTimeoutPoller {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DriverPingTimeoutPoller.class);
+
     private final StringRedisTemplate redisTemplate;
     private final OrderAssignmentService orderAssignmentService;
 

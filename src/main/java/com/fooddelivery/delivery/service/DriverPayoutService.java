@@ -1,19 +1,20 @@
 package com.fooddelivery.delivery.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fooddelivery.delivery.client.WalletClient;
-import com.fooddelivery.delivery.dto.WalletDto;
+import com.fooddelivery.common.client.WalletServiceClient;
+import com.fooddelivery.common.dto.wallet.WalletDto;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.UUID;
 
 @Service
+@lombok.extern.slf4j.Slf4j
 public class DriverPayoutService {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DriverPayoutService.class);
-    private final WalletClient walletClient;
 
-    public DriverPayoutService(WalletClient walletClient) {
+    private final WalletServiceClient walletClient;
+
+    public DriverPayoutService(WalletServiceClient walletClient) {
         this.walletClient = walletClient;
     }
 

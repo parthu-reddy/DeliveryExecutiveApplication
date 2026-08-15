@@ -25,7 +25,7 @@ class LogisticsDispatchServiceTest {
     private KafkaTemplate<String, String> kafkaTemplate;
     
     @Mock
-    private com.fooddelivery.delivery.client.MapsClient mapsClient;
+    private com.fooddelivery.common.client.MapsServiceClient mapsClient;
 
     private ObjectMapper objectMapper = new ObjectMapper();
 

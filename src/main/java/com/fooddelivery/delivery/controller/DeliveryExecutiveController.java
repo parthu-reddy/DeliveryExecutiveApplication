@@ -22,9 +22,10 @@ import jakarta.validation.constraints.Size;
 @RestController
 @RequestMapping("/api/delivery")
 @PreAuthorize("hasRole(\'DELIVERY\')")
+@lombok.extern.slf4j.Slf4j
 public class DeliveryExecutiveController {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DeliveryExecutiveController.class);
+
     private final DeliveryExecutiveProfileService profileService;
     private final OrderAssignmentService orderAssignmentService;
     private final OrderExecutionService orderExecutionService;

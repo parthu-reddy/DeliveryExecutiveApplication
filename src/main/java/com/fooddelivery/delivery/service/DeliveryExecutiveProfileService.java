@@ -9,9 +9,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 
 @Service
+@lombok.extern.slf4j.Slf4j
 public class DeliveryExecutiveProfileService {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DeliveryExecutiveProfileService.class);
+
     private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
     private final IDeliveryExecutiveRepository repository;
     private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;

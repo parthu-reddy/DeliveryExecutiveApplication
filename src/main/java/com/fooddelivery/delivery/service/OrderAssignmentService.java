@@ -14,9 +14,10 @@ import com.fooddelivery.delivery.enums.AssignmentResult;
 import java.util.UUID;
 
 @Service
+@lombok.extern.slf4j.Slf4j
 public class OrderAssignmentService {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OrderAssignmentService.class);
+
     private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
     private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
     private final OutboxEventRepository outboxEventRepository;

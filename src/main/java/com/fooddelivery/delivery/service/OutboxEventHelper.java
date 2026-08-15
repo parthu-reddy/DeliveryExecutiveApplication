@@ -16,9 +16,10 @@ import java.util.UUID;
  * Eliminates the 5 identical copy-pasted blocks in DeliveryService.
  */
 @Component
+@lombok.extern.slf4j.Slf4j
 public class OutboxEventHelper {
     @java.lang.SuppressWarnings("all")
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OutboxEventHelper.class);
+
     private final ObjectMapper objectMapper;
 
     /**
