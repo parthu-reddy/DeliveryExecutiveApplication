@@ -41,6 +41,11 @@ public class DeliveryExecutiveProfileService {
         return repository.findByPhoneNumber(phoneNumber);
     }
 
+    @Transactional(readOnly = true)
+    public java.util.Optional<DeliveryExecutive> findById(UUID id) {
+        return repository.findById(id);
+    }
+
     public DeliveryExecutive toggleStatus(UUID driverId, boolean isOnline) {
         // Enforce Biometric freshness check BEFORE starting transaction if possible, 
         // but we need to fetch the executive first. We will do it inside.

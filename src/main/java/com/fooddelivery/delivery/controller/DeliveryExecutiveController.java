@@ -348,8 +348,9 @@ public class DeliveryExecutiveController {
     }
 
     @GetMapping("/profile")
-    public ResponseEntity<ApiResponse<com.fooddelivery.delivery.entity.DeliveryExecutive>> getProfile(@RequestParam("phoneNumber") String phoneNumber) {
-        return profileService.findByPhoneNumber(phoneNumber).map(executive -> ResponseEntity.ok(ApiResponse.success(executive, "Profile fetched successfully"))).orElseGet(() -> ResponseEntity.status(404).body(ApiResponse.<com.fooddelivery.delivery.entity.DeliveryExecutive>builder().success(false).message("Profile not found").build()));
+    public ResponseEntity<ApiResponse<com.fooddelivery.delivery.entity.DeliveryExecutive>> getProfile(java.security.Principal principal) {
+        UUID driverId = UUID.fromString(principal.getName());
+        return profileService.findById(driverId).map(executive -> ResponseEntity.ok(ApiResponse.success(executive, "Profile fetched successfully"))).orElseGet(() -> ResponseEntity.status(404).body(ApiResponse.<com.fooddelivery.delivery.entity.DeliveryExecutive>builder().success(false).message("Profile not found").build()));
     }
 
     @GetMapping("/drivers/{driverId}/pings")
