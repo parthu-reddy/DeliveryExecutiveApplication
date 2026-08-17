@@ -12,7 +12,7 @@ import java.util.UUID;
 import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import com.fooddelivery.delivery.enums.DeliveryExecutiveStatus;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
-import com.fooddelivery.delivery.repository.IdempotencyKeyRepository;
+import com.fooddelivery.common.repository.IIdempotencyKeyRepository;
 import com.fooddelivery.common.entity.IdempotencyKey;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -24,11 +24,11 @@ public class OrderEventConsumer {
     private final ObjectMapper objectMapper;
     private final com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy[] strategies;
     private final java.util.Map<String, java.util.List<com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy>> strategyMap;
-    private final IdempotencyKeyRepository idempotencyKeyRepository;
+    private final IIdempotencyKeyRepository idempotencyKeyRepository;
     private final TransactionTemplate transactionTemplate;
     private final MeterRegistry meterRegistry;
 
-    public OrderEventConsumer(ObjectMapper objectMapper, com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy[] strategies, IdempotencyKeyRepository idempotencyKeyRepository, TransactionTemplate transactionTemplate, MeterRegistry meterRegistry) {
+    public OrderEventConsumer(ObjectMapper objectMapper, com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy[] strategies, IIdempotencyKeyRepository idempotencyKeyRepository, TransactionTemplate transactionTemplate, MeterRegistry meterRegistry) {
         this.objectMapper = objectMapper;
         this.strategies = strategies;
         this.idempotencyKeyRepository = idempotencyKeyRepository;

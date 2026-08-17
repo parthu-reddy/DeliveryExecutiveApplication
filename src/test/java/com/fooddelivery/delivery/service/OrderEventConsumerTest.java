@@ -20,7 +20,7 @@ class OrderEventConsumerTest {
     private OrderEventConsumer orderEventConsumer;
     
     @Mock
-    private com.fooddelivery.delivery.repository.IdempotencyKeyRepository idempotencyKeyRepository;
+    private com.fooddelivery.common.repository.IIdempotencyKeyRepository idempotencyKeyRepository;
     
     @Mock
     private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
@@ -42,6 +42,13 @@ class OrderEventConsumerTest {
             transactionTemplate,
             new io.micrometer.core.instrument.simple.SimpleMeterRegistry()
         );
+        
+        lenient().doAnswer(invocation -> {
+            org.springframework.transaction.support.TransactionCallback<Object> action = invocation.getArgument(0);
+            return action.doInTransaction(null);
+        }).when(transactionTemplate).execute(any(org.springframework.transaction.support.TransactionCallback.class));
+        
+        lenient().when(idempotencyKeyRepository.existsById(anyString())).thenReturn(false);
     }
 
     @Test
