@@ -26,9 +26,9 @@ public class DeliveryExecutive {
     private UUID id;
     @Column(name = "full_name")
     private String fullName;
-    @Column(name = "phone_number")
+    @Column(name = "phone_number", unique = true)
     private String phoneNumber;
-    @Column(name = "vehicle_number")
+    @Column(name = "vehicle_number", unique = true)
     private String vehicleNumber;
     @Column(name = "photo_url")
     private String photoUrl;

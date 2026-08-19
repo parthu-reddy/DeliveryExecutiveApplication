@@ -14,6 +14,7 @@ import org.springframework.data.geo.Point;
 import org.springframework.data.redis.core.GeoOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.ResponseEntity;
 
 import java.security.Principal;
@@ -43,6 +44,9 @@ class DeliveryTelemetryControllerTest {
     private ZSetOperations<String, String> zSetOperations;
 
     @Mock
+    private ValueOperations<String, String> valueOperations;
+
+    @Mock
     private Principal principal;
 
     @InjectMocks
@@ -64,7 +68,6 @@ class DeliveryTelemetryControllerTest {
         when(principal.getName()).thenReturn(driverId);
         when(redisTemplate.opsForGeo()).thenReturn(geoOperations);
         when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-
         TelemetryEventRequest event = new TelemetryEventRequest();
         event.setDriverId(driverId);
         event.setLat(12.9716);
@@ -120,6 +123,7 @@ class DeliveryTelemetryControllerTest {
         when(principal.getName()).thenReturn(driverId);
         when(redisTemplate.opsForGeo()).thenReturn(geoOperations);
         when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(telemetryService.ingestTelemetry(eq(driverUuid), any())).thenReturn(true);
 
         LocationPayload payload = new LocationPayload(12.9716, 77.5946, 30.0, false, System.currentTimeMillis());

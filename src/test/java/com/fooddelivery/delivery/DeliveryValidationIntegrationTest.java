@@ -14,13 +14,20 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@ActiveProfiles("test")
+@ActiveProfiles("contract-test")
 public class DeliveryValidationIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private IDeliveryExecutiveRepository deliveryExecutiveRepository;
 
-    @Test
+    
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate;
+
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private org.springframework.data.redis.listener.RedisMessageListenerContainer redisMessageListenerContainer;
+
+@Test
     void shouldThrowExceptionWhenDuplicateVehicleNumberIsSaved() {
         String duplicateVehicle = "AP09CC1234";
         
@@ -31,7 +38,7 @@ public class DeliveryValidationIntegrationTest extends BaseIntegrationTest {
         exec1.setPhotoUrl("http://example.com/photo1.jpg");
         exec1.setStatus(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.ONLINE);
         
-        deliveryExecutiveRepository.save(exec1);
+        deliveryExecutiveRepository.saveAndFlush(exec1);
 
         // Try to create second delivery executive with same vehicle number
         DeliveryExecutive exec2 = new DeliveryExecutive();
@@ -42,7 +49,7 @@ public class DeliveryValidationIntegrationTest extends BaseIntegrationTest {
         exec2.setStatus(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.ONLINE);
 
         // Expect DataIntegrityViolationException due to unique constraint
-        assertThatThrownBy(() -> deliveryExecutiveRepository.save(exec2))
+        assertThatThrownBy(() -> deliveryExecutiveRepository.saveAndFlush(exec2))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 }

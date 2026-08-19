@@ -98,7 +98,7 @@ public class OrderEventConsumer {
     @DltHandler
     public void handleDltMessage(String message, @org.springframework.messaging.handler.annotation.Headers java.util.Map<String, Object> headers) {
         log.error("Dead Letter Topic: Failed to process order event after retries. Message: {}", message);
-        meterRegistry.counter("kafka.dlt.messages", "service", "delivery-service").increment();
+        meterRegistry.counter("kafka.dlt.messages", "service", "delivery-executive-application").increment();
         // Implementation for poison pill storage/alerting goes here
     }
 }

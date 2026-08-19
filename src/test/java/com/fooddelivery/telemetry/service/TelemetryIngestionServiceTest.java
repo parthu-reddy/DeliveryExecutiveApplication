@@ -15,6 +15,8 @@ import org.locationtech.jts.geom.PrecisionModel;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -36,6 +38,15 @@ class TelemetryIngestionServiceTest {
     @Mock
     private IDeliveryExecutiveRepository deliveryExecutiveRepository;
 
+    @Mock
+    private com.fooddelivery.delivery.service.DeliveryExecutiveProfileService profileService;
+
+    @Mock
+    private StringRedisTemplate redisTemplate;
+
+    @Mock
+    private ValueOperations<String, String> valueOperations;
+
     @InjectMocks
     private TelemetryIngestionService telemetryIngestionService;
 
@@ -46,6 +57,8 @@ class TelemetryIngestionServiceTest {
     void setUp() {
         geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
         executiveId = UUID.randomUUID();
+        lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+
     }
 
     @Test
@@ -99,11 +112,11 @@ class TelemetryIngestionServiceTest {
         executive.setActive(true);
 
         when(deliveryExecutiveRepository.findById(executiveId)).thenReturn(Optional.of(executive));
+        when(valueOperations.increment(anyString())).thenReturn(4L);
 
         LocationPayload payload = new LocationPayload(12.9716, 77.5946, 0.0, true, System.currentTimeMillis());
         telemetryIngestionService.flagAccountForSpoofing(executiveId, payload);
 
-        assertFalse(executive.isActive());
-        verify(deliveryExecutiveRepository, times(1)).save(executive);
+        verify(profileService, times(1)).deactivateDriver(executiveId);
     }
 }
