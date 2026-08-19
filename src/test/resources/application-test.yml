@@ -1,8 +1,5 @@
 spring:
   main:
     allow-bean-definition-overriding: true
-
-
 stubrunner:
-  stubsMode: REMOTE
-  repositoryRoot: git://file:///Users/parthureddy/Documents/Food%20Delivery.nosync/FoodDeliveryContracts/.git
+  stubsMode: LOCAL
