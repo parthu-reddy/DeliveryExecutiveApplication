@@ -3,6 +3,7 @@ package com.fooddelivery.contract;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
@@ -16,13 +17,18 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
 @ActiveProfiles("contract-test")
-@SpringBootTest(classes = DeliveryExecutiveContractConsumerTest.TestConfig.class, webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@SpringBootTest(classes = DeliveryExecutiveContractConsumerTest.TestConfig.class, webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {
+    "stubrunner.idsToServiceIds.food-delivery-backend=customer-application"
+})
 @AutoConfigureStubRunner(ids = { "com.fooddelivery:food-delivery-backend:+:stubs:8090" }, stubsMode = StubRunnerProperties.StubsMode.LOCAL)
 public class DeliveryExecutiveContractConsumerTest {
 
 
     @Autowired
     private com.fooddelivery.delivery.client.CustomerServiceClient customerServiceClient;
+
+    @MockBean
+    private com.fooddelivery.delivery.client.CustomerServiceClientFallback customerServiceClientFallback;
 
 
     @Configuration
@@ -36,7 +42,34 @@ public class DeliveryExecutiveContractConsumerTest {
     }
 
     @Test
-    public void contextLoads() {
-        assertNotNull(customerServiceClient);
+    public void testGetActiveOrdersForDriver() {
+        com.fasterxml.jackson.databind.JsonNode response = customerServiceClient.getActiveOrdersForDriver(
+                java.util.UUID.fromString("123e4567-e89b-12d3-a456-426614174000"), 0, 10);
+
+        assertNotNull(response);
+        assertNotNull(response.get("content"));
+        assertEquals(1, response.get("content").size());
+        assertEquals("OUT_FOR_DELIVERY", response.get("content").get(0).get("status").asText());
+        assertEquals(1, response.get("totalElements").asInt());
+    }
+
+    @Test
+    public void testGetOrderHistoryForDriver() {
+        com.fasterxml.jackson.databind.JsonNode response = customerServiceClient.getOrderHistoryForDriver(
+                java.util.UUID.fromString("123e4567-e89b-12d3-a456-426614174000"), "2023-01-01", 0, 10);
+
+        assertNotNull(response);
+        assertNotNull(response.get("content"));
+        assertEquals(1, response.get("content").size());
+        assertEquals("DELIVERED", response.get("content").get(0).get("status").asText());
+    }
+
+    @Test
+    public void testGetUnassignedOrders() {
+        java.util.List<com.fasterxml.jackson.databind.JsonNode> response = customerServiceClient.getUnassignedOrders();
+
+        assertNotNull(response);
+        assertEquals(1, response.size());
+        assertEquals("PREPARING", response.get(0).get("status").asText());
     }
 }

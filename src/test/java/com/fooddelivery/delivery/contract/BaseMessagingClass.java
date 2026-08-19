@@ -18,8 +18,10 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.context.annotation.Bean;
+import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest(classes = BaseMessagingClass.TestConfig.class, webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@org.springframework.test.context.ActiveProfiles("contract-test")
 @AutoConfigureMessageVerifier
 @EmbeddedKafka(partitions = 1, topics = {"platform.logistics.dispatch"})
 public abstract class BaseMessagingClass {
@@ -28,8 +30,14 @@ public abstract class BaseMessagingClass {
     private StringRedisTemplate redisTemplate;
 
 
-    @org.springframework.boot.test.context.TestConfiguration
-    
+    @org.springframework.boot.SpringBootConfiguration
+    @org.springframework.boot.autoconfigure.EnableAutoConfiguration(exclude = {
+            org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration.class,
+            org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration.class,
+            org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration.class,
+            org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration.class,
+            org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration.class
+    })
     static class TestConfig {
         @Bean
         public KafkaMessageVerifier kafkaMessageVerifier() {
@@ -45,17 +53,36 @@ public abstract class BaseMessagingClass {
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
 
-    public void fireLogisticsDispatch() {
+    /** Mirrors LogisticsDispatchService.dispatchNearestDriver's request map and key. */
+    public void fireLogisticsDispatch() throws Exception {
+        java.util.UUID orderId = java.util.UUID.fromString("3f2504e0-4f89-41d3-9a0c-0305e82c3301");
+        java.util.Map<String, Object> dispatchRequest = new java.util.HashMap<>();
+        dispatchRequest.put("orderId", orderId.toString());
+        dispatchRequest.put("restaurantLat", 12.971598);
+        dispatchRequest.put("restaurantLng", 77.594562);
+        dispatchRequest.put("deliveryLat", 12.935242);
+        dispatchRequest.put("deliveryLng", 77.624400);
+        dispatchRequest.put("deliveryAddress", "221B Baker Street, Bangalore");
+        kafkaTemplate.send(com.fooddelivery.common.constants.KafkaConstants.TOPIC_LOGISTICS_DISPATCH,
+                orderId.toString(),
+                new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(dispatchRequest));
+    }
+
+    @Autowired
+    private KafkaMessageVerifier messageVerifier;
+
+    public void fireTelemetryEvent() {
         String payload = """
 {
-  "eventId": "log-444",
-  "type": "DISPATCH_ASSIGNED",
-  "payload": {
-    "orderId": 1001,
-    "executiveId": "exec-777"
-  }
+  "driverId": "4f4a4e37-6ca5-5598-94f1-43ef1628f631",
+  "lat": 12.971598,
+  "lng": 77.594562,
+  "orderId": "7a1d5e90-3c22-4b6f-8a11-9d4c2e77b501",
+  "speedKmh": 18.5,
+  "isMockLocation": false,
+  "timestampMs": 1699999999999
 }""";
-        kafkaTemplate.send("platform.logistics.dispatch", payload);
+        messageVerifier.publishDirect("tracking:order:7a1d5e90-3c22-4b6f-8a11-9d4c2e77b501", payload);
     }
 
 }
