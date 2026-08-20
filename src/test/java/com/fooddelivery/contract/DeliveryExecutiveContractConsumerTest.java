@@ -49,7 +49,8 @@ public class DeliveryExecutiveContractConsumerTest {
         assertNotNull(response);
         assertNotNull(response.get("content"));
         assertEquals(1, response.get("content").size());
-        assertEquals("OUT_FOR_DELIVERY", response.get("content").get(0).get("status").asText());
+        // OUT_FOR_DELIVERY is a DeliveryStatus, not an OrderStatus; Order carries both fields.
+        assertEquals("OUT_FOR_DELIVERY", response.get("content").get(0).get("deliveryStatus").asText());
         assertEquals(1, response.get("totalElements").asInt());
     }
 
@@ -61,7 +62,8 @@ public class DeliveryExecutiveContractConsumerTest {
         assertNotNull(response);
         assertNotNull(response.get("content"));
         assertEquals(1, response.get("content").size());
-        assertEquals("DELIVERED", response.get("content").get(0).get("status").asText());
+        // DELIVERED is a DeliveryStatus, not an OrderStatus.
+        assertEquals("DELIVERED", response.get("content").get(0).get("deliveryStatus").asText());
     }
 
     @Test

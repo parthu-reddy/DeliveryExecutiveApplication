@@ -20,7 +20,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootTest(classes = BaseMessagingClass.TestConfig.class, webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@SpringBootTest(classes = BaseMessagingClass.TestConfig.class, webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {"spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration,org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration"})
 @org.springframework.test.context.ActiveProfiles("contract-test")
 @AutoConfigureMessageVerifier
 @EmbeddedKafka(partitions = 1, topics = {"platform.logistics.dispatch"})
@@ -31,13 +31,7 @@ public abstract class BaseMessagingClass {
 
 
     @org.springframework.boot.SpringBootConfiguration
-    @org.springframework.boot.autoconfigure.EnableAutoConfiguration(exclude = {
-            org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration.class,
-            org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration.class,
-            org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration.class,
-            org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration.class,
-            org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration.class
-    })
+    @org.springframework.boot.autoconfigure.EnableAutoConfiguration
     static class TestConfig {
         @Bean
         public KafkaMessageVerifier kafkaMessageVerifier() {

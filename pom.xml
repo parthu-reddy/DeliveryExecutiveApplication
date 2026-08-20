@@ -3,9 +3,10 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.0</version>
+        <groupId>com.fooddelivery</groupId>
+        <artifactId>food-delivery-parent</artifactId>
+        <version>1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
 
     <groupId>com.fooddelivery</groupId>
@@ -26,7 +27,6 @@
         <dependency> 
             <groupId>com.fooddelivery</groupId> 
             <artifactId>common-library</artifactId> 
-            <version>1.0-SNAPSHOT</version> 
         </dependency>
         
         <dependency>
@@ -67,12 +67,10 @@
         <dependency>
             <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-spatial</artifactId>
-            <version>6.5.2.Final</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-text</artifactId>
-            <version>1.10.0</version>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
@@ -96,12 +94,10 @@
         <dependency>
             <groupId>com.bucket4j</groupId>
             <artifactId>bucket4j-core</artifactId>
-            <version>8.10.1</version>
         </dependency>
         <dependency>
             <groupId>com.bucket4j</groupId>
             <artifactId>bucket4j-redis</artifactId>
-            <version>8.10.1</version>
         </dependency>
 
         
@@ -112,7 +108,6 @@
         <dependency>
             <groupId>io.github.resilience4j</groupId>
             <artifactId>resilience4j-spring-boot3</artifactId>
-            <version>2.2.0</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -147,7 +142,6 @@
         <dependency>
             <groupId>com.redis</groupId>
             <artifactId>testcontainers-redis</artifactId>
-            <version>2.2.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -156,13 +150,6 @@
             <scope>test</scope>
         </dependency>
         
-        <dependency>
-            <groupId>com.fooddelivery</groupId>
-            <artifactId>common-library</artifactId>
-            <version>1.0-SNAPSHOT</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
     
         <dependency>
             <groupId>org.springframework.cloud</groupId>
@@ -178,13 +165,11 @@
                 <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.38</version>
         </dependency>
     
         <dependency>
             <groupId>net.logstash.logback</groupId>
             <artifactId>logstash-logback-encoder</artifactId>
-            <version>7.4</version>
         </dependency>
     
         
@@ -202,7 +187,6 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>2.5.0</version>
         </dependency>
 
         <dependency>
@@ -215,17 +199,10 @@
             <artifactId>spring-cloud-starter-contract-stub-runner</artifactId>
             <scope>test</scope>
         </dependency>
-    <dependency><groupId>org.springframework.kafka</groupId><artifactId>spring-kafka-test</artifactId><version>3.1.2</version><scope>test</scope></dependency><dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId><scope>test</scope></dependency></dependencies>
+    <dependency><groupId>org.springframework.kafka</groupId><artifactId>spring-kafka-test</artifactId><scope>test</scope></dependency><dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId><scope>test</scope></dependency></dependencies>
 
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>org.springframework.cloud</groupId>
-                <artifactId>spring-cloud-dependencies</artifactId>
-                <version>2023.0.2</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
 
             <dependency>
                 <groupId>org.springframework.ai</groupId>
@@ -234,11 +211,6 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-                <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>1.18.38</version>
-        </dependency>
     </dependencies>
     </dependencyManagement>
 

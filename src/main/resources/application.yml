@@ -1,19 +1,12 @@
 spring:
   main:
     allow-bean-definition-overriding: true
-  kafka:
-    listener:
-      observation-enabled: true
-    template:
-      observation-enabled: true
   application:
     name: delivery-service
   config:
-    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
-
+    import: optional:classpath:config/platform-defaults.yml,optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
 springdoc:
   packages-to-scan: com.fooddelivery.delivery,com.fooddelivery.common.dto.governmentid
-
   cloud:
     openfeign:
       client:
@@ -24,15 +17,8 @@ springdoc:
       circuitbreaker:
         enabled: true
         alphanumeric-ids: true
-
 resilience4j:
   retry:
-    configs:
-      default:
-        maxAttempts: 3
-        waitDuration: 500ms
-        enableExponentialBackoff: true
-        exponentialBackoffMultiplier: 2
     instances:
       restaurant-service:
         baseConfig: default
@@ -43,14 +29,6 @@ resilience4j:
       mapsintegration:
         baseConfig: default
   circuitbreaker:
-    configs:
-      default:
-        slidingWindowSize: 10
-        minimumNumberOfCalls: 5
-        failureRateThreshold: 50
-        waitDurationInOpenState: 10s
-        permittedNumberOfCallsInHalfOpenState: 3
-        automaticTransitionFromOpenToHalfOpenEnabled: true
     instances:
       restaurant-service:
         baseConfig: default
@@ -61,9 +39,6 @@ resilience4j:
       mapsintegration:
         baseConfig: default
   timelimiter:
-    configs:
-      default:
-        timeoutDuration: 3s
     instances:
       restaurant-service:
         baseConfig: default
@@ -73,25 +48,14 @@ resilience4j:
         baseConfig: default
       mapsintegration:
         baseConfig: default
-
 verification:
   vahan:
     api:
-      url: "https://api.mock-vahan.gov.in/rc/verify"
-      key: "mock-api-key"
+      url: https://api.mock-vahan.gov.in/rc/verify
+      key: mock-api-key
       timeout-seconds: 10
   sarathi:
     api:
-      url: "https://api.mock-sarathi.gov.in/dl/verify"
-      key: "mock-api-key"
+      url: https://api.mock-sarathi.gov.in/dl/verify
+      key: mock-api-key
       timeout-seconds: 10
-
-
-management:
-  tracing:
-    enabled: true
-    sampling:
-      probability: 1.0
-  otlp:
-    tracing:
-      endpoint: http://localhost:4318/v1/traces
