@@ -23,6 +23,10 @@ spec:
       containers:
       - name: spring-boot-app
         image: your-registry/food-delivery-backend:latest
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
         imagePullPolicy: Always
         ports:
         - containerPort: 8080

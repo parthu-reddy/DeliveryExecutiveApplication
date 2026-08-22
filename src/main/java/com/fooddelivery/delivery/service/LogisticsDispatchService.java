@@ -30,6 +30,8 @@ public class LogisticsDispatchService {
             dispatchRequest.put("deliveryAddress", deliveryAddress);
             if (excludedDriverIds != null && !excludedDriverIds.isEmpty()) {
                 dispatchRequest.put("excludedDriverIds", excludedDriverIds);
+            } else {
+                dispatchRequest.put("excludedDriverIds", java.util.Collections.emptyList());
             }
             String payload = objectMapper.writeValueAsString(dispatchRequest);
             log.info("Triggering event: LOGISTICS_DISPATCH_REQUEST for order: {}", orderId);

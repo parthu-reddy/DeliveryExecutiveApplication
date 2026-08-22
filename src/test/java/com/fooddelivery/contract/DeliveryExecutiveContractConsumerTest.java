@@ -18,7 +18,9 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 
 @ActiveProfiles("contract-test")
 @SpringBootTest(classes = DeliveryExecutiveContractConsumerTest.TestConfig.class, webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {
-    "stubrunner.idsToServiceIds.food-delivery-backend=customer-application"
+    // Stub ids are Maven artifactIds; Feign resolves by spring.application.name. These two
+    // differ for these services, so the stub must be registered under the name the client asks for.
+    "stubrunner.idsToServiceIds.food-delivery-backend=customer-service"
 })
 @AutoConfigureStubRunner(ids = { "com.fooddelivery:food-delivery-backend:+:stubs:8090" }, stubsMode = StubRunnerProperties.StubsMode.LOCAL)
 public class DeliveryExecutiveContractConsumerTest {

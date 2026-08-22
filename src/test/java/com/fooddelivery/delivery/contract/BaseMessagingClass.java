@@ -23,7 +23,7 @@ import org.springframework.test.context.ActiveProfiles;
 @SpringBootTest(classes = BaseMessagingClass.TestConfig.class, webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {"spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration,org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration"})
 @org.springframework.test.context.ActiveProfiles("contract-test")
 @AutoConfigureMessageVerifier
-@EmbeddedKafka(partitions = 1, topics = {"platform.logistics.dispatch"})
+@EmbeddedKafka(partitions = 1, topics = {"platform.logistics.dispatch", "order-events"})
 public abstract class BaseMessagingClass {
 
     @MockBean
@@ -57,6 +57,7 @@ public abstract class BaseMessagingClass {
         dispatchRequest.put("deliveryLat", 12.935242);
         dispatchRequest.put("deliveryLng", 77.624400);
         dispatchRequest.put("deliveryAddress", "221B Baker Street, Bangalore");
+        dispatchRequest.put("excludedDriverIds", java.util.Collections.emptyList());
         kafkaTemplate.send(com.fooddelivery.common.constants.KafkaConstants.TOPIC_LOGISTICS_DISPATCH,
                 orderId.toString(),
                 new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(dispatchRequest));
@@ -77,6 +78,31 @@ public abstract class BaseMessagingClass {
   "timestampMs": 1699999999999
 }""";
         messageVerifier.publishDirect("tracking:order:7a1d5e90-3c22-4b6f-8a11-9d4c2e77b501", payload);
+    }
+
+    public void fireOrderStatusUpdated() throws Exception {
+        com.fasterxml.jackson.databind.node.ObjectNode payloadNode = new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode();
+        payloadNode.put("eventType", "ORDER_STATUS_UPDATED");
+        payloadNode.put("orderId", "3f2504e0-4f89-41d3-9a0c-0305e82c3301");
+        payloadNode.put("status", "OUT_FOR_DELIVERY");
+        payloadNode.put("pickupOtp", "1234");
+        payloadNode.put("deliveryOtp", "5678");
+
+        com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent =
+                com.fooddelivery.common.outbox.entity.OutboxEventEntity.builder()
+                        .id(java.util.UUID.randomUUID())
+                        .aggregateType(com.fooddelivery.common.constants.AggregateType.ORDER)
+                        .aggregateId("3f2504e0-4f89-41d3-9a0c-0305e82c3301")
+                        .eventType(com.fooddelivery.common.constants.EventType.ORDER_STATUS_UPDATED)
+                        .payload(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(payloadNode))
+                        .createdAt(java.time.LocalDateTime.now())
+                        .build();
+
+        com.fooddelivery.common.outbox.repository.OutboxEventRepository repo =
+                org.mockito.Mockito.mock(com.fooddelivery.common.outbox.repository.OutboxEventRepository.class);
+        org.mockito.Mockito.when(repo.findTop100ByStatusInOrderByCreatedAtAsc(org.mockito.ArgumentMatchers.anyList()))
+                .thenReturn(new java.util.ArrayList<>(java.util.List.of(outboxEvent)));
+        new com.fooddelivery.common.outbox.service.OutboxProcessor(repo, kafkaTemplate, new io.micrometer.core.instrument.simple.SimpleMeterRegistry()).processOutboxEvents();
     }
 
 }

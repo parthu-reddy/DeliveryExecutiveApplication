@@ -20,7 +20,8 @@ org.springframework.cloud.contract.spec.Contract.make {
             restaurantLng: 77.594562,
             deliveryLat: 12.935242,
             deliveryLng: 77.624400,
-            deliveryAddress: "221B Baker Street, Bangalore"
+            deliveryAddress: "221B Baker Street, Bangalore",
+            excludedDriverIds: []
         ])
     }
 }

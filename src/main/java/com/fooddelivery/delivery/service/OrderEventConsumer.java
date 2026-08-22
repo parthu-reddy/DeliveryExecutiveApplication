@@ -64,19 +64,20 @@ public class OrderEventConsumer {
         
         try {
             transactionTemplate.execute(status -> {
-                if (idempotencyKeyRepository.existsById(idempotencyKeyStr)) {
+                int claimed = idempotencyKeyRepository.tryClaim(idempotencyKeyStr);
+                if (claimed == 0) {
                     log.info("Duplicate event detected (key={}), ignoring.", idempotencyKeyStr);
                     return null;
                 }
-                idempotencyKeyRepository.save(new IdempotencyKey(idempotencyKeyStr));
 
                 try {
                     JsonNode root = objectMapper.readTree(message);
                     String eventType = com.fooddelivery.common.util.KafkaHeaderUtils.extractEventType(headers, root);
+                    JsonNode payloadNode = root;
                     java.util.List<com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy> matchedStrategies = strategyMap.get(eventType);
                     if (matchedStrategies != null && !matchedStrategies.isEmpty()) {
                         for (com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy strategy : matchedStrategies) {
-                            strategy.process(root, eventType);
+                            strategy.process(payloadNode, eventType);
                         }
                     } else {
                         log.info("No strategy mapped for event type: {}. Ignoring in DeliveryExecutiveApplication.", eventType);
