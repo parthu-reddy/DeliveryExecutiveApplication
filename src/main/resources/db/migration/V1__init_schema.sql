@@ -64,12 +64,31 @@ CREATE TABLE telemetry_logs (
     recorded_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
+
+
+
+
+
+
+
+
+
+
+
 CREATE INDEX idx_delivery_executives_status ON delivery_executives(status);
+
 CREATE INDEX idx_executives_status ON delivery_executives(status);
+
 CREATE INDEX idx_telemetry_location ON telemetry_logs USING GIST(location);
+
 CREATE INDEX idx_docs_executive ON executive_documents(executive_id);
+
 CREATE INDEX IF NOT EXISTS idx_executives_verification_status ON delivery_executives(verification_status);
+
 CREATE INDEX IF NOT EXISTS idx_biometric_executive ON biometric_verifications(executive_id);
+
 CREATE INDEX IF NOT EXISTS idx_telemetry_executive_recorded ON telemetry_logs(executive_id, recorded_at DESC);
+
 CREATE INDEX IF NOT EXISTS idx_delivery_exec_location_gist ON delivery_executives USING GIST (last_known_location);
+
 CREATE INDEX idx_telemetry_executive ON telemetry_logs(executive_id);
