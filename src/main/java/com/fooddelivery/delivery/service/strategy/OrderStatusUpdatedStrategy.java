@@ -11,6 +11,7 @@ import java.util.List;
 
 @Component
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class OrderStatusUpdatedStrategy implements DeliveryEventStrategy {
 private final StringRedisTemplate redisTemplate;
     private final LogisticsDispatchService logisticsDispatchService;
@@ -90,9 +91,4 @@ private final StringRedisTemplate redisTemplate;
         return Arrays.asList(EventType.ORDER_STATUS_UPDATED.name(), EventType.ORDER_READY.name(), EventType.ORDER_PREPARING.name(), EventType.ORDER_ACCEPTED.name());
     }
 
-public OrderStatusUpdatedStrategy(final StringRedisTemplate redisTemplate, final LogisticsDispatchService logisticsDispatchService, final ObjectMapper objectMapper) {
-        this.redisTemplate = redisTemplate;
-        this.logisticsDispatchService = logisticsDispatchService;
-        this.objectMapper = objectMapper;
-    }
 }

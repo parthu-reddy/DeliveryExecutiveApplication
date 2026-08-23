@@ -9,6 +9,7 @@ import java.util.UUID;
 
 @Component
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class DriverPingTimeoutPoller {
 private final StringRedisTemplate redisTemplate;
     private final OrderAssignmentService orderAssignmentService;
@@ -36,8 +37,4 @@ private final StringRedisTemplate redisTemplate;
             _redisLock.release(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_POLL_PING_TIMEOUTS, _lockToken);
         }}
 
-public DriverPingTimeoutPoller(final StringRedisTemplate redisTemplate, final OrderAssignmentService orderAssignmentService) {
-        this.redisTemplate = redisTemplate;
-        this.orderAssignmentService = orderAssignmentService;
-    }
 }

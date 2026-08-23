@@ -42,16 +42,22 @@ class LogisticsDispatchServiceTest {
     @Test
     void dispatchNearestDriver_ShouldPublishEvent() {
         UUID orderId = UUID.randomUUID();
-        when(kafkaTemplate.send(eq("platform.logistics.dispatch"), eq(orderId.toString()), anyString()))
+        when(kafkaTemplate.send(org.mockito.ArgumentMatchers.<org.springframework.messaging.Message<String>>any()))
                 .thenReturn(CompletableFuture.completedFuture(null));
 
         // Act
         logisticsDispatchService.dispatchNearestDriver(12.9716, 77.5946, 12.9352, 77.6245, "BLR", orderId, java.util.Collections.emptyList());
 
-        ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
-        verify(kafkaTemplate).send(eq("platform.logistics.dispatch"), eq(orderId.toString()), payloadCaptor.capture());
-
-        String payload = payloadCaptor.getValue();
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<org.springframework.messaging.Message<String>> msgCaptor =
+                ArgumentCaptor.forClass(org.springframework.messaging.Message.class);
+        verify(kafkaTemplate).send(msgCaptor.capture());
+        org.springframework.messaging.Message<String> sent = msgCaptor.getValue();
+        org.assertj.core.api.Assertions.assertThat(sent.getHeaders().get("eventId")).isNotNull();
+        org.assertj.core.api.Assertions.assertThat(
+                sent.getHeaders().get(org.springframework.kafka.support.KafkaHeaders.TOPIC))
+            .isEqualTo("platform.logistics.dispatch");
+        String payload = sent.getPayload();
         assertThat(payload).contains(orderId.toString());
         assertThat(payload).contains("12.9716");
         assertThat(payload).contains("77.5946");

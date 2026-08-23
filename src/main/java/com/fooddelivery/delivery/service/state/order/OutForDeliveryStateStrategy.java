@@ -15,9 +15,15 @@ import java.util.UUID;
 @Component
 @lombok.extern.slf4j.Slf4j
 public class OutForDeliveryStateStrategy extends AbstractDeliveryOrderState {
-public OutForDeliveryStateStrategy(StringRedisTemplate redisTemplate, ObjectMapper objectMapper, TransactionTemplate transactionTemplate, OutboxEventRepository outboxEventRepository, IDeliveryExecutiveRepository repository, LogisticsDispatchService logisticsDispatchService) {
+    public OutForDeliveryStateStrategy(org.springframework.data.redis.core.StringRedisTemplate redisTemplate,
+                 com.fasterxml.jackson.databind.ObjectMapper objectMapper,
+                 org.springframework.transaction.support.TransactionTemplate transactionTemplate,
+                 com.fooddelivery.common.outbox.repository.OutboxEventRepository outboxEventRepository,
+                 com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository repository,
+                 com.fooddelivery.delivery.service.LogisticsDispatchService logisticsDispatchService) {
         super(redisTemplate, objectMapper, transactionTemplate, outboxEventRepository, repository, logisticsDispatchService);
     }
+
 
     @Override
     public DeliveryStatus getSupportedStatus() {

@@ -14,6 +14,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/internal/admin/delivery")
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class AdminDeliveryController {
 private final IDeliveryExecutiveRepository repository;
     private final DeliveryExecutiveProfileService profileService;
@@ -61,9 +62,4 @@ private final IDeliveryExecutiveRepository repository;
         return ResponseEntity.ok(drivers);
     }
 
-public AdminDeliveryController(final IDeliveryExecutiveRepository repository, final DeliveryExecutiveProfileService profileService, final OrderAssignmentService orderAssignmentService) {
-        this.repository = repository;
-        this.profileService = profileService;
-        this.orderAssignmentService = orderAssignmentService;
-    }
 }

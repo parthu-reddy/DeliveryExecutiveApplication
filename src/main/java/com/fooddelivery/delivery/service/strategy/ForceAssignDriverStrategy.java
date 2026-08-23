@@ -10,6 +10,7 @@ import java.util.UUID;
 
 @Component
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class ForceAssignDriverStrategy implements DeliveryEventStrategy {
 private final OrderAssignmentService orderAssignmentService;
 
@@ -37,7 +38,4 @@ private final OrderAssignmentService orderAssignmentService;
         return Collections.singletonList(EventType.FORCE_ASSIGN_DRIVER.name());
     }
 
-public ForceAssignDriverStrategy(final OrderAssignmentService orderAssignmentService) {
-        this.orderAssignmentService = orderAssignmentService;
-    }
 }

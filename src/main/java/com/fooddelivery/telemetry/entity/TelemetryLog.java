@@ -9,6 +9,8 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "telemetry_logs")
+@lombok.Getter
+@lombok.Setter
 public class TelemetryLog {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -17,7 +19,11 @@ public class TelemetryLog {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "executive_id")
     private DeliveryExecutive executive;
-    @Column(name = "location", nullable = false, columnDefinition = "geography(Point, 4326)")
+    // No columnDefinition: V1__init_schema.sql owns the real type (GEOGRAPHY(POINT,4326)
+    // plus a GIST index). Naming it here only forced that literal into ddl-auto schema
+    // generation, which H2 cannot parse. DeliveryExecutive.lastKnownLocation is the same
+    // JTS Point with no columnDefinition and maps correctly on both dialects.
+    @Column(name = "location", nullable = false)
     private Point location;
     @Column(name = "speed_kmh", precision = 5, scale = 2)
     private BigDecimal speedKmh;
@@ -26,51 +32,18 @@ public class TelemetryLog {
     @Column(name = "recorded_at", nullable = false)
     private OffsetDateTime recordedAt;
 
-public Long getLogId() {
-        return this.logId;
-    }
 
-public DeliveryExecutive getExecutive() {
-        return this.executive;
-    }
 
-public Point getLocation() {
-        return this.location;
-    }
 
-public BigDecimal getSpeedKmh() {
-        return this.speedKmh;
-    }
 
-public boolean isMockLocation() {
-        return this.isMockLocation;
-    }
 
-public OffsetDateTime getRecordedAt() {
-        return this.recordedAt;
-    }
 
-public void setLogId(final Long logId) {
-        this.logId = logId;
-    }
 
-public void setExecutive(final DeliveryExecutive executive) {
-        this.executive = executive;
-    }
 
-public void setLocation(final Point location) {
-        this.location = location;
-    }
 
-public void setSpeedKmh(final BigDecimal speedKmh) {
-        this.speedKmh = speedKmh;
-    }
 
 public void setMockLocation(final boolean isMockLocation) {
         this.isMockLocation = isMockLocation;
     }
 
-public void setRecordedAt(final OffsetDateTime recordedAt) {
-        this.recordedAt = recordedAt;
-    }
 }

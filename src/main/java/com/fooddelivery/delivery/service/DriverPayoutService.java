@@ -9,12 +9,10 @@ import java.util.UUID;
 
 @Service
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class DriverPayoutService {
 private final WalletServiceClient walletClient;
 
-    public DriverPayoutService(WalletServiceClient walletClient) {
-        this.walletClient = walletClient;
-    }
 
     public WalletDto getDriverBalance(UUID driverId) {
         try {

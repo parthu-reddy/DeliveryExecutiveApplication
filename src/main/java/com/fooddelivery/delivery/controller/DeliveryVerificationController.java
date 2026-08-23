@@ -13,6 +13,7 @@ import java.util.UUID;
 @RequestMapping("/api/delivery/verification")
 @PreAuthorize("hasRole(\'DELIVERY\')")
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class DeliveryVerificationController {
 private final GovernmentIdServiceClient governmentIdClient;
     private final com.fooddelivery.delivery.service.OnboardingOrchestratorService onboardingOrchestratorService;
@@ -62,8 +63,4 @@ private final GovernmentIdServiceClient governmentIdClient;
         return ResponseEntity.ok(ApiResponse.success(result, "Biometric verification initiated"));
     }
 
-public DeliveryVerificationController(final GovernmentIdServiceClient governmentIdClient, final com.fooddelivery.delivery.service.OnboardingOrchestratorService onboardingOrchestratorService) {
-        this.governmentIdClient = governmentIdClient;
-        this.onboardingOrchestratorService = onboardingOrchestratorService;
-    }
 }

@@ -13,6 +13,7 @@ import io.micrometer.observation.annotation.Observed;
 @Service
 @lombok.extern.slf4j.Slf4j
 @Observed(name = "delivery.order.execution")
+@lombok.RequiredArgsConstructor
 public class OrderExecutionService {
 private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
     private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
@@ -100,14 +101,4 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
         }
     }
 
-public OrderExecutionService(final org.springframework.data.redis.core.StringRedisTemplate redisTemplate, final org.springframework.transaction.support.TransactionTemplate transactionTemplate, final OutboxEventRepository outboxEventRepository, final OutboxEventHelper outboxEventHelper, final IDeliveryExecutiveRepository repository, final LogisticsDispatchService logisticsDispatchService, final com.fooddelivery.delivery.service.state.order.DeliveryOrderStateFactory deliveryOrderStateFactory, final ObjectMapper objectMapper) {
-        this.redisTemplate = redisTemplate;
-        this.transactionTemplate = transactionTemplate;
-        this.outboxEventRepository = outboxEventRepository;
-        this.outboxEventHelper = outboxEventHelper;
-        this.repository = repository;
-        this.logisticsDispatchService = logisticsDispatchService;
-        this.deliveryOrderStateFactory = deliveryOrderStateFactory;
-        this.objectMapper = objectMapper;
-    }
 }

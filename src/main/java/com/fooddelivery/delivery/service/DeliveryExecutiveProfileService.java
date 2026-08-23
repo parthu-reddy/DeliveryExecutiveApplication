@@ -10,6 +10,7 @@ import java.util.UUID;
 
 @Service
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class DeliveryExecutiveProfileService {
 private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
     private final IDeliveryExecutiveRepository repository;
@@ -202,9 +203,4 @@ private final org.springframework.transaction.support.TransactionTemplate transa
         }
     }
 
-public DeliveryExecutiveProfileService(final org.springframework.transaction.support.TransactionTemplate transactionTemplate, final IDeliveryExecutiveRepository repository, final org.springframework.data.redis.core.StringRedisTemplate redisTemplate) {
-        this.transactionTemplate = transactionTemplate;
-        this.repository = repository;
-        this.redisTemplate = redisTemplate;
-    }
 }

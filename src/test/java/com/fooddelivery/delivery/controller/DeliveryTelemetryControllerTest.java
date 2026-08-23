@@ -49,6 +49,9 @@ class DeliveryTelemetryControllerTest {
     @Mock
     private Principal principal;
 
+    @Mock
+    private com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository repository;
+
     @InjectMocks
     private DeliveryTelemetryController controller;
 
@@ -68,6 +71,10 @@ class DeliveryTelemetryControllerTest {
         when(principal.getName()).thenReturn(driverId);
         when(redisTemplate.opsForGeo()).thenReturn(geoOperations);
         when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        com.fooddelivery.delivery.entity.DeliveryExecutive exec = new com.fooddelivery.delivery.entity.DeliveryExecutive();
+        exec.setId(driverUuid);
+        exec.setCityId("BLR");
+        when(repository.findById(driverUuid)).thenReturn(java.util.Optional.of(exec));
         TelemetryEventRequest event = new TelemetryEventRequest();
         event.setDriverId(driverId);
         event.setLat(12.9716);
@@ -123,6 +130,10 @@ class DeliveryTelemetryControllerTest {
         when(principal.getName()).thenReturn(driverId);
         when(redisTemplate.opsForGeo()).thenReturn(geoOperations);
         when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        com.fooddelivery.delivery.entity.DeliveryExecutive exec = new com.fooddelivery.delivery.entity.DeliveryExecutive();
+        exec.setId(driverUuid);
+        exec.setCityId("BLR");
+        when(repository.findById(driverUuid)).thenReturn(java.util.Optional.of(exec));
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(telemetryService.ingestTelemetry(eq(driverUuid), any())).thenReturn(true);
 

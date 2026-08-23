@@ -17,7 +17,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 @lombok.extern.slf4j.Slf4j
-
+@lombok.RequiredArgsConstructor
 public abstract class AbstractDeliveryOrderState implements DeliveryOrderStateStrategy {
 protected final StringRedisTemplate redisTemplate;
     protected final ObjectMapper objectMapper;
@@ -26,14 +26,6 @@ protected final StringRedisTemplate redisTemplate;
     protected final IDeliveryExecutiveRepository repository;
     protected final LogisticsDispatchService logisticsDispatchService;
 
-    public AbstractDeliveryOrderState(StringRedisTemplate redisTemplate, ObjectMapper objectMapper, TransactionTemplate transactionTemplate, OutboxEventRepository outboxEventRepository, IDeliveryExecutiveRepository repository, LogisticsDispatchService logisticsDispatchService) {
-        this.redisTemplate = redisTemplate;
-        this.objectMapper = objectMapper;
-        this.transactionTemplate = transactionTemplate;
-        this.outboxEventRepository = outboxEventRepository;
-        this.repository = repository;
-        this.logisticsDispatchService = logisticsDispatchService;
-    }
 
     @Override
     public void handleStatusUpdate(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp, Boolean goOfflineAfter) {

@@ -9,13 +9,11 @@ import java.time.LocalDateTime;
 
 @Service
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class IdempotencySweepJob {
 
     private final IIdempotencyKeyRepository idempotencyKeyRepository;
 
-    public IdempotencySweepJob(IIdempotencyKeyRepository idempotencyKeyRepository) {
-        this.idempotencyKeyRepository = idempotencyKeyRepository;
-    }
 
     @Scheduled(cron = "0 0 * * * *") // Run hourly
     @Transactional

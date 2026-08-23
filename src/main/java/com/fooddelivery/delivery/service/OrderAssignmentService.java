@@ -15,6 +15,7 @@ import java.util.UUID;
 
 @Service
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class OrderAssignmentService {
 private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
     private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
@@ -241,12 +242,4 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
         }
     }
 
-public OrderAssignmentService(final org.springframework.data.redis.core.StringRedisTemplate redisTemplate, final org.springframework.transaction.support.TransactionTemplate transactionTemplate, final OutboxEventRepository outboxEventRepository, final OutboxEventHelper outboxEventHelper, final IDeliveryExecutiveRepository repository, final LogisticsDispatchService logisticsDispatchService) {
-        this.redisTemplate = redisTemplate;
-        this.transactionTemplate = transactionTemplate;
-        this.outboxEventRepository = outboxEventRepository;
-        this.outboxEventHelper = outboxEventHelper;
-        this.repository = repository;
-        this.logisticsDispatchService = logisticsDispatchService;
-    }
 }

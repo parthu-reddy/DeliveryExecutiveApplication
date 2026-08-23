@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 
 @Service
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class TelemetryIngestionService {
 private final TelemetryLogRepository telemetryLogRepository;
     private final IDeliveryExecutiveRepository deliveryExecutiveRepository;
@@ -167,10 +168,4 @@ private final TelemetryLogRepository telemetryLogRepository;
         return R * c * 1000; // convert to meters
     }
 
-public TelemetryIngestionService(final TelemetryLogRepository telemetryLogRepository, final IDeliveryExecutiveRepository deliveryExecutiveRepository, final DeliveryExecutiveProfileService profileService, final StringRedisTemplate redisTemplate) {
-        this.telemetryLogRepository = telemetryLogRepository;
-        this.deliveryExecutiveRepository = deliveryExecutiveRepository;
-        this.profileService = profileService;
-        this.redisTemplate = redisTemplate;
-    }
 }

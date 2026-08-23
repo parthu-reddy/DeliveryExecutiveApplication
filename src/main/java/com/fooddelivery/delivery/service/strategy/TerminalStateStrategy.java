@@ -14,6 +14,7 @@ import java.util.UUID;
 
 @Component
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class TerminalStateStrategy implements DeliveryEventStrategy {
 private final StringRedisTemplate redisTemplate;
     private final IDeliveryExecutiveRepository executiveRepository;
@@ -115,10 +116,4 @@ private final StringRedisTemplate redisTemplate;
         return Arrays.asList(EventType.DRIVER_ASSIGNED.name(), EventType.DISPATCH_FAILED.name(), EventType.ORDER_CANCELLED.name(), EventType.DELIVERY_FAILED.name(), EventType.ORDER_CANCELLED_BY_RESTAURANT.name(), EventType.ORDER_CANCELLED_BY_CUSTOMER.name(), EventType.ORDER_CANCELLED_BY_ADMIN.name(), EventType.ORDER_REJECTED.name(), EventType.ORDER_DELAY_REJECTED.name(), EventType.MANUAL_INTERVENTION_REQUIRED.name());
     }
 
-public TerminalStateStrategy(final StringRedisTemplate redisTemplate, final IDeliveryExecutiveRepository executiveRepository, final LogisticsDispatchService logisticsDispatchService, final org.springframework.transaction.support.TransactionTemplate transactionTemplate) {
-        this.redisTemplate = redisTemplate;
-        this.executiveRepository = executiveRepository;
-        this.logisticsDispatchService = logisticsDispatchService;
-        this.transactionTemplate = transactionTemplate;
-    }
 }

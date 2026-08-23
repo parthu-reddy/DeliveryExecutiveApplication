@@ -12,6 +12,7 @@ import java.util.UUID;
 
 @Service
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class OnboardingOrchestratorService {
 private final IDeliveryExecutiveRepository executiveRepository;
     private final GovernmentIdServiceClient governmentIdClient;
@@ -78,9 +79,4 @@ private final IDeliveryExecutiveRepository executiveRepository;
         }
     }
 
-public OnboardingOrchestratorService(final IDeliveryExecutiveRepository executiveRepository, final GovernmentIdServiceClient governmentIdClient, final DeliveryExecutiveProfileService profileService) {
-        this.executiveRepository = executiveRepository;
-        this.governmentIdClient = governmentIdClient;
-        this.profileService = profileService;
-    }
 }

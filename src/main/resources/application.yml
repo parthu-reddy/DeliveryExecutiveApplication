@@ -4,10 +4,10 @@ spring:
   application:
     name: delivery-service
   config:
-    import: optional:classpath:config/platform-defaults.yml,configserver:${CONFIG_SERVER_URL:http://localhost:8888}
-springdoc:
-  packages-to-scan: com.fooddelivery.delivery,com.fooddelivery.common.dto.governmentid
+    import: optional:classpath:config/platform-defaults.yml,optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
   cloud:
+    config:
+      fail-fast: true
     openfeign:
       client:
         config:
@@ -17,6 +17,8 @@ springdoc:
       circuitbreaker:
         enabled: true
         alphanumeric-ids: true
+springdoc:
+  packages-to-scan: com.fooddelivery.delivery,com.fooddelivery.common.dto.governmentid
 resilience4j:
   retry:
     instances:

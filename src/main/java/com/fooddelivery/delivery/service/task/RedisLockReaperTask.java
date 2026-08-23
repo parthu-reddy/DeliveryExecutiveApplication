@@ -11,6 +11,7 @@ import java.util.UUID;
 
 @Component
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class RedisLockReaperTask {
 private final StringRedisTemplate redisTemplate;
     private final IDeliveryExecutiveRepository repository;
@@ -123,8 +124,4 @@ private final StringRedisTemplate redisTemplate;
         }
     }
 
-public RedisLockReaperTask(final StringRedisTemplate redisTemplate, final IDeliveryExecutiveRepository repository) {
-        this.redisTemplate = redisTemplate;
-        this.repository = repository;
-    }
 }

@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 
 @Component
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class StaleDriverSweeperDaemon {
 private final StringRedisTemplate redisTemplate;
     private final IDeliveryExecutiveRepository deliveryExecutiveRepository;
@@ -118,8 +119,4 @@ private final StringRedisTemplate redisTemplate;
         }
     }
 
-public StaleDriverSweeperDaemon(final StringRedisTemplate redisTemplate, final IDeliveryExecutiveRepository deliveryExecutiveRepository) {
-        this.redisTemplate = redisTemplate;
-        this.deliveryExecutiveRepository = deliveryExecutiveRepository;
-    }
 }

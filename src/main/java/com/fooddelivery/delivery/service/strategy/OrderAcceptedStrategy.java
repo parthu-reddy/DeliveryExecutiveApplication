@@ -11,6 +11,7 @@ import java.util.UUID;
 
 @Component
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class OrderAcceptedStrategy implements DeliveryEventStrategy {
 private final LogisticsDispatchService logisticsDispatchService;
     private final StringRedisTemplate redisTemplate;
@@ -55,8 +56,4 @@ private final LogisticsDispatchService logisticsDispatchService;
         return Collections.singletonList(EventType.ORDER_ACCEPTED.name());
     }
 
-public OrderAcceptedStrategy(final LogisticsDispatchService logisticsDispatchService, final StringRedisTemplate redisTemplate) {
-        this.logisticsDispatchService = logisticsDispatchService;
-        this.redisTemplate = redisTemplate;
-    }
 }

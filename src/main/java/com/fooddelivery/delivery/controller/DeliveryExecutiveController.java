@@ -23,6 +23,7 @@ import jakarta.validation.constraints.Size;
 @RequestMapping("/api/delivery")
 @PreAuthorize("hasRole(\'DELIVERY\')")
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class DeliveryExecutiveController {
 private final DeliveryExecutiveProfileService profileService;
     private final OrderAssignmentService orderAssignmentService;
@@ -89,55 +90,9 @@ public void setVehicleType(final com.fooddelivery.common.enums.VehicleClass vehi
             this.vehicleType = vehicleType;
         }
 
-        @java.lang.Override
-public boolean equals(final java.lang.Object o) {
-            if (o == this) return true;
-            if (!(o instanceof DeliveryExecutiveController.DeliveryOnboardRequest)) return false;
-            final DeliveryExecutiveController.DeliveryOnboardRequest other = (DeliveryExecutiveController.DeliveryOnboardRequest) o;
-            if (!other.canEqual((java.lang.Object) this)) return false;
-            final java.lang.Object this$fullName = this.getFullName();
-            final java.lang.Object other$fullName = other.getFullName();
-            if (this$fullName == null ? other$fullName != null : !this$fullName.equals(other$fullName)) return false;
-            final java.lang.Object this$phoneNumber = this.getPhoneNumber();
-            final java.lang.Object other$phoneNumber = other.getPhoneNumber();
-            if (this$phoneNumber == null ? other$phoneNumber != null : !this$phoneNumber.equals(other$phoneNumber)) return false;
-            final java.lang.Object this$vehicleNumber = this.getVehicleNumber();
-            final java.lang.Object other$vehicleNumber = other.getVehicleNumber();
-            if (this$vehicleNumber == null ? other$vehicleNumber != null : !this$vehicleNumber.equals(other$vehicleNumber)) return false;
-            final java.lang.Object this$photoUrl = this.getPhotoUrl();
-            final java.lang.Object other$photoUrl = other.getPhotoUrl();
-            if (this$photoUrl == null ? other$photoUrl != null : !this$photoUrl.equals(other$photoUrl)) return false;
-            final java.lang.Object this$vehicleType = this.getVehicleType();
-            final java.lang.Object other$vehicleType = other.getVehicleType();
-            if (this$vehicleType == null ? other$vehicleType != null : !this$vehicleType.equals(other$vehicleType)) return false;
-            return true;
-        }
 
-protected boolean canEqual(final java.lang.Object other) {
-            return other instanceof DeliveryExecutiveController.DeliveryOnboardRequest;
-        }
 
-        @java.lang.Override
-public int hashCode() {
-            final int PRIME = 59;
-            int result = 1;
-            final java.lang.Object $fullName = this.getFullName();
-            result = result * PRIME + ($fullName == null ? 43 : $fullName.hashCode());
-            final java.lang.Object $phoneNumber = this.getPhoneNumber();
-            result = result * PRIME + ($phoneNumber == null ? 43 : $phoneNumber.hashCode());
-            final java.lang.Object $vehicleNumber = this.getVehicleNumber();
-            result = result * PRIME + ($vehicleNumber == null ? 43 : $vehicleNumber.hashCode());
-            final java.lang.Object $photoUrl = this.getPhotoUrl();
-            result = result * PRIME + ($photoUrl == null ? 43 : $photoUrl.hashCode());
-            final java.lang.Object $vehicleType = this.getVehicleType();
-            result = result * PRIME + ($vehicleType == null ? 43 : $vehicleType.hashCode());
-            return result;
-        }
 
-        @java.lang.Override
-public java.lang.String toString() {
-            return "DeliveryExecutiveController.DeliveryOnboardRequest(fullName=" + this.getFullName() + ", phoneNumber=" + this.getPhoneNumber() + ", vehicleNumber=" + this.getVehicleNumber() + ", photoUrl=" + this.getPhotoUrl() + ", vehicleType=" + this.getVehicleType() + ")";
-        }
     }
 
 
@@ -168,40 +123,9 @@ public void setAvailable(final Boolean available) {
             this.available = available;
         }
 
-        @java.lang.Override
-public boolean equals(final java.lang.Object o) {
-            if (o == this) return true;
-            if (!(o instanceof DeliveryExecutiveController.ToggleStatusRequest)) return false;
-            final DeliveryExecutiveController.ToggleStatusRequest other = (DeliveryExecutiveController.ToggleStatusRequest) o;
-            if (!other.canEqual((java.lang.Object) this)) return false;
-            final java.lang.Object this$available = this.getAvailable();
-            final java.lang.Object other$available = other.getAvailable();
-            if (this$available == null ? other$available != null : !this$available.equals(other$available)) return false;
-            final java.lang.Object this$driverId = this.getDriverId();
-            final java.lang.Object other$driverId = other.getDriverId();
-            if (this$driverId == null ? other$driverId != null : !this$driverId.equals(other$driverId)) return false;
-            return true;
-        }
 
-protected boolean canEqual(final java.lang.Object other) {
-            return other instanceof DeliveryExecutiveController.ToggleStatusRequest;
-        }
 
-        @java.lang.Override
-public int hashCode() {
-            final int PRIME = 59;
-            int result = 1;
-            final java.lang.Object $available = this.getAvailable();
-            result = result * PRIME + ($available == null ? 43 : $available.hashCode());
-            final java.lang.Object $driverId = this.getDriverId();
-            result = result * PRIME + ($driverId == null ? 43 : $driverId.hashCode());
-            return result;
-        }
 
-        @java.lang.Override
-public java.lang.String toString() {
-            return "DeliveryExecutiveController.ToggleStatusRequest(driverId=" + this.getDriverId() + ", available=" + this.getAvailable() + ")";
-        }
     }
 
 
@@ -251,50 +175,9 @@ public void setGoOfflineAfter(final Boolean goOfflineAfter) {
             this.goOfflineAfter = goOfflineAfter;
         }
 
-        @java.lang.Override
-public boolean equals(final java.lang.Object o) {
-            if (o == this) return true;
-            if (!(o instanceof DeliveryExecutiveController.UpdateOrderStatusRequest)) return false;
-            final DeliveryExecutiveController.UpdateOrderStatusRequest other = (DeliveryExecutiveController.UpdateOrderStatusRequest) o;
-            if (!other.canEqual((java.lang.Object) this)) return false;
-            final java.lang.Object this$goOfflineAfter = this.getGoOfflineAfter();
-            final java.lang.Object other$goOfflineAfter = other.getGoOfflineAfter();
-            if (this$goOfflineAfter == null ? other$goOfflineAfter != null : !this$goOfflineAfter.equals(other$goOfflineAfter)) return false;
-            final java.lang.Object this$status = this.getStatus();
-            final java.lang.Object other$status = other.getStatus();
-            if (this$status == null ? other$status != null : !this$status.equals(other$status)) return false;
-            final java.lang.Object this$pickupOtp = this.getPickupOtp();
-            final java.lang.Object other$pickupOtp = other.getPickupOtp();
-            if (this$pickupOtp == null ? other$pickupOtp != null : !this$pickupOtp.equals(other$pickupOtp)) return false;
-            final java.lang.Object this$deliveryOtp = this.getDeliveryOtp();
-            final java.lang.Object other$deliveryOtp = other.getDeliveryOtp();
-            if (this$deliveryOtp == null ? other$deliveryOtp != null : !this$deliveryOtp.equals(other$deliveryOtp)) return false;
-            return true;
-        }
 
-protected boolean canEqual(final java.lang.Object other) {
-            return other instanceof DeliveryExecutiveController.UpdateOrderStatusRequest;
-        }
 
-        @java.lang.Override
-public int hashCode() {
-            final int PRIME = 59;
-            int result = 1;
-            final java.lang.Object $goOfflineAfter = this.getGoOfflineAfter();
-            result = result * PRIME + ($goOfflineAfter == null ? 43 : $goOfflineAfter.hashCode());
-            final java.lang.Object $status = this.getStatus();
-            result = result * PRIME + ($status == null ? 43 : $status.hashCode());
-            final java.lang.Object $pickupOtp = this.getPickupOtp();
-            result = result * PRIME + ($pickupOtp == null ? 43 : $pickupOtp.hashCode());
-            final java.lang.Object $deliveryOtp = this.getDeliveryOtp();
-            result = result * PRIME + ($deliveryOtp == null ? 43 : $deliveryOtp.hashCode());
-            return result;
-        }
 
-        @java.lang.Override
-public java.lang.String toString() {
-            return "DeliveryExecutiveController.UpdateOrderStatusRequest(status=" + this.getStatus() + ", pickupOtp=" + this.getPickupOtp() + ", deliveryOtp=" + this.getDeliveryOtp() + ", goOfflineAfter=" + this.getGoOfflineAfter() + ")";
-        }
     }
 
     @PostMapping("/onboard")
@@ -418,11 +301,5 @@ public java.lang.String toString() {
         return emitter;
     }
 
-public DeliveryExecutiveController(final DeliveryExecutiveProfileService profileService, final OrderAssignmentService orderAssignmentService, final OrderExecutionService orderExecutionService, final org.springframework.data.redis.core.StringRedisTemplate redisTemplate, final org.springframework.data.redis.listener.RedisMessageListenerContainer redisMessageListenerContainer) {
-        this.profileService = profileService;
-        this.orderAssignmentService = orderAssignmentService;
-        this.orderExecutionService = orderExecutionService;
-        this.redisTemplate = redisTemplate;
-        this.redisMessageListenerContainer = redisMessageListenerContainer;
-    }
 }
+// @Getter

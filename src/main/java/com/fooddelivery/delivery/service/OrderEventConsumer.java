@@ -18,22 +18,15 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class OrderEventConsumer {
 private final ObjectMapper objectMapper;
     private final com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy[] strategies;
-    private final java.util.Map<String, java.util.List<com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy>> strategyMap;
+    private final java.util.Map<String, java.util.List<com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy>> strategyMap = new java.util.HashMap<>();
     private final IIdempotencyKeyRepository idempotencyKeyRepository;
     private final TransactionTemplate transactionTemplate;
     private final MeterRegistry meterRegistry;
 
-    public OrderEventConsumer(ObjectMapper objectMapper, com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy[] strategies, IIdempotencyKeyRepository idempotencyKeyRepository, TransactionTemplate transactionTemplate, MeterRegistry meterRegistry) {
-        this.objectMapper = objectMapper;
-        this.strategies = strategies;
-        this.idempotencyKeyRepository = idempotencyKeyRepository;
-        this.transactionTemplate = transactionTemplate;
-        this.meterRegistry = meterRegistry;
-        this.strategyMap = new java.util.HashMap<>();
-    }
 
     @jakarta.annotation.PostConstruct
     public void init() {
@@ -52,14 +45,7 @@ private final ObjectMapper objectMapper;
         // Idempotency check
         String eventId = com.fooddelivery.common.util.KafkaHeaderUtils.extractHeaderValue(headers, "eventId");
         if (eventId == null) {
-            Long offset = (Long) headers.get(org.springframework.kafka.support.KafkaHeaders.OFFSET);
-            Integer partition = (Integer) headers.get(org.springframework.kafka.support.KafkaHeaders.RECEIVED_PARTITION);
-            String topic = (String) headers.get(org.springframework.kafka.support.KafkaHeaders.RECEIVED_TOPIC);
-            if (offset != null && partition != null && topic != null) {
-                eventId = topic + "-" + partition + "-" + offset;
-            } else {
-                throw new IllegalArgumentException("Cannot determine eventId: missing eventId header and Kafka offset metadata");
-            }
+            throw new IllegalArgumentException("Missing eventId header");
         }
         
         String idempotencyKeyStr = "processed_event:delivery:" + eventId;

@@ -17,6 +17,7 @@ import com.fooddelivery.common.enums.OrderStatus;
 
 @Service
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class DeliveryMcpService {
 private final DeliveryExecutiveController deliveryController;
     private final DeliveryTelemetryController telemetryController;
@@ -27,16 +28,6 @@ private final DeliveryExecutiveController deliveryController;
     private final com.fooddelivery.delivery.controller.DeliveryVerificationController deliveryVerificationController;
     private final ObjectMapper objectMapper;
 
-    public DeliveryMcpService(DeliveryExecutiveController deliveryController, DeliveryTelemetryController telemetryController, LogisticsController logisticsController, com.fooddelivery.delivery.controller.AdminDeliveryController adminDeliveryController, com.fooddelivery.delivery.controller.DeliveryOrderController deliveryOrderController, com.fooddelivery.delivery.controller.InternalDeliveryController internalDeliveryController, com.fooddelivery.delivery.controller.DeliveryVerificationController deliveryVerificationController, ObjectMapper objectMapper) {
-        this.deliveryController = deliveryController;
-        this.telemetryController = telemetryController;
-        this.logisticsController = logisticsController;
-        this.adminDeliveryController = adminDeliveryController;
-        this.deliveryOrderController = deliveryOrderController;
-        this.internalDeliveryController = internalDeliveryController;
-        this.deliveryVerificationController = deliveryVerificationController;
-        this.objectMapper = objectMapper;
-    }
 
     private Principal createMockPrincipal(String driverId) {
         return () -> driverId;
@@ -229,3 +220,4 @@ private final DeliveryExecutiveController deliveryController;
         }
     }
 }
+// @Getter

@@ -10,6 +10,7 @@ import java.util.UUID;
 
 @Service
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class DelayedDispatchPoller {
 private final StringRedisTemplate redisTemplate;
     private final LogisticsDispatchService logisticsDispatchService;
@@ -103,10 +104,4 @@ private final StringRedisTemplate redisTemplate;
             _redisLock.release(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_POLL_DELAYED_DISPATCHES, _lockToken);
         }}
 
-public DelayedDispatchPoller(final StringRedisTemplate redisTemplate, final LogisticsDispatchService logisticsDispatchService, final ObjectMapper objectMapper, final org.springframework.kafka.core.KafkaTemplate<String, String> kafkaTemplate) {
-        this.redisTemplate = redisTemplate;
-        this.logisticsDispatchService = logisticsDispatchService;
-        this.objectMapper = objectMapper;
-        this.kafkaTemplate = kafkaTemplate;
-    }
 }

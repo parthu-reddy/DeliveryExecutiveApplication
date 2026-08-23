@@ -13,6 +13,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/delivery/orders")
 @PreAuthorize("hasRole(\'DELIVERY\')")
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class DeliveryOrderController {
 private final CustomerServiceClient customerServiceClient;
     private final com.fooddelivery.delivery.service.OrderAssignmentService orderAssignmentService;
@@ -103,8 +104,4 @@ private final CustomerServiceClient customerServiceClient;
         }
     }
 
-public DeliveryOrderController(final CustomerServiceClient customerServiceClient, final com.fooddelivery.delivery.service.OrderAssignmentService orderAssignmentService) {
-        this.customerServiceClient = customerServiceClient;
-        this.orderAssignmentService = orderAssignmentService;
-    }
 }

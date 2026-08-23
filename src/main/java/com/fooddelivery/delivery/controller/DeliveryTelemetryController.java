@@ -23,6 +23,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 @RequestMapping("/api/v1/delivery/telemetry")
 @PreAuthorize("hasRole(\'DELIVERY\')")
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class DeliveryTelemetryController {
 private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -126,10 +127,4 @@ private final StringRedisTemplate redisTemplate;
         return ResponseEntity.ok().build();
     }
 
-public DeliveryTelemetryController(final StringRedisTemplate redisTemplate, final ObjectMapper objectMapper, final TelemetryIngestionService telemetryService, final com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository repository) {
-        this.redisTemplate = redisTemplate;
-        this.objectMapper = objectMapper;
-        this.telemetryService = telemetryService;
-        this.repository = repository;
-    }
 }

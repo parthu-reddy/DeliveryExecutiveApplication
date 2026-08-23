@@ -10,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 @RequestMapping("/api/v1/internal/delivery")
 @lombok.extern.slf4j.Slf4j
 @PreAuthorize("hasRole('ADMIN')")
+@lombok.RequiredArgsConstructor
 public class InternalDeliveryController {
 private final DeliveryExecutiveProfileService profileService;
 
@@ -19,7 +20,4 @@ private final DeliveryExecutiveProfileService profileService;
         return ResponseEntity.ok().build();
     }
 
-public InternalDeliveryController(final DeliveryExecutiveProfileService profileService) {
-        this.profileService = profileService;
-    }
 }

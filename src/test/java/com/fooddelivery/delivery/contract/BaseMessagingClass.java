@@ -58,9 +58,17 @@ public abstract class BaseMessagingClass {
         dispatchRequest.put("deliveryLng", 77.624400);
         dispatchRequest.put("deliveryAddress", "221B Baker Street, Bangalore");
         dispatchRequest.put("excludedDriverIds", java.util.Collections.emptyList());
-        kafkaTemplate.send(com.fooddelivery.common.constants.KafkaConstants.TOPIC_LOGISTICS_DISPATCH,
-                orderId.toString(),
-                new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(dispatchRequest));
+        // mirror LogisticsDispatchService: a Message carrying the eventId header consumers
+        // now key their idempotency on, not the headerless (topic, key, payload) overload
+        org.springframework.messaging.Message<String> message =
+                org.springframework.messaging.support.MessageBuilder
+                    .withPayload(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(dispatchRequest))
+                    .setHeader(org.springframework.kafka.support.KafkaHeaders.TOPIC,
+                            com.fooddelivery.common.constants.KafkaConstants.TOPIC_LOGISTICS_DISPATCH)
+                    .setHeader(org.springframework.kafka.support.KafkaHeaders.KEY, orderId.toString())
+                    .setHeader("eventId", "0f1a5cb3-2b6d-5a1e-9c47-8e3f6d2a1b04")
+                    .build();
+        kafkaTemplate.send(message);
     }
 
     @Autowired

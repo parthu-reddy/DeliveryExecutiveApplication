@@ -14,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 @RequestMapping("/api/v1/logistics")
 @PreAuthorize("hasRole(\'DELIVERY\')")
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class LogisticsController {
 private final MapsServiceClient mapsClient;
 
@@ -29,7 +30,4 @@ private final MapsServiceClient mapsClient;
         }
     }
 
-public LogisticsController(final MapsServiceClient mapsClient) {
-        this.mapsClient = mapsClient;
-    }
 }

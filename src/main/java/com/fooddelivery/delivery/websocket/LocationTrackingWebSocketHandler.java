@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class LocationTrackingWebSocketHandler extends TextWebSocketHandler {
 private final ObjectMapper objectMapper;
     private final StringRedisTemplate redisTemplate;
@@ -23,37 +24,43 @@ private final ObjectMapper objectMapper;
     private final ConcurrentHashMap<String, WebSocketSession> userSessions = new ConcurrentHashMap<>();
     private final Sinks.Many<TelemetryEvent> telemetrySink = Sinks.many().multicast().onBackpressureBuffer();
 
-    public LocationTrackingWebSocketHandler(ObjectMapper objectMapper, StringRedisTemplate redisTemplate, io.micrometer.core.instrument.MeterRegistry meterRegistry) {
-        this.objectMapper = objectMapper;
-        this.redisTemplate = redisTemplate;
-        this.meterRegistry = meterRegistry;
-        // Reactive stream processing with batching/buffering
-        telemetrySink.asFlux().onBackpressureDrop(event -> log.warn("Dropped telemetry event due to backpressure: {}", event.driverId())).bufferTimeout(50, Duration.ofSeconds(1)).subscribe(batch -> {
+    /**
+     * Drains the telemetry sink into Redis in batches. Without this subscription
+     * {@link #handleTextMessage} emits into a sink nobody reads and every driver
+     * location update is silently discarded.
+     */
+    @jakarta.annotation.PostConstruct
+    void subscribeToTelemetrySink() {
+        telemetrySink.asFlux()
+            .onBackpressureDrop(event -> {
+                log.warn("Dropped telemetry event due to backpressure: {}", event.driverId());
+                meterRegistry.counter("ws.telemetry.dropped").increment();
+            })
+            .bufferTimeout(50, Duration.ofSeconds(1))
+            .publishOn(reactor.core.scheduler.Schedulers.boundedElastic())
+            .subscribe(this::flushBatch);
+    }
+
+    private void flushBatch(java.util.List<TelemetryEvent> batch) {
+        for (TelemetryEvent event : batch) {
             try {
-                batch.forEach(event -> {
-                    if (event.cityId() == null) {
-                        log.warn("Dropped telemetry event due to missing cityId: {}", event.driverId());
-                        return;
-                    }
-                    String geoKey = "drivers:geo:" + event.cityId();
-                    redisTemplate.opsForGeo().add(geoKey, new Point(event.lng(), event.lat()), event.driverId());
-                    // Track the last ping time in a ZSET for stale driver detection
-                    redisTemplate.opsForZSet().add("driver_last_ping", event.driverId(), System.currentTimeMillis());
-                    // Publish to pub/sub for SSE tracking
-                    if (event.orderId() != null && !event.orderId().isEmpty()) {
-                        try {
-                            String channel = "tracking:order:" + event.orderId();
-                            redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(event));
-                        } catch (Exception e) {
-                            log.error("Failed to publish to channel", e);
-                        }
-                    }
-                });
-                log.debug("Flushed {} location updates to Redis", batch.size());
+                if (event.cityId() == null || event.cityId().isEmpty()) {
+                    log.warn("Dropped telemetry event due to missing cityId: {}", event.driverId());
+                    meterRegistry.counter("ws.telemetry.missing_city").increment();
+                    continue;
+                }
+                redisTemplate.opsForGeo().add("drivers:geo:" + event.cityId(),
+                        new Point(event.lng(), event.lat()), event.driverId());
+                redisTemplate.opsForZSet().add("driver_last_ping", event.driverId(),
+                        System.currentTimeMillis());
+                if (event.orderId() != null && !event.orderId().isEmpty()) {
+                    redisTemplate.convertAndSend("tracking:order:" + event.orderId(),
+                            objectMapper.writeValueAsString(event));
+                }
             } catch (Exception e) {
-                log.error("Failed to flush locations to Redis", e);
+                log.error("Failed to flush telemetry for driver {}", event.driverId(), e);
             }
-        });
+        }
     }
 
     @Override

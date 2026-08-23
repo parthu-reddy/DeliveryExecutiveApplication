@@ -18,6 +18,7 @@ import java.util.Map;
 
 @Component
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class TrackingWebSocketHandler extends TextWebSocketHandler {
 private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -113,9 +114,4 @@ private final StringRedisTemplate redisTemplate;
         }
     }
 
-public TrackingWebSocketHandler(final StringRedisTemplate redisTemplate, final ObjectMapper objectMapper, final io.micrometer.core.instrument.MeterRegistry meterRegistry) {
-        this.redisTemplate = redisTemplate;
-        this.objectMapper = objectMapper;
-        this.meterRegistry = meterRegistry;
-    }
 }

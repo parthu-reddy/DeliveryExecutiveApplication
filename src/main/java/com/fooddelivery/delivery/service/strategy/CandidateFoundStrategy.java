@@ -11,6 +11,7 @@ import java.util.UUID;
 
 @Component
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class CandidateFoundStrategy implements DeliveryEventStrategy {
 private final StringRedisTemplate redisTemplate;
     private final com.fooddelivery.common.service.NotificationRouterService notificationRouterService;
@@ -57,10 +58,4 @@ private final StringRedisTemplate redisTemplate;
         return Collections.singletonList(EventType.DISPATCH_CANDIDATE_FOUND.name());
     }
 
-public CandidateFoundStrategy(final StringRedisTemplate redisTemplate, final com.fooddelivery.common.service.NotificationRouterService notificationRouterService, final org.springframework.core.env.Environment env, final com.fooddelivery.delivery.websocket.LocationTrackingWebSocketHandler locationTrackingWebSocketHandler) {
-        this.redisTemplate = redisTemplate;
-        this.notificationRouterService = notificationRouterService;
-        this.env = env;
-        this.locationTrackingWebSocketHandler = locationTrackingWebSocketHandler;
-    }
 }

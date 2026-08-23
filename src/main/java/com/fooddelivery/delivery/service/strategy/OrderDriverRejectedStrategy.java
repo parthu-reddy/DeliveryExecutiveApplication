@@ -12,6 +12,7 @@ import java.util.UUID;
 
 @Component
 @lombok.extern.slf4j.Slf4j
+@lombok.RequiredArgsConstructor
 public class OrderDriverRejectedStrategy implements DeliveryEventStrategy {
 private final LogisticsDispatchService logisticsDispatchService;
     private final StringRedisTemplate redisTemplate;
@@ -55,9 +56,4 @@ private final LogisticsDispatchService logisticsDispatchService;
         return Collections.singletonList(EventType.ORDER_DRIVER_REJECTED.name());
     }
 
-public OrderDriverRejectedStrategy(final LogisticsDispatchService logisticsDispatchService, final StringRedisTemplate redisTemplate, final ObjectMapper objectMapper) {
-        this.logisticsDispatchService = logisticsDispatchService;
-        this.redisTemplate = redisTemplate;
-        this.objectMapper = objectMapper;
-    }
 }
