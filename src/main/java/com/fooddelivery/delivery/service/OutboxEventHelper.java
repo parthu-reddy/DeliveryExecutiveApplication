@@ -18,9 +18,7 @@ import java.util.UUID;
 @Component
 @lombok.extern.slf4j.Slf4j
 public class OutboxEventHelper {
-    @java.lang.SuppressWarnings("all")
-
-    private final ObjectMapper objectMapper;
+private final ObjectMapper objectMapper;
 
     /**
      * Creates a fully-built OutboxEventEntity from a payload map.
@@ -44,8 +42,7 @@ public class OutboxEventHelper {
         return OutboxEventEntity.builder().id(UUID.randomUUID()).aggregateType(aggregateType).aggregateId(aggregateId).eventType(eventType).payload(payload).createdAt(LocalDateTime.now()).status(OutboxStatus.UNPROCESSED).build();
     }
 
-    @java.lang.SuppressWarnings("all")
-    public OutboxEventHelper(final ObjectMapper objectMapper) {
+public OutboxEventHelper(final ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 }

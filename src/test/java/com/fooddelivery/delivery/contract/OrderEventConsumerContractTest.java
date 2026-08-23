@@ -78,7 +78,7 @@ class OrderEventConsumerContractTest {
         stubTrigger.trigger("order_created");
 
         await().atMost(15, TimeUnit.SECONDS).untilAsserted(() -> {
-            verify(idempotencyKeyRepository).save(any(com.fooddelivery.common.entity.IdempotencyKey.class));
+            verify(idempotencyKeyRepository).tryClaim(anyString());
         });
     }
 

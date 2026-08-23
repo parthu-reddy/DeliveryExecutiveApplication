@@ -17,35 +17,36 @@ import java.util.stream.Collectors;
 @Component
 @lombok.extern.slf4j.Slf4j
 public class StaleDriverSweeperDaemon {
-    @java.lang.SuppressWarnings("all")
-
-    private final StringRedisTemplate redisTemplate;
+private final StringRedisTemplate redisTemplate;
     private final IDeliveryExecutiveRepository deliveryExecutiveRepository;
-    private static final String DRIVER_LOCATION_KEY = "drivers:geo:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
     private static final String DRIVER_LAST_PING_KEY = "driver_last_ping";
     private static final long STALE_THRESHOLD_MS = 60000; // 60 seconds
 
-    @Scheduled(fixedRate = 60000)
+    @Scheduled(fixedDelay = 60000)
     public void sweepStaleDrivers() {
-        Boolean locked = redisTemplate.opsForValue().setIfAbsent(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_SWEEP_STALE_DRIVERS, "1", java.time.Duration.ofSeconds(50));
-        if (!Boolean.TRUE.equals(locked)) {
-            return;
-        }
-        log.info("Starting StaleDriverSweeperDaemon sweep...");
-        long thresholdTimestamp = System.currentTimeMillis() - STALE_THRESHOLD_MS;
-        try {
-            // Find all driver IDs whose last ping was older than the threshold
-            Set<String> staleDriverIds = redisTemplate.opsForZSet().rangeByScore(DRIVER_LAST_PING_KEY, 0, thresholdTimestamp);
-            if (staleDriverIds != null && !staleDriverIds.isEmpty()) {
-                log.info("Found {} stale drivers. Processing offline status...", staleDriverIds.size());
-                processStaleDriversBatch(staleDriverIds);
-            } else {
-                log.debug("No stale drivers found in this sweep cycle.");
+        com.fooddelivery.common.lock.RedisLock _redisLock = new com.fooddelivery.common.lock.RedisLock(redisTemplate);
+        String _lockToken = java.util.UUID.randomUUID().toString();
+        boolean locked = _redisLock.tryAcquire(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_SWEEP_STALE_DRIVERS, _lockToken, java.time.Duration.ofSeconds(50));
+        if (!locked) { return; }
+        try {    
+            log.info("Starting StaleDriverSweeperDaemon sweep...");
+            long thresholdTimestamp = System.currentTimeMillis() - STALE_THRESHOLD_MS;
+            try {
+                // Find all driver IDs whose last ping was older than the threshold
+                Set<String> staleDriverIds = redisTemplate.opsForZSet().rangeByScore(DRIVER_LAST_PING_KEY, 0, thresholdTimestamp);
+                if (staleDriverIds != null && !staleDriverIds.isEmpty()) {
+                    log.info("Found {} stale drivers. Processing offline status...", staleDriverIds.size());
+                    processStaleDriversBatch(staleDriverIds);
+                } else {
+                    log.debug("No stale drivers found in this sweep cycle.");
+                }
+            } catch (Exception e) {
+                log.error("Error during StaleDriverSweeperDaemon execution", e);
             }
-        } catch (Exception e) {
-            log.error("Error during StaleDriverSweeperDaemon execution", e);
-        }
-    }
+        
+        } finally {
+            _redisLock.release(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_SWEEP_STALE_DRIVERS, _lockToken);
+        }}
 
     /**
      * Batch-processes stale drivers: fetches all entities in a single DB call,
@@ -65,7 +66,7 @@ public class StaleDriverSweeperDaemon {
         }
         // Clean up invalid IDs from Redis immediately
         for (String invalidId : invalidIds) {
-            redisTemplate.opsForGeo().remove(DRIVER_LOCATION_KEY, invalidId);
+            // Cannot reliably clean geo or available sets for invalid IDs without cityId
             redisTemplate.opsForZSet().remove(DRIVER_LAST_PING_KEY, invalidId);
         }
         if (validUuids.isEmpty()) return;
@@ -97,9 +98,19 @@ public class StaleDriverSweeperDaemon {
             }
             // Only clean Redis AFTER DB commit succeeds
             for (String driverIdStr : successfullyUpdatedIds) {
-                redisTemplate.opsForGeo().remove(DRIVER_LOCATION_KEY, driverIdStr);
+                DeliveryExecutive driver = null;
+                try {
+                    driver = driverMap.get(UUID.fromString(driverIdStr));
+                } catch (Exception ignored) {
+                    log.debug("Invalid UUID format for driver: {}", driverIdStr);
+                }
+                
+                if (driver != null && driver.getCityId() != null) {
+                    redisTemplate.opsForGeo().remove("drivers:geo:" + driver.getCityId(), driverIdStr);
+                    redisTemplate.opsForSet().remove("drivers:available:" + driver.getCityId(), driverIdStr);
+                }
+                
                 redisTemplate.opsForZSet().remove(DRIVER_LAST_PING_KEY, driverIdStr);
-                redisTemplate.opsForSet().remove("drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID, driverIdStr);
                 redisTemplate.opsForHash().put("drivers:status", driverIdStr, DeliveryExecutiveStatus.OFFLINE.name());
             }
         } catch (Exception dbEx) {
@@ -107,8 +118,7 @@ public class StaleDriverSweeperDaemon {
         }
     }
 
-    @java.lang.SuppressWarnings("all")
-    public StaleDriverSweeperDaemon(final StringRedisTemplate redisTemplate, final IDeliveryExecutiveRepository deliveryExecutiveRepository) {
+public StaleDriverSweeperDaemon(final StringRedisTemplate redisTemplate, final IDeliveryExecutiveRepository deliveryExecutiveRepository) {
         this.redisTemplate = redisTemplate;
         this.deliveryExecutiveRepository = deliveryExecutiveRepository;
     }

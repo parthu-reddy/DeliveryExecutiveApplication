@@ -14,9 +14,7 @@ import java.util.UUID;
 @Component
 @lombok.extern.slf4j.Slf4j
 public class AtRestaurantStateStrategy extends AbstractDeliveryOrderState {
-    @java.lang.SuppressWarnings("all")
-
-    public AtRestaurantStateStrategy(StringRedisTemplate redisTemplate, ObjectMapper objectMapper, TransactionTemplate transactionTemplate, OutboxEventRepository outboxEventRepository, IDeliveryExecutiveRepository repository, LogisticsDispatchService logisticsDispatchService) {
+public AtRestaurantStateStrategy(StringRedisTemplate redisTemplate, ObjectMapper objectMapper, TransactionTemplate transactionTemplate, OutboxEventRepository outboxEventRepository, IDeliveryExecutiveRepository repository, LogisticsDispatchService logisticsDispatchService) {
         super(redisTemplate, objectMapper, transactionTemplate, outboxEventRepository, repository, logisticsDispatchService);
     }
 

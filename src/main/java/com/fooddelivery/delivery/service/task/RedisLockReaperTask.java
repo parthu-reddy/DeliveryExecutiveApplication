@@ -12,18 +12,18 @@ import java.util.UUID;
 @Component
 @lombok.extern.slf4j.Slf4j
 public class RedisLockReaperTask {
-    @java.lang.SuppressWarnings("all")
-
-    private final StringRedisTemplate redisTemplate;
+private final StringRedisTemplate redisTemplate;
     private final IDeliveryExecutiveRepository repository;
 
     /**
      * Periodically scan and clean up orphaned Redis locks for drivers.
      * Runs every 2 minutes.
      */
-    @Scheduled(fixedRate = 120000)
+    @Scheduled(fixedDelay = 120000)
     public void reapOrphanedLocks() {
-        Boolean lockAcquired = redisTemplate.opsForValue().setIfAbsent("lock:reaper_task_execution", "LOCKED", java.time.Duration.ofMinutes(1));
+        com.fooddelivery.common.lock.RedisLock _redisLock = new com.fooddelivery.common.lock.RedisLock(redisTemplate);
+        String _lockToken = java.util.UUID.randomUUID().toString();
+        boolean lockAcquired = _redisLock.tryAcquire("lock:reaper_task_execution", _lockToken, java.time.Duration.ofMinutes(1));
         if (!Boolean.TRUE.equals(lockAcquired)) {
             log.debug("Another instance is already running the Reaper Task. Skipping.");
             return;
@@ -123,8 +123,7 @@ public class RedisLockReaperTask {
         }
     }
 
-    @java.lang.SuppressWarnings("all")
-    public RedisLockReaperTask(final StringRedisTemplate redisTemplate, final IDeliveryExecutiveRepository repository) {
+public RedisLockReaperTask(final StringRedisTemplate redisTemplate, final IDeliveryExecutiveRepository repository) {
         this.redisTemplate = redisTemplate;
         this.repository = repository;
     }

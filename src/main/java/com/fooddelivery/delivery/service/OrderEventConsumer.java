@@ -19,9 +19,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Service
 @lombok.extern.slf4j.Slf4j
 public class OrderEventConsumer {
-    @java.lang.SuppressWarnings("all")
-
-    private final ObjectMapper objectMapper;
+private final ObjectMapper objectMapper;
     private final com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy[] strategies;
     private final java.util.Map<String, java.util.List<com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy>> strategyMap;
     private final IIdempotencyKeyRepository idempotencyKeyRepository;
@@ -35,6 +33,10 @@ public class OrderEventConsumer {
         this.transactionTemplate = transactionTemplate;
         this.meterRegistry = meterRegistry;
         this.strategyMap = new java.util.HashMap<>();
+    }
+
+    @jakarta.annotation.PostConstruct
+    public void init() {
         for (com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy strategy : strategies) {
             for (String eventType : strategy.getEventTypes()) {
                 this.strategyMap.computeIfAbsent(eventType, k -> new java.util.ArrayList<>()).add(strategy);
@@ -43,7 +45,7 @@ public class OrderEventConsumer {
     }
 
     @RetryableTopic(attempts = "4", backoff = @Backoff(delay = 2000, multiplier = 2.0, maxDelay = 10000))
-    @KafkaListener(topics = com.fooddelivery.common.constants.KafkaConstants.TOPIC_ORDER_EVENTS, groupId = com.fooddelivery.common.constants.KafkaConstants.GROUP_DELIVERY_SERVICE)
+    @KafkaListener(topics = com.fooddelivery.common.constants.KafkaConstants.TOPIC_ORDER_EVENTS, groupId = com.fooddelivery.common.constants.KafkaConstants.GROUP_DELIVERY_SERVICE + "-ordereventconsumer")
     public void consumeOrderEvent(String message, @org.springframework.messaging.handler.annotation.Headers java.util.Map<String, Object> headers) {
         log.info("Consumed event from {}: {}", com.fooddelivery.common.constants.KafkaConstants.TOPIC_ORDER_EVENTS, message);
         
@@ -56,7 +58,7 @@ public class OrderEventConsumer {
             if (offset != null && partition != null && topic != null) {
                 eventId = topic + "-" + partition + "-" + offset;
             } else {
-                eventId = UUID.randomUUID().toString();
+                throw new IllegalArgumentException("Cannot determine eventId: missing eventId header and Kafka offset metadata");
             }
         }
         

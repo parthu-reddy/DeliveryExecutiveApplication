@@ -14,9 +14,7 @@ import java.util.UUID;
 @PreAuthorize("hasRole(\'DELIVERY\')")
 @lombok.extern.slf4j.Slf4j
 public class DeliveryOrderController {
-    @java.lang.SuppressWarnings("all")
-
-    private final CustomerServiceClient customerServiceClient;
+private final CustomerServiceClient customerServiceClient;
     private final com.fooddelivery.delivery.service.OrderAssignmentService orderAssignmentService;
 
     @GetMapping("/active")
@@ -70,13 +68,13 @@ public class DeliveryOrderController {
                         obj.set("riderId", obj.get("deliveryExecutiveId"));
                     }
                     // Extract dynamic payout from the top-level entity fields (which are now denormalized)
-                    double totalPayout = obj.has("driverGrossPayout") ? obj.get("driverGrossPayout").asDouble() : 0.0;
-                    double driverTaxes = obj.has("driverTaxes") ? obj.get("driverTaxes").asDouble() : 0.0;
-                    double payout = obj.has("driverNetPayout") ? obj.get("driverNetPayout").asDouble() : 0.0;
-                    double customerContribution = obj.has("deliveryFee") ? obj.get("deliveryFee").asDouble() : 0.0;
-                    double restaurantContribution = obj.has("restaurantDeliveryContribution") ? obj.get("restaurantDeliveryContribution").asDouble() : 0.0;
+                    java.math.BigDecimal totalPayout = obj.has("driverGrossPayout") ? new java.math.BigDecimal(obj.get("driverGrossPayout").asText()) : java.math.BigDecimal.ZERO;
+                    java.math.BigDecimal driverTaxes = obj.has("driverTaxes") ? new java.math.BigDecimal(obj.get("driverTaxes").asText()) : java.math.BigDecimal.ZERO;
+                    java.math.BigDecimal payout = obj.has("driverNetPayout") ? new java.math.BigDecimal(obj.get("driverNetPayout").asText()) : java.math.BigDecimal.ZERO;
+                    java.math.BigDecimal customerContribution = obj.has("deliveryFee") ? new java.math.BigDecimal(obj.get("deliveryFee").asText()) : java.math.BigDecimal.ZERO;
+                    java.math.BigDecimal restaurantContribution = obj.has("restaurantDeliveryContribution") ? new java.math.BigDecimal(obj.get("restaurantDeliveryContribution").asText()) : java.math.BigDecimal.ZERO;
                     
-                    if (totalPayout > 0) {
+                    if (totalPayout.compareTo(java.math.BigDecimal.ZERO) > 0) {
                         obj.put("grossPayout", totalPayout);
                         obj.put("driverTaxes", driverTaxes);
                         obj.put("payout", payout);
@@ -105,8 +103,7 @@ public class DeliveryOrderController {
         }
     }
 
-    @java.lang.SuppressWarnings("all")
-    public DeliveryOrderController(final CustomerServiceClient customerServiceClient, final com.fooddelivery.delivery.service.OrderAssignmentService orderAssignmentService) {
+public DeliveryOrderController(final CustomerServiceClient customerServiceClient, final com.fooddelivery.delivery.service.OrderAssignmentService orderAssignmentService) {
         this.customerServiceClient = customerServiceClient;
         this.orderAssignmentService = orderAssignmentService;
     }

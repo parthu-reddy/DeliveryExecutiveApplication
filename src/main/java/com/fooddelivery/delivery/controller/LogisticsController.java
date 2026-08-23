@@ -15,9 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 @PreAuthorize("hasRole(\'DELIVERY\')")
 @lombok.extern.slf4j.Slf4j
 public class LogisticsController {
-    @java.lang.SuppressWarnings("all")
-
-    private final MapsServiceClient mapsClient;
+private final MapsServiceClient mapsClient;
 
     @GetMapping("/route")
     public ResponseEntity<?> getRoute(@RequestParam double sourceLat, @RequestParam double sourceLng, @RequestParam double destLat, @RequestParam double destLng) {
@@ -31,8 +29,7 @@ public class LogisticsController {
         }
     }
 
-    @java.lang.SuppressWarnings("all")
-    public LogisticsController(final MapsServiceClient mapsClient) {
+public LogisticsController(final MapsServiceClient mapsClient) {
         this.mapsClient = mapsClient;
     }
 }

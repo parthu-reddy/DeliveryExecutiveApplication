@@ -10,69 +10,56 @@ public class DriverLocationDTO {
     private Double lng;
     private String status;
 
-    @java.lang.SuppressWarnings("all")
-    public UUID getId() {
+public UUID getId() {
         return this.id;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public String getFullName() {
+public String getFullName() {
         return this.fullName;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public String getPhoneNumber() {
+public String getPhoneNumber() {
         return this.phoneNumber;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public Double getLat() {
+public Double getLat() {
         return this.lat;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public Double getLng() {
+public Double getLng() {
         return this.lng;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public String getStatus() {
+public String getStatus() {
         return this.status;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setId(final UUID id) {
+public void setId(final UUID id) {
         this.id = id;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setFullName(final String fullName) {
+public void setFullName(final String fullName) {
         this.fullName = fullName;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setPhoneNumber(final String phoneNumber) {
+public void setPhoneNumber(final String phoneNumber) {
         this.phoneNumber = phoneNumber;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setLat(final Double lat) {
+public void setLat(final Double lat) {
         this.lat = lat;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setLng(final Double lng) {
+public void setLng(final Double lng) {
         this.lng = lng;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setStatus(final String status) {
+public void setStatus(final String status) {
         this.status = status;
     }
 
     @java.lang.Override
-    @java.lang.SuppressWarnings("all")
-    public boolean equals(final java.lang.Object o) {
+public boolean equals(final java.lang.Object o) {
         if (o == this) return true;
         if (!(o instanceof DriverLocationDTO)) return false;
         final DriverLocationDTO other = (DriverLocationDTO) o;
@@ -98,14 +85,12 @@ public class DriverLocationDTO {
         return true;
     }
 
-    @java.lang.SuppressWarnings("all")
-    protected boolean canEqual(final java.lang.Object other) {
+protected boolean canEqual(final java.lang.Object other) {
         return other instanceof DriverLocationDTO;
     }
 
     @java.lang.Override
-    @java.lang.SuppressWarnings("all")
-    public int hashCode() {
+public int hashCode() {
         final int PRIME = 59;
         int result = 1;
         final java.lang.Object $lat = this.getLat();
@@ -124,17 +109,14 @@ public class DriverLocationDTO {
     }
 
     @java.lang.Override
-    @java.lang.SuppressWarnings("all")
-    public java.lang.String toString() {
+public java.lang.String toString() {
         return "DriverLocationDTO(id=" + this.getId() + ", fullName=" + this.getFullName() + ", phoneNumber=" + this.getPhoneNumber() + ", lat=" + this.getLat() + ", lng=" + this.getLng() + ", status=" + this.getStatus() + ")";
     }
 
-    @java.lang.SuppressWarnings("all")
-    public DriverLocationDTO() {
+public DriverLocationDTO() {
     }
 
-    @java.lang.SuppressWarnings("all")
-    public DriverLocationDTO(final UUID id, final String fullName, final String phoneNumber, final Double lat, final Double lng, final String status) {
+public DriverLocationDTO(final UUID id, final String fullName, final String phoneNumber, final Double lat, final Double lng, final String status) {
         this.id = id;
         this.fullName = fullName;
         this.phoneNumber = phoneNumber;

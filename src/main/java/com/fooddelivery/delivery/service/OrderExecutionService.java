@@ -14,9 +14,7 @@ import io.micrometer.observation.annotation.Observed;
 @lombok.extern.slf4j.Slf4j
 @Observed(name = "delivery.order.execution")
 public class OrderExecutionService {
-    @java.lang.SuppressWarnings("all")
-
-    private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
     private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxEventHelper outboxEventHelper;
@@ -63,8 +61,11 @@ public class OrderExecutionService {
         redisTemplate.expire(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderId, java.time.Duration.ofHours(2));
         // Add back to pool
         try {
-            String key = "drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
-            redisTemplate.opsForSet().add(key, driverId.toString());
+            String cityId = repository.findById(driverId).map(com.fooddelivery.delivery.entity.DeliveryExecutive::getCityId).orElse(null);
+            if (cityId != null) {
+                String key = "drivers:available:" + cityId;
+                redisTemplate.opsForSet().add(key, driverId.toString());
+            }
         } catch (Exception e) {
             log.error("Failed to add driver {} to Redis pool", driverId, e);
         }
@@ -99,8 +100,7 @@ public class OrderExecutionService {
         }
     }
 
-    @java.lang.SuppressWarnings("all")
-    public OrderExecutionService(final org.springframework.data.redis.core.StringRedisTemplate redisTemplate, final org.springframework.transaction.support.TransactionTemplate transactionTemplate, final OutboxEventRepository outboxEventRepository, final OutboxEventHelper outboxEventHelper, final IDeliveryExecutiveRepository repository, final LogisticsDispatchService logisticsDispatchService, final com.fooddelivery.delivery.service.state.order.DeliveryOrderStateFactory deliveryOrderStateFactory, final ObjectMapper objectMapper) {
+public OrderExecutionService(final org.springframework.data.redis.core.StringRedisTemplate redisTemplate, final org.springframework.transaction.support.TransactionTemplate transactionTemplate, final OutboxEventRepository outboxEventRepository, final OutboxEventHelper outboxEventHelper, final IDeliveryExecutiveRepository repository, final LogisticsDispatchService logisticsDispatchService, final com.fooddelivery.delivery.service.state.order.DeliveryOrderStateFactory deliveryOrderStateFactory, final ObjectMapper objectMapper) {
         this.redisTemplate = redisTemplate;
         this.transactionTemplate = transactionTemplate;
         this.outboxEventRepository = outboxEventRepository;

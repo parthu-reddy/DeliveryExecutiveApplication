@@ -13,9 +13,7 @@ import java.util.UUID;
 @Service
 @lombok.extern.slf4j.Slf4j
 public class OnboardingOrchestratorService {
-    @java.lang.SuppressWarnings("all")
-
-    private final IDeliveryExecutiveRepository executiveRepository;
+private final IDeliveryExecutiveRepository executiveRepository;
     private final GovernmentIdServiceClient governmentIdClient;
     private final DeliveryExecutiveProfileService profileService;
 
@@ -80,8 +78,7 @@ public class OnboardingOrchestratorService {
         }
     }
 
-    @java.lang.SuppressWarnings("all")
-    public OnboardingOrchestratorService(final IDeliveryExecutiveRepository executiveRepository, final GovernmentIdServiceClient governmentIdClient, final DeliveryExecutiveProfileService profileService) {
+public OnboardingOrchestratorService(final IDeliveryExecutiveRepository executiveRepository, final GovernmentIdServiceClient governmentIdClient, final DeliveryExecutiveProfileService profileService) {
         this.executiveRepository = executiveRepository;
         this.governmentIdClient = governmentIdClient;
         this.profileService = profileService;

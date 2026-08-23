@@ -27,13 +27,16 @@ class LogisticsDispatchServiceTest {
     @Mock
     private com.fooddelivery.common.client.MapsServiceClient mapsClient;
 
+    @Mock
+    private com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository repository;
+
     private ObjectMapper objectMapper = new ObjectMapper();
 
     private LogisticsDispatchService logisticsDispatchService;
 
     @BeforeEach
     void setUp() {
-        logisticsDispatchService = new LogisticsDispatchService(kafkaTemplate, objectMapper, mapsClient);
+        logisticsDispatchService = new LogisticsDispatchService(kafkaTemplate, objectMapper, mapsClient, repository);
     }
 
     @Test

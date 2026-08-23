@@ -42,13 +42,14 @@ class OrderEventConsumerTest {
             transactionTemplate,
             new io.micrometer.core.instrument.simple.SimpleMeterRegistry()
         );
+        orderEventConsumer.init();
         
         lenient().doAnswer(invocation -> {
             org.springframework.transaction.support.TransactionCallback<Object> action = invocation.getArgument(0);
             return action.doInTransaction(null);
         }).when(transactionTemplate).execute(any(org.springframework.transaction.support.TransactionCallback.class));
         
-        lenient().when(idempotencyKeyRepository.existsById(anyString())).thenReturn(false);
+        lenient().when(idempotencyKeyRepository.tryClaim(anyString())).thenReturn(1);
     }
 
     @Test

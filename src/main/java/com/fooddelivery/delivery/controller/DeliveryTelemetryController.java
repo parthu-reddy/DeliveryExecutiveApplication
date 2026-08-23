@@ -24,12 +24,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 @PreAuthorize("hasRole(\'DELIVERY\')")
 @lombok.extern.slf4j.Slf4j
 public class DeliveryTelemetryController {
-    @java.lang.SuppressWarnings("all")
-
-    private final StringRedisTemplate redisTemplate;
+private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final TelemetryIngestionService telemetryService;
-    private static final String DRIVER_LOCATION_KEY = "drivers:geo:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
+    private final com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository repository;
 
     @PostMapping("/batch")
     public ResponseEntity<String> processBatchTelemetry(Principal principal, @Valid @RequestBody List<TelemetryEventRequest> telemetryBatch) {
@@ -66,7 +64,9 @@ public class DeliveryTelemetryController {
                 telemetryService.batchIngestTelemetry(executiveUuid, validPayloads);
                 // Update Redis geospatial index with the last known location
                 LocationPayload lastPayload = validPayloads.get(validPayloads.size() - 1);
-                redisTemplate.opsForGeo().add(DRIVER_LOCATION_KEY, new Point(lastPayload.longitude(), lastPayload.latitude()), authId);
+                String cityId = repository.findById(executiveUuid).map(com.fooddelivery.delivery.entity.DeliveryExecutive::getCityId).orElse("unknown_city");
+                String locationKey = "drivers:geo:" + cityId;
+                redisTemplate.opsForGeo().add(locationKey, new Point(lastPayload.longitude(), lastPayload.latitude()), authId);
                 redisTemplate.opsForZSet().add("driver_last_ping", authId, System.currentTimeMillis());
             }
             // Publish tracking events for SSE subscribers
@@ -99,7 +99,11 @@ public class DeliveryTelemetryController {
             log.warn("SECURITY ALERT: Impossible physics/velocity detected for Executive ID: {}", executiveId);
             return ResponseEntity.ok().build();
         }
-        redisTemplate.opsForGeo().add(DRIVER_LOCATION_KEY, new Point(payload.longitude(), payload.latitude()), executiveId.toString());
+        String cityId = repository.findById(executiveId).map(com.fooddelivery.delivery.entity.DeliveryExecutive::getCityId).orElse(null);
+        if (cityId != null) {
+            String geoKey = "drivers:geo:" + cityId;
+            redisTemplate.opsForGeo().add(geoKey, new Point(payload.longitude(), payload.latitude()), executiveId.toString());
+        }
         redisTemplate.opsForZSet().add("driver_last_ping", executiveId.toString(), System.currentTimeMillis());
         // Publish to live tracking SSE if driver has an active order
         String activeOrderId = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + executiveId);
@@ -122,10 +126,10 @@ public class DeliveryTelemetryController {
         return ResponseEntity.ok().build();
     }
 
-    @java.lang.SuppressWarnings("all")
-    public DeliveryTelemetryController(final StringRedisTemplate redisTemplate, final ObjectMapper objectMapper, final TelemetryIngestionService telemetryService) {
+public DeliveryTelemetryController(final StringRedisTemplate redisTemplate, final ObjectMapper objectMapper, final TelemetryIngestionService telemetryService, final com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository repository) {
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
         this.telemetryService = telemetryService;
+        this.repository = repository;
     }
 }

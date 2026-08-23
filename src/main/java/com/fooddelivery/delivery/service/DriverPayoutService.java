@@ -10,9 +10,7 @@ import java.util.UUID;
 @Service
 @lombok.extern.slf4j.Slf4j
 public class DriverPayoutService {
-    @java.lang.SuppressWarnings("all")
-
-    private final WalletServiceClient walletClient;
+private final WalletServiceClient walletClient;
 
     public DriverPayoutService(WalletServiceClient walletClient) {
         this.walletClient = walletClient;

@@ -20,9 +20,7 @@ import java.util.UUID;
 @Component
 @lombok.extern.slf4j.Slf4j
 public class DeliveredStateStrategy extends AbstractDeliveryOrderState {
-    @java.lang.SuppressWarnings("all")
-
-    public DeliveredStateStrategy(StringRedisTemplate redisTemplate, ObjectMapper objectMapper, TransactionTemplate transactionTemplate, OutboxEventRepository outboxEventRepository, IDeliveryExecutiveRepository repository, LogisticsDispatchService logisticsDispatchService) {
+public DeliveredStateStrategy(StringRedisTemplate redisTemplate, ObjectMapper objectMapper, TransactionTemplate transactionTemplate, OutboxEventRepository outboxEventRepository, IDeliveryExecutiveRepository repository, LogisticsDispatchService logisticsDispatchService) {
         super(redisTemplate, objectMapper, transactionTemplate, outboxEventRepository, repository, logisticsDispatchService);
     }
 
@@ -83,8 +81,11 @@ public class DeliveredStateStrategy extends AbstractDeliveryOrderState {
         redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId, getSupportedStatus().name(), Duration.ofHours(24));
         if (!Boolean.TRUE.equals(goOfflineAfter)) {
             try {
-                String key = "drivers:available:" + AppConstants.DEFAULT_CITY_ID;
-                redisTemplate.opsForSet().add(key, driverId.toString());
+                String cityId = repository.findById(driverId).map(DeliveryExecutive::getCityId).orElse(null);
+                if (cityId != null) {
+                    String key = "drivers:available:" + cityId;
+                    redisTemplate.opsForSet().add(key, driverId.toString());
+                }
             } catch (Exception e) {
                 log.error("Failed to add driver {} back to Redis pool", driverId, e);
             }

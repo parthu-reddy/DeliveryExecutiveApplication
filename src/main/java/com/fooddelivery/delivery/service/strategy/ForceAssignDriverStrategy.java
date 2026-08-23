@@ -11,9 +11,7 @@ import java.util.UUID;
 @Component
 @lombok.extern.slf4j.Slf4j
 public class ForceAssignDriverStrategy implements DeliveryEventStrategy {
-    @java.lang.SuppressWarnings("all")
-
-    private final OrderAssignmentService orderAssignmentService;
+private final OrderAssignmentService orderAssignmentService;
 
     @Override
     public void process(JsonNode root, String eventType) throws Exception {
@@ -39,8 +37,7 @@ public class ForceAssignDriverStrategy implements DeliveryEventStrategy {
         return Collections.singletonList(EventType.FORCE_ASSIGN_DRIVER.name());
     }
 
-    @java.lang.SuppressWarnings("all")
-    public ForceAssignDriverStrategy(final OrderAssignmentService orderAssignmentService) {
+public ForceAssignDriverStrategy(final OrderAssignmentService orderAssignmentService) {
         this.orderAssignmentService = orderAssignmentService;
     }
 }

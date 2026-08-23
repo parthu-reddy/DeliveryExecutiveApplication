@@ -21,83 +21,67 @@ public class TelemetryEventRequest {
     private Boolean isMockLocation;
     private Long timestampMs;
 
-    @java.lang.SuppressWarnings("all")
-    public TelemetryEventRequest() {
+public TelemetryEventRequest() {
     }
 
-    @java.lang.SuppressWarnings("all")
-    public String getDriverId() {
+public String getDriverId() {
         return this.driverId;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public Double getLat() {
+public Double getLat() {
         return this.lat;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public Double getLng() {
+public Double getLng() {
         return this.lng;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public String getOrderId() {
+public String getOrderId() {
         return this.orderId;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public Double getSpeedKmh() {
+public Double getSpeedKmh() {
         return this.speedKmh;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public Boolean getIsMockLocation() {
+public Boolean getIsMockLocation() {
         return this.isMockLocation;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public Long getTimestampMs() {
+public Long getTimestampMs() {
         return this.timestampMs;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setDriverId(final String driverId) {
+public void setDriverId(final String driverId) {
         this.driverId = driverId;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setLat(final Double lat) {
+public void setLat(final Double lat) {
         this.lat = lat;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setLng(final Double lng) {
+public void setLng(final Double lng) {
         this.lng = lng;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setOrderId(final String orderId) {
+public void setOrderId(final String orderId) {
         this.orderId = orderId;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setSpeedKmh(final Double speedKmh) {
+public void setSpeedKmh(final Double speedKmh) {
         this.speedKmh = speedKmh;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setIsMockLocation(final Boolean isMockLocation) {
+public void setIsMockLocation(final Boolean isMockLocation) {
         this.isMockLocation = isMockLocation;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setTimestampMs(final Long timestampMs) {
+public void setTimestampMs(final Long timestampMs) {
         this.timestampMs = timestampMs;
     }
 
     @java.lang.Override
-    @java.lang.SuppressWarnings("all")
-    public boolean equals(final java.lang.Object o) {
+public boolean equals(final java.lang.Object o) {
         if (o == this) return true;
         if (!(o instanceof TelemetryEventRequest)) return false;
         final TelemetryEventRequest other = (TelemetryEventRequest) o;
@@ -126,14 +110,12 @@ public class TelemetryEventRequest {
         return true;
     }
 
-    @java.lang.SuppressWarnings("all")
-    protected boolean canEqual(final java.lang.Object other) {
+protected boolean canEqual(final java.lang.Object other) {
         return other instanceof TelemetryEventRequest;
     }
 
     @java.lang.Override
-    @java.lang.SuppressWarnings("all")
-    public int hashCode() {
+public int hashCode() {
         final int PRIME = 59;
         int result = 1;
         final java.lang.Object $lat = this.getLat();
@@ -154,8 +136,7 @@ public class TelemetryEventRequest {
     }
 
     @java.lang.Override
-    @java.lang.SuppressWarnings("all")
-    public java.lang.String toString() {
+public java.lang.String toString() {
         return "TelemetryEventRequest(driverId=" + this.getDriverId() + ", lat=" + this.getLat() + ", lng=" + this.getLng() + ", orderId=" + this.getOrderId() + ", speedKmh=" + this.getSpeedKmh() + ", isMockLocation=" + this.getIsMockLocation() + ", timestampMs=" + this.getTimestampMs() + ")";
     }
 }

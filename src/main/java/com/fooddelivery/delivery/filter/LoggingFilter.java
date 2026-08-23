@@ -18,9 +18,7 @@ import com.fooddelivery.common.constants.HeaderConstants;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @lombok.extern.slf4j.Slf4j
 public class LoggingFilter extends OncePerRequestFilter {
-    @java.lang.SuppressWarnings("all")
-
-    /**
+/**
      * Headers that must NEVER be logged to prevent credential leakage.
      */
     private static final Set<String> SENSITIVE_HEADERS = Set.of("authorization", "cookie", "x-api-key", "x-forwarded-for");

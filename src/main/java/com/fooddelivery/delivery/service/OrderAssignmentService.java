@@ -16,9 +16,7 @@ import java.util.UUID;
 @Service
 @lombok.extern.slf4j.Slf4j
 public class OrderAssignmentService {
-    @java.lang.SuppressWarnings("all")
-
-    private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
     private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxEventHelper outboxEventHelper;
@@ -88,8 +86,11 @@ public class OrderAssignmentService {
             // Set active order tracking
             redisTemplate.opsForValue().set(RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + driverId, orderId.toString(), java.time.Duration.ofHours(24));
             try {
-                String key = "drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
-                redisTemplate.opsForSet().remove(key, driverId.toString());
+                String cityId = repository.findById(driverId).map(DeliveryExecutive::getCityId).orElse(null);
+                if (cityId != null) {
+                    String key = "drivers:available:" + cityId;
+                    redisTemplate.opsForSet().remove(key, driverId.toString());
+                }
             } catch (Exception e) {
                 log.error("Failed to remove driver {} from Redis pool", driverId, e);
             }
@@ -230,15 +231,17 @@ public class OrderAssignmentService {
             throw e;
         }
         try {
-            String key = "drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
-            redisTemplate.opsForSet().remove(key, driverId.toString());
+            String cityId = repository.findById(driverId).map(DeliveryExecutive::getCityId).orElse(null);
+            if (cityId != null) {
+                String key = "drivers:available:" + cityId;
+                redisTemplate.opsForSet().remove(key, driverId.toString());
+            }
         } catch (Exception e) {
             log.error("Failed to remove driver {} from Redis pool", driverId, e);
         }
     }
 
-    @java.lang.SuppressWarnings("all")
-    public OrderAssignmentService(final org.springframework.data.redis.core.StringRedisTemplate redisTemplate, final org.springframework.transaction.support.TransactionTemplate transactionTemplate, final OutboxEventRepository outboxEventRepository, final OutboxEventHelper outboxEventHelper, final IDeliveryExecutiveRepository repository, final LogisticsDispatchService logisticsDispatchService) {
+public OrderAssignmentService(final org.springframework.data.redis.core.StringRedisTemplate redisTemplate, final org.springframework.transaction.support.TransactionTemplate transactionTemplate, final OutboxEventRepository outboxEventRepository, final OutboxEventHelper outboxEventHelper, final IDeliveryExecutiveRepository repository, final LogisticsDispatchService logisticsDispatchService) {
         this.redisTemplate = redisTemplate;
         this.transactionTemplate = transactionTemplate;
         this.outboxEventRepository = outboxEventRepository;

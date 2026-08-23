@@ -19,11 +19,9 @@ import java.util.Map;
 @Component
 @lombok.extern.slf4j.Slf4j
 public class TrackingWebSocketHandler extends TextWebSocketHandler {
-    @java.lang.SuppressWarnings("all")
-
-    private final StringRedisTemplate redisTemplate;
+private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
-    private static final String DRIVER_LOCATION_KEY = "drivers:geo:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
+    private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
     // Use Sinks.Many to create a reactive stream for telemetry data with backpressure buffering
     private final Sinks.Many<Map<String, Object>> telemetrySink = Sinks.many().multicast().onBackpressureBuffer(10000, false);
 
@@ -48,7 +46,26 @@ public class TrackingWebSocketHandler extends TextWebSocketHandler {
     @SuppressWarnings("unchecked")
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         try {
+            String sessionUser = (String) session.getAttributes().get("userId");
             Map<String, Object> event = objectMapper.readValue(message.getPayload(), Map.class);
+            String driverId = sessionUser;
+            String payloadDriverId = (String) event.get("driverId");
+            
+            if (payloadDriverId != null && !driverId.equals(payloadDriverId)) {
+                log.warn("Driver ID mismatch: session user {}, payload driver {}", driverId, payloadDriverId);
+                meterRegistry.counter("ws.telemetry.identity_mismatch").increment();
+                return;
+            }
+            
+            String orderId = (String) event.get("orderId");
+            if (orderId != null) {
+                String activeOrder = redisTemplate.opsForValue().get("driver:active_order:" + driverId);
+                if (!orderId.equals(activeOrder)) {
+                    log.warn("Driver {} is not assigned to order {}, active is {}", driverId, orderId, activeOrder);
+                    event.remove("orderId"); // Ignore the orderId for telemetry
+                }
+            }
+
             // Emit to sink
             Sinks.EmitResult result = telemetrySink.tryEmitNext(event);
             if (result.isFailure()) {
@@ -76,8 +93,14 @@ public class TrackingWebSocketHandler extends TextWebSocketHandler {
                 if (driverId != null && latNum != null && lngNum != null) {
                     double lat = latNum.doubleValue();
                     double lng = lngNum.doubleValue();
+                    String cityId = (String) event.get("cityId");
+                    if (cityId == null) {
+                        log.warn("Dropped telemetry event due to missing cityId: {}", driverId);
+                        continue;
+                    }
+                    String geoKey = "drivers:geo:" + cityId;
                     // Update geospatial index
-                    redisTemplate.opsForGeo().add(DRIVER_LOCATION_KEY, new Point(lng, lat), driverId);
+                    redisTemplate.opsForGeo().add(geoKey, new Point(lng, lat), driverId);
                     // Publish to pub/sub for SSE tracking
                     if (orderId != null && !orderId.isEmpty()) {
                         String channel = "tracking:order:" + orderId;
@@ -90,9 +113,9 @@ public class TrackingWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    @java.lang.SuppressWarnings("all")
-    public TrackingWebSocketHandler(final StringRedisTemplate redisTemplate, final ObjectMapper objectMapper) {
+public TrackingWebSocketHandler(final StringRedisTemplate redisTemplate, final ObjectMapper objectMapper, final io.micrometer.core.instrument.MeterRegistry meterRegistry) {
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
+        this.meterRegistry = meterRegistry;
     }
 }

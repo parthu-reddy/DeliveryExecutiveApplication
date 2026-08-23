@@ -11,9 +11,7 @@ import java.util.UUID;
 @Service
 @lombok.extern.slf4j.Slf4j
 public class DeliveryExecutiveProfileService {
-    @java.lang.SuppressWarnings("all")
-
-    private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
+private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
     private final IDeliveryExecutiveRepository repository;
     private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
 
@@ -78,19 +76,25 @@ public class DeliveryExecutiveProfileService {
             }
             return repository.save(executive);
         });
-        // Sync with Redis AFTER the transaction has successfully committed
-        String key = "drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
-        try {
-            if (isOnline) {
-                redisTemplate.opsForSet().add(key, driverId.toString());
-                redisTemplate.opsForZSet().add("driver_last_ping", driverId.toString(), System.currentTimeMillis());
-            } else {
-                redisTemplate.opsForSet().remove(key, driverId.toString());
-                redisTemplate.opsForZSet().remove("driver_last_ping", driverId.toString());
+        
+        String cityId = updated.getCityId();
+        if (cityId == null) {
+            log.warn("Driver {} has no cityId, skipping Redis availability sync", driverId);
+        } else {
+            // Sync with Redis AFTER the transaction has successfully committed
+            String key = "drivers:available:" + cityId;
+            try {
+                if (isOnline) {
+                    redisTemplate.opsForSet().add(key, driverId.toString());
+                    redisTemplate.opsForZSet().add("driver_last_ping", driverId.toString(), System.currentTimeMillis());
+                } else {
+                    redisTemplate.opsForSet().remove(key, driverId.toString());
+                    redisTemplate.opsForZSet().remove("driver_last_ping", driverId.toString());
+                }
+                redisTemplate.opsForHash().put("drivers:status", driverId.toString(), updated.getStatus().name());
+            } catch (Exception e) {
+                log.error("Failed to sync driver status with Redis for driver {}. DB was updated, but Redis might be inconsistent.", driverId, e);
             }
-            redisTemplate.opsForHash().put("drivers:status", driverId.toString(), updated.getStatus().name());
-        } catch (Exception e) {
-            log.error("Failed to sync driver status with Redis for driver {}. DB was updated, but Redis might be inconsistent.", driverId, e);
         }
         // Ideally trigger a retry or reconciliation job, but DB state is consistent.
         log.info("Driver {} is now {}", driverId, updated.getStatus());
@@ -98,13 +102,13 @@ public class DeliveryExecutiveProfileService {
     }
 
     @Transactional(readOnly = true)
-    public java.util.List<com.fooddelivery.delivery.dto.DriverLocationDTO> getAvailableDriversWithLocation(double lat, double lng, double radiusKm) {
+    public java.util.List<com.fooddelivery.delivery.dto.DriverLocationDTO> getAvailableDriversWithLocation(String cityId, double lat, double lng, double radiusKm) {
         if (lat == 0 && lng == 0) {
             // Fallback for legacy calls or missing params: fetch all online drivers
             java.util.List<DeliveryExecutive> onlineDrivers = repository.findByStatus(DeliveryExecutiveStatus.ONLINE);
-            return fetchDriverLocations(onlineDrivers, true);
+            return fetchDriverLocations(cityId, onlineDrivers, true);
         }
-        String locationKey = "drivers:geo:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
+        String locationKey = "drivers:geo:" + cityId;
         java.util.List<com.fooddelivery.delivery.dto.DriverLocationDTO> result = new java.util.ArrayList<>();
         try {
             org.springframework.data.geo.Circle circle = new org.springframework.data.geo.Circle(new org.springframework.data.geo.Point(lng, lat), new org.springframework.data.geo.Distance(radiusKm, org.springframework.data.geo.Metrics.KILOMETERS));
@@ -125,7 +129,7 @@ public class DeliveryExecutiveProfileService {
                 // Filter to ensure we only return ONLINE drivers as requested (double check against DB)
                 java.util.List<DeliveryExecutive> onlineDrivers = drivers.stream().filter(d -> d.getStatus() == DeliveryExecutiveStatus.ONLINE).collect(java.util.stream.Collectors.toList());
                 log.debug("getAvailableDriversWithLocation: found {} drivers in radius", onlineDrivers.size());
-                return fetchDriverLocations(onlineDrivers, false);
+                return fetchDriverLocations(cityId, onlineDrivers, false);
             }
         } catch (Exception e) {
             log.error("Failed to query Redis GEORADIUS", e);
@@ -134,10 +138,10 @@ public class DeliveryExecutiveProfileService {
     }
 
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<com.fooddelivery.delivery.dto.DriverLocationDTO> getAllDriversWithLocation(org.springframework.data.domain.Pageable pageable) {
+    public org.springframework.data.domain.Page<com.fooddelivery.delivery.dto.DriverLocationDTO> getAllDriversWithLocation(String cityId, org.springframework.data.domain.Pageable pageable) {
         org.springframework.data.domain.Page<DeliveryExecutive> allDrivers = repository.findAll(pageable);
         log.debug("getAllDriversWithLocation: found {} drivers on page", allDrivers.getNumberOfElements());
-        java.util.List<com.fooddelivery.delivery.dto.DriverLocationDTO> dtoList = fetchDriverLocations(allDrivers.getContent(), true);
+        java.util.List<com.fooddelivery.delivery.dto.DriverLocationDTO> dtoList = fetchDriverLocations(cityId, allDrivers.getContent(), true);
         return new org.springframework.data.domain.PageImpl<>(dtoList, pageable, allDrivers.getTotalElements());
     }
 
@@ -145,10 +149,10 @@ public class DeliveryExecutiveProfileService {
      * Batched Redis GEOPOS lookup — fetches all driver positions in a single round-trip
      * instead of N individual calls.
      */
-    private java.util.List<com.fooddelivery.delivery.dto.DriverLocationDTO> fetchDriverLocations(java.util.List<DeliveryExecutive> drivers, boolean includeWithoutLocation) {
+    private java.util.List<com.fooddelivery.delivery.dto.DriverLocationDTO> fetchDriverLocations(String cityId, java.util.List<DeliveryExecutive> drivers, boolean includeWithoutLocation) {
         java.util.List<com.fooddelivery.delivery.dto.DriverLocationDTO> result = new java.util.ArrayList<>();
         if (drivers.isEmpty()) return result;
-        String locationKey = "drivers:geo:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
+        String locationKey = "drivers:geo:" + cityId;
         String[] memberIds = drivers.stream().map(d -> d.getId().toString()).toArray(String[]::new);
         try {
             java.util.List<org.springframework.data.geo.Point> positions = redisTemplate.opsForGeo().position(locationKey, memberIds);
@@ -184,8 +188,11 @@ public class DeliveryExecutiveProfileService {
             
             // Clean up Redis
             try {
-                String key = "drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
-                redisTemplate.opsForSet().remove(key, driverId.toString());
+                String cityId = executive.getCityId();
+                if (cityId != null) {
+                    String key = "drivers:available:" + cityId;
+                    redisTemplate.opsForSet().remove(key, driverId.toString());
+                }
                 redisTemplate.opsForZSet().remove("driver_last_ping", driverId.toString());
                 redisTemplate.opsForHash().delete("drivers:status", driverId.toString());
             } catch (Exception e) {
@@ -195,8 +202,7 @@ public class DeliveryExecutiveProfileService {
         }
     }
 
-    @java.lang.SuppressWarnings("all")
-    public DeliveryExecutiveProfileService(final org.springframework.transaction.support.TransactionTemplate transactionTemplate, final IDeliveryExecutiveRepository repository, final org.springframework.data.redis.core.StringRedisTemplate redisTemplate) {
+public DeliveryExecutiveProfileService(final org.springframework.transaction.support.TransactionTemplate transactionTemplate, final IDeliveryExecutiveRepository repository, final org.springframework.data.redis.core.StringRedisTemplate redisTemplate) {
         this.transactionTemplate = transactionTemplate;
         this.repository = repository;
         this.redisTemplate = redisTemplate;

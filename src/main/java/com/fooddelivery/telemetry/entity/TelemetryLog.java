@@ -26,63 +26,51 @@ public class TelemetryLog {
     @Column(name = "recorded_at", nullable = false)
     private OffsetDateTime recordedAt;
 
-    @java.lang.SuppressWarnings("all")
-    public Long getLogId() {
+public Long getLogId() {
         return this.logId;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public DeliveryExecutive getExecutive() {
+public DeliveryExecutive getExecutive() {
         return this.executive;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public Point getLocation() {
+public Point getLocation() {
         return this.location;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public BigDecimal getSpeedKmh() {
+public BigDecimal getSpeedKmh() {
         return this.speedKmh;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public boolean isMockLocation() {
+public boolean isMockLocation() {
         return this.isMockLocation;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public OffsetDateTime getRecordedAt() {
+public OffsetDateTime getRecordedAt() {
         return this.recordedAt;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setLogId(final Long logId) {
+public void setLogId(final Long logId) {
         this.logId = logId;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setExecutive(final DeliveryExecutive executive) {
+public void setExecutive(final DeliveryExecutive executive) {
         this.executive = executive;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setLocation(final Point location) {
+public void setLocation(final Point location) {
         this.location = location;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setSpeedKmh(final BigDecimal speedKmh) {
+public void setSpeedKmh(final BigDecimal speedKmh) {
         this.speedKmh = speedKmh;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setMockLocation(final boolean isMockLocation) {
+public void setMockLocation(final boolean isMockLocation) {
         this.isMockLocation = isMockLocation;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setRecordedAt(final OffsetDateTime recordedAt) {
+public void setRecordedAt(final OffsetDateTime recordedAt) {
         this.recordedAt = recordedAt;
     }
 }

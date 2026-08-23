@@ -12,9 +12,7 @@ import java.util.UUID;
 @Component
 @lombok.extern.slf4j.Slf4j
 public class OrderAcceptedStrategy implements DeliveryEventStrategy {
-    @java.lang.SuppressWarnings("all")
-
-    private final LogisticsDispatchService logisticsDispatchService;
+private final LogisticsDispatchService logisticsDispatchService;
     private final StringRedisTemplate redisTemplate;
 
     @Override
@@ -57,8 +55,7 @@ public class OrderAcceptedStrategy implements DeliveryEventStrategy {
         return Collections.singletonList(EventType.ORDER_ACCEPTED.name());
     }
 
-    @java.lang.SuppressWarnings("all")
-    public OrderAcceptedStrategy(final LogisticsDispatchService logisticsDispatchService, final StringRedisTemplate redisTemplate) {
+public OrderAcceptedStrategy(final LogisticsDispatchService logisticsDispatchService, final StringRedisTemplate redisTemplate) {
         this.logisticsDispatchService = logisticsDispatchService;
         this.redisTemplate = redisTemplate;
     }

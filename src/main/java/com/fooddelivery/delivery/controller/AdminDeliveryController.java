@@ -15,9 +15,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/internal/admin/delivery")
 @lombok.extern.slf4j.Slf4j
 public class AdminDeliveryController {
-    @java.lang.SuppressWarnings("all")
-
-    private final IDeliveryExecutiveRepository repository;
+private final IDeliveryExecutiveRepository repository;
     private final DeliveryExecutiveProfileService profileService;
     private final OrderAssignmentService orderAssignmentService;
 
@@ -31,15 +29,16 @@ public class AdminDeliveryController {
 
     @GetMapping("/drivers/available-with-location")
     @PreAuthorize("hasRole(\'ADMIN\')")
-    public ResponseEntity<List<com.fooddelivery.delivery.dto.DriverLocationDTO>> getAvailableDriversWithLocation(@RequestParam(required = false, defaultValue = "0") double lat, @RequestParam(required = false, defaultValue = "0") double lng, @RequestParam(required = false, defaultValue = "50") double radiusKm) {
-        return ResponseEntity.ok(profileService.getAvailableDriversWithLocation(lat, lng, radiusKm));
+    public ResponseEntity<List<com.fooddelivery.delivery.dto.DriverLocationDTO>> getAvailableDriversWithLocation(@RequestParam String cityId, @RequestParam(required = false, defaultValue = "0") double lat, @RequestParam(required = false, defaultValue = "0") double lng, @RequestParam(required = false, defaultValue = "50") double radiusKm) {
+        return ResponseEntity.ok(profileService.getAvailableDriversWithLocation(cityId, lat, lng, radiusKm));
     }
 
     @GetMapping("/drivers/all-with-location")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<org.springframework.data.domain.Page<com.fooddelivery.delivery.dto.DriverLocationDTO>> getAllDriversWithLocation(
+            @RequestParam String cityId,
             @org.springframework.data.web.PageableDefault(size = 50) org.springframework.data.domain.Pageable pageable) {
-        return ResponseEntity.ok(profileService.getAllDriversWithLocation(pageable));
+        return ResponseEntity.ok(profileService.getAllDriversWithLocation(cityId, pageable));
     }
 
     @PostMapping("/orders/{orderId}/assign")
@@ -62,8 +61,7 @@ public class AdminDeliveryController {
         return ResponseEntity.ok(drivers);
     }
 
-    @java.lang.SuppressWarnings("all")
-    public AdminDeliveryController(final IDeliveryExecutiveRepository repository, final DeliveryExecutiveProfileService profileService, final OrderAssignmentService orderAssignmentService) {
+public AdminDeliveryController(final IDeliveryExecutiveRepository repository, final DeliveryExecutiveProfileService profileService, final OrderAssignmentService orderAssignmentService) {
         this.repository = repository;
         this.profileService = profileService;
         this.orderAssignmentService = orderAssignmentService;

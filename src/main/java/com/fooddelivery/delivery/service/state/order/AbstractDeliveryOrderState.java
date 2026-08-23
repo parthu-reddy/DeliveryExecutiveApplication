@@ -19,9 +19,7 @@ import java.util.UUID;
 @lombok.extern.slf4j.Slf4j
 
 public abstract class AbstractDeliveryOrderState implements DeliveryOrderStateStrategy {
-    @java.lang.SuppressWarnings("all")
-
-    protected final StringRedisTemplate redisTemplate;
+protected final StringRedisTemplate redisTemplate;
     protected final ObjectMapper objectMapper;
     protected final TransactionTemplate transactionTemplate;
     protected final OutboxEventRepository outboxEventRepository;

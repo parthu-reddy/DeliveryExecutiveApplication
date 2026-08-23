@@ -16,9 +16,11 @@ class CandidateFoundStrategyTest {
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
+    @InjectMocks
+    private CandidateFoundStrategy strategy;
+
     @Test
     void testGetEventTypes() {
-        // Basic check to ensure it returns something
-        // assertThat(true).isTrue();
+        assertThat(strategy.getEventTypes()).containsExactly("DISPATCH_CANDIDATE_FOUND");
     }
 }

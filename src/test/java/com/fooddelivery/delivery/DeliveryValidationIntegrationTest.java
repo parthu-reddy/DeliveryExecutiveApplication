@@ -13,7 +13,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {"spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration"})
 @ActiveProfiles("contract-test")
 public class DeliveryValidationIntegrationTest extends BaseIntegrationTest {
 
@@ -26,8 +26,14 @@ public class DeliveryValidationIntegrationTest extends BaseIntegrationTest {
 
     @org.springframework.boot.test.mock.mockito.MockBean
     private org.springframework.data.redis.listener.RedisMessageListenerContainer redisMessageListenerContainer;
+    
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private org.springframework.kafka.core.KafkaTemplate kafkaTemplate;
+    
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private org.springframework.kafka.core.KafkaAdmin kafkaAdmin;
 
-@Test
+    @Test
     void shouldThrowExceptionWhenDuplicateVehicleNumberIsSaved() {
         String duplicateVehicle = "AP09CC1234";
         

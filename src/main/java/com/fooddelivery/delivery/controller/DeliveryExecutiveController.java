@@ -24,9 +24,7 @@ import jakarta.validation.constraints.Size;
 @PreAuthorize("hasRole(\'DELIVERY\')")
 @lombok.extern.slf4j.Slf4j
 public class DeliveryExecutiveController {
-    @java.lang.SuppressWarnings("all")
-
-    private final DeliveryExecutiveProfileService profileService;
+private final DeliveryExecutiveProfileService profileService;
     private final OrderAssignmentService orderAssignmentService;
     private final OrderExecutionService orderExecutionService;
     private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
@@ -48,63 +46,51 @@ public class DeliveryExecutiveController {
         private String photoUrl;
         private com.fooddelivery.common.enums.VehicleClass vehicleType;
 
-        @java.lang.SuppressWarnings("all")
-        public DeliveryOnboardRequest() {
+public DeliveryOnboardRequest() {
         }
 
-        @java.lang.SuppressWarnings("all")
-        public String getFullName() {
+public String getFullName() {
             return this.fullName;
         }
 
-        @java.lang.SuppressWarnings("all")
-        public String getPhoneNumber() {
+public String getPhoneNumber() {
             return this.phoneNumber;
         }
 
-        @java.lang.SuppressWarnings("all")
-        public String getVehicleNumber() {
+public String getVehicleNumber() {
             return this.vehicleNumber;
         }
 
-        @java.lang.SuppressWarnings("all")
-        public String getPhotoUrl() {
+public String getPhotoUrl() {
             return this.photoUrl;
         }
 
-        @java.lang.SuppressWarnings("all")
-        public com.fooddelivery.common.enums.VehicleClass getVehicleType() {
+public com.fooddelivery.common.enums.VehicleClass getVehicleType() {
             return this.vehicleType;
         }
 
-        @java.lang.SuppressWarnings("all")
-        public void setFullName(final String fullName) {
+public void setFullName(final String fullName) {
             this.fullName = fullName;
         }
 
-        @java.lang.SuppressWarnings("all")
-        public void setPhoneNumber(final String phoneNumber) {
+public void setPhoneNumber(final String phoneNumber) {
             this.phoneNumber = phoneNumber;
         }
 
-        @java.lang.SuppressWarnings("all")
-        public void setVehicleNumber(final String vehicleNumber) {
+public void setVehicleNumber(final String vehicleNumber) {
             this.vehicleNumber = vehicleNumber;
         }
 
-        @java.lang.SuppressWarnings("all")
-        public void setPhotoUrl(final String photoUrl) {
+public void setPhotoUrl(final String photoUrl) {
             this.photoUrl = photoUrl;
         }
 
-        @java.lang.SuppressWarnings("all")
-        public void setVehicleType(final com.fooddelivery.common.enums.VehicleClass vehicleType) {
+public void setVehicleType(final com.fooddelivery.common.enums.VehicleClass vehicleType) {
             this.vehicleType = vehicleType;
         }
 
         @java.lang.Override
-        @java.lang.SuppressWarnings("all")
-        public boolean equals(final java.lang.Object o) {
+public boolean equals(final java.lang.Object o) {
             if (o == this) return true;
             if (!(o instanceof DeliveryExecutiveController.DeliveryOnboardRequest)) return false;
             final DeliveryExecutiveController.DeliveryOnboardRequest other = (DeliveryExecutiveController.DeliveryOnboardRequest) o;
@@ -127,14 +113,12 @@ public class DeliveryExecutiveController {
             return true;
         }
 
-        @java.lang.SuppressWarnings("all")
-        protected boolean canEqual(final java.lang.Object other) {
+protected boolean canEqual(final java.lang.Object other) {
             return other instanceof DeliveryExecutiveController.DeliveryOnboardRequest;
         }
 
         @java.lang.Override
-        @java.lang.SuppressWarnings("all")
-        public int hashCode() {
+public int hashCode() {
             final int PRIME = 59;
             int result = 1;
             final java.lang.Object $fullName = this.getFullName();
@@ -151,8 +135,7 @@ public class DeliveryExecutiveController {
         }
 
         @java.lang.Override
-        @java.lang.SuppressWarnings("all")
-        public java.lang.String toString() {
+public java.lang.String toString() {
             return "DeliveryExecutiveController.DeliveryOnboardRequest(fullName=" + this.getFullName() + ", phoneNumber=" + this.getPhoneNumber() + ", vehicleNumber=" + this.getVehicleNumber() + ", photoUrl=" + this.getPhotoUrl() + ", vehicleType=" + this.getVehicleType() + ")";
         }
     }
@@ -166,33 +149,27 @@ public class DeliveryExecutiveController {
         @NotNull
         private Boolean available;
 
-        @java.lang.SuppressWarnings("all")
-        public ToggleStatusRequest() {
+public ToggleStatusRequest() {
         }
 
-        @java.lang.SuppressWarnings("all")
-        public String getDriverId() {
+public String getDriverId() {
             return this.driverId;
         }
 
-        @java.lang.SuppressWarnings("all")
-        public Boolean getAvailable() {
+public Boolean getAvailable() {
             return this.available;
         }
 
-        @java.lang.SuppressWarnings("all")
-        public void setDriverId(final String driverId) {
+public void setDriverId(final String driverId) {
             this.driverId = driverId;
         }
 
-        @java.lang.SuppressWarnings("all")
-        public void setAvailable(final Boolean available) {
+public void setAvailable(final Boolean available) {
             this.available = available;
         }
 
         @java.lang.Override
-        @java.lang.SuppressWarnings("all")
-        public boolean equals(final java.lang.Object o) {
+public boolean equals(final java.lang.Object o) {
             if (o == this) return true;
             if (!(o instanceof DeliveryExecutiveController.ToggleStatusRequest)) return false;
             final DeliveryExecutiveController.ToggleStatusRequest other = (DeliveryExecutiveController.ToggleStatusRequest) o;
@@ -206,14 +183,12 @@ public class DeliveryExecutiveController {
             return true;
         }
 
-        @java.lang.SuppressWarnings("all")
-        protected boolean canEqual(final java.lang.Object other) {
+protected boolean canEqual(final java.lang.Object other) {
             return other instanceof DeliveryExecutiveController.ToggleStatusRequest;
         }
 
         @java.lang.Override
-        @java.lang.SuppressWarnings("all")
-        public int hashCode() {
+public int hashCode() {
             final int PRIME = 59;
             int result = 1;
             final java.lang.Object $available = this.getAvailable();
@@ -224,8 +199,7 @@ public class DeliveryExecutiveController {
         }
 
         @java.lang.Override
-        @java.lang.SuppressWarnings("all")
-        public java.lang.String toString() {
+public java.lang.String toString() {
             return "DeliveryExecutiveController.ToggleStatusRequest(driverId=" + this.getDriverId() + ", available=" + this.getAvailable() + ")";
         }
     }
@@ -242,53 +216,43 @@ public class DeliveryExecutiveController {
         private String deliveryOtp;
         private Boolean goOfflineAfter;
 
-        @java.lang.SuppressWarnings("all")
-        public UpdateOrderStatusRequest() {
+public UpdateOrderStatusRequest() {
         }
 
-        @java.lang.SuppressWarnings("all")
-        public DeliveryStatus getStatus() {
+public DeliveryStatus getStatus() {
             return this.status;
         }
 
-        @java.lang.SuppressWarnings("all")
-        public String getPickupOtp() {
+public String getPickupOtp() {
             return this.pickupOtp;
         }
 
-        @java.lang.SuppressWarnings("all")
-        public String getDeliveryOtp() {
+public String getDeliveryOtp() {
             return this.deliveryOtp;
         }
 
-        @java.lang.SuppressWarnings("all")
-        public Boolean getGoOfflineAfter() {
+public Boolean getGoOfflineAfter() {
             return this.goOfflineAfter;
         }
 
-        @java.lang.SuppressWarnings("all")
-        public void setStatus(final DeliveryStatus status) {
+public void setStatus(final DeliveryStatus status) {
             this.status = status;
         }
 
-        @java.lang.SuppressWarnings("all")
-        public void setPickupOtp(final String pickupOtp) {
+public void setPickupOtp(final String pickupOtp) {
             this.pickupOtp = pickupOtp;
         }
 
-        @java.lang.SuppressWarnings("all")
-        public void setDeliveryOtp(final String deliveryOtp) {
+public void setDeliveryOtp(final String deliveryOtp) {
             this.deliveryOtp = deliveryOtp;
         }
 
-        @java.lang.SuppressWarnings("all")
-        public void setGoOfflineAfter(final Boolean goOfflineAfter) {
+public void setGoOfflineAfter(final Boolean goOfflineAfter) {
             this.goOfflineAfter = goOfflineAfter;
         }
 
         @java.lang.Override
-        @java.lang.SuppressWarnings("all")
-        public boolean equals(final java.lang.Object o) {
+public boolean equals(final java.lang.Object o) {
             if (o == this) return true;
             if (!(o instanceof DeliveryExecutiveController.UpdateOrderStatusRequest)) return false;
             final DeliveryExecutiveController.UpdateOrderStatusRequest other = (DeliveryExecutiveController.UpdateOrderStatusRequest) o;
@@ -308,14 +272,12 @@ public class DeliveryExecutiveController {
             return true;
         }
 
-        @java.lang.SuppressWarnings("all")
-        protected boolean canEqual(final java.lang.Object other) {
+protected boolean canEqual(final java.lang.Object other) {
             return other instanceof DeliveryExecutiveController.UpdateOrderStatusRequest;
         }
 
         @java.lang.Override
-        @java.lang.SuppressWarnings("all")
-        public int hashCode() {
+public int hashCode() {
             final int PRIME = 59;
             int result = 1;
             final java.lang.Object $goOfflineAfter = this.getGoOfflineAfter();
@@ -330,8 +292,7 @@ public class DeliveryExecutiveController {
         }
 
         @java.lang.Override
-        @java.lang.SuppressWarnings("all")
-        public java.lang.String toString() {
+public java.lang.String toString() {
             return "DeliveryExecutiveController.UpdateOrderStatusRequest(status=" + this.getStatus() + ", pickupOtp=" + this.getPickupOtp() + ", deliveryOtp=" + this.getDeliveryOtp() + ", goOfflineAfter=" + this.getGoOfflineAfter() + ")";
         }
     }
@@ -436,6 +397,7 @@ public class DeliveryExecutiveController {
             try {
                 redisMessageListenerContainer.removeMessageListener(listener, topic);
             } catch (Exception e) {
+                log.warn("Failed to remove Redis message listener during SSE cleanup", e);
             }
         };
         emitter.onCompletion(cleanup);
@@ -456,8 +418,7 @@ public class DeliveryExecutiveController {
         return emitter;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public DeliveryExecutiveController(final DeliveryExecutiveProfileService profileService, final OrderAssignmentService orderAssignmentService, final OrderExecutionService orderExecutionService, final org.springframework.data.redis.core.StringRedisTemplate redisTemplate, final org.springframework.data.redis.listener.RedisMessageListenerContainer redisMessageListenerContainer) {
+public DeliveryExecutiveController(final DeliveryExecutiveProfileService profileService, final OrderAssignmentService orderAssignmentService, final OrderExecutionService orderExecutionService, final org.springframework.data.redis.core.StringRedisTemplate redisTemplate, final org.springframework.data.redis.listener.RedisMessageListenerContainer redisMessageListenerContainer) {
         this.profileService = profileService;
         this.orderAssignmentService = orderAssignmentService;
         this.orderExecutionService = orderExecutionService;

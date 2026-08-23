@@ -18,9 +18,7 @@ import com.fooddelivery.common.enums.OrderStatus;
 @Service
 @lombok.extern.slf4j.Slf4j
 public class DeliveryMcpService {
-    @java.lang.SuppressWarnings("all")
-
-    private final DeliveryExecutiveController deliveryController;
+private final DeliveryExecutiveController deliveryController;
     private final DeliveryTelemetryController telemetryController;
     private final LogisticsController logisticsController;
     private final com.fooddelivery.delivery.controller.AdminDeliveryController adminDeliveryController;
@@ -129,19 +127,19 @@ public class DeliveryMcpService {
         }
     }
 
-    @Tool(description = "Admin: Get available drivers with location. Provide lat, lng, and radiusKm.")
-    public String getAvailableDriversWithLocation(double lat, double lng, double radiusKm) {
+    @Tool(description = "Admin: Get available drivers with location. Provide cityId, lat, lng, and radiusKm.")
+    public String getAvailableDriversWithLocation(String cityId, double lat, double lng, double radiusKm) {
         try {
-            return objectMapper.writeValueAsString(adminDeliveryController.getAvailableDriversWithLocation(lat, lng, radiusKm).getBody());
+            return objectMapper.writeValueAsString(adminDeliveryController.getAvailableDriversWithLocation(cityId, lat, lng, radiusKm).getBody());
         } catch (Exception e) {
             return "Error: " + e.getMessage();
         }
     }
 
-    @Tool(description = "Admin: Get all drivers with location.")
-    public String getAllDriversWithLocation() {
+    @Tool(description = "Admin: Get all drivers with location. Provide cityId.")
+    public String getAllDriversWithLocation(String cityId) {
         try {
-            return objectMapper.writeValueAsString(adminDeliveryController.getAllDriversWithLocation(org.springframework.data.domain.PageRequest.of(0, 100)).getBody());
+            return objectMapper.writeValueAsString(adminDeliveryController.getAllDriversWithLocation(cityId, org.springframework.data.domain.PageRequest.of(0, 100)).getBody());
         } catch (Exception e) {
             return "Error: " + e.getMessage();
         }

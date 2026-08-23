@@ -12,9 +12,7 @@ import java.util.List;
 @Component
 @lombok.extern.slf4j.Slf4j
 public class OrderStatusUpdatedStrategy implements DeliveryEventStrategy {
-    @java.lang.SuppressWarnings("all")
-
-    private final StringRedisTemplate redisTemplate;
+private final StringRedisTemplate redisTemplate;
     private final LogisticsDispatchService logisticsDispatchService;
     private final ObjectMapper objectMapper;
 
@@ -92,8 +90,7 @@ public class OrderStatusUpdatedStrategy implements DeliveryEventStrategy {
         return Arrays.asList(EventType.ORDER_STATUS_UPDATED.name(), EventType.ORDER_READY.name(), EventType.ORDER_PREPARING.name(), EventType.ORDER_ACCEPTED.name());
     }
 
-    @java.lang.SuppressWarnings("all")
-    public OrderStatusUpdatedStrategy(final StringRedisTemplate redisTemplate, final LogisticsDispatchService logisticsDispatchService, final ObjectMapper objectMapper) {
+public OrderStatusUpdatedStrategy(final StringRedisTemplate redisTemplate, final LogisticsDispatchService logisticsDispatchService, final ObjectMapper objectMapper) {
         this.redisTemplate = redisTemplate;
         this.logisticsDispatchService = logisticsDispatchService;
         this.objectMapper = objectMapper;

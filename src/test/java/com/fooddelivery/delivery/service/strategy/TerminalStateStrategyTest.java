@@ -14,11 +14,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ExtendWith(MockitoExtension.class)
 class TerminalStateStrategyTest {
 
-    private ObjectMapper objectMapper = new ObjectMapper();
+    @InjectMocks
+    private TerminalStateStrategy strategy;
 
     @Test
     void testGetEventTypes() {
-        // Basic check to ensure it returns something
-        // assertThat(true).isTrue();
+        assertThat(strategy.getEventTypes()).containsExactlyInAnyOrder(
+            "DRIVER_ASSIGNED", "DISPATCH_FAILED", "ORDER_CANCELLED", "DELIVERY_FAILED",
+            "ORDER_CANCELLED_BY_RESTAURANT", "ORDER_CANCELLED_BY_CUSTOMER", "ORDER_CANCELLED_BY_ADMIN",
+            "ORDER_REJECTED", "ORDER_DELAY_REJECTED", "MANUAL_INTERVENTION_REQUIRED"
+        );
     }
 }

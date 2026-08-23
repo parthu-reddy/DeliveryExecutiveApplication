@@ -19,9 +19,7 @@ import java.util.UUID;
 })
 @lombok.extern.slf4j.Slf4j
 public class DeliveryExecutive {
-    @java.lang.SuppressWarnings("all")
-
-    @Id
+@Id
     @Column(name = "id")
     private UUID id;
     @Column(name = "full_name")
@@ -49,6 +47,8 @@ public class DeliveryExecutive {
     private boolean active = false;
     @Column(name = "last_biometric_verification_at")
     private OffsetDateTime lastBiometricVerificationAt;
+    @Column(name = "city_id")
+    private String cityId;
 
     public void setStatus(DeliveryExecutiveStatus status) {
         if (this.status != status) {
@@ -70,155 +70,133 @@ public class DeliveryExecutive {
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
 
-    @java.lang.SuppressWarnings("all")
-    public UUID getId() {
+public UUID getId() {
         return this.id;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public String getFullName() {
+public String getFullName() {
         return this.fullName;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public String getPhoneNumber() {
+public String getPhoneNumber() {
         return this.phoneNumber;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public String getVehicleNumber() {
+public String getVehicleNumber() {
         return this.vehicleNumber;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public String getPhotoUrl() {
+public String getPhotoUrl() {
         return this.photoUrl;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public String getEmail() {
+public String getEmail() {
         return this.email;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public DeliveryExecutiveStatus getStatus() {
+public DeliveryExecutiveStatus getStatus() {
         return this.status;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public VerificationStatus getVerificationStatus() {
+public VerificationStatus getVerificationStatus() {
         return this.verificationStatus;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public VehicleClass getVehicleType() {
+public VehicleClass getVehicleType() {
         return this.vehicleType;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public boolean isActive() {
+public boolean isActive() {
         return this.active;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public OffsetDateTime getLastBiometricVerificationAt() {
+public OffsetDateTime getLastBiometricVerificationAt() {
         return this.lastBiometricVerificationAt;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public Integer getVersion() {
+public String getCityId() {
+        return this.cityId;
+    }
+
+public Integer getVersion() {
         return this.version;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public Point getLastKnownLocation() {
+public Point getLastKnownLocation() {
         return this.lastKnownLocation;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public OffsetDateTime getCreatedAt() {
+public OffsetDateTime getCreatedAt() {
         return this.createdAt;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public OffsetDateTime getUpdatedAt() {
+public OffsetDateTime getUpdatedAt() {
         return this.updatedAt;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setId(final UUID id) {
+public void setId(final UUID id) {
         this.id = id;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setFullName(final String fullName) {
+public void setFullName(final String fullName) {
         this.fullName = fullName;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setPhoneNumber(final String phoneNumber) {
+public void setPhoneNumber(final String phoneNumber) {
         this.phoneNumber = phoneNumber;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setVehicleNumber(final String vehicleNumber) {
+public void setVehicleNumber(final String vehicleNumber) {
         this.vehicleNumber = vehicleNumber;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setPhotoUrl(final String photoUrl) {
+public void setPhotoUrl(final String photoUrl) {
         this.photoUrl = photoUrl;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setEmail(final String email) {
+public void setEmail(final String email) {
         this.email = email;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setVerificationStatus(final VerificationStatus verificationStatus) {
+public void setVerificationStatus(final VerificationStatus verificationStatus) {
         this.verificationStatus = verificationStatus;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setVehicleType(final VehicleClass vehicleType) {
+public void setVehicleType(final VehicleClass vehicleType) {
         this.vehicleType = vehicleType;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setActive(final boolean active) {
+public void setActive(final boolean active) {
         this.active = active;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setLastBiometricVerificationAt(final OffsetDateTime lastBiometricVerificationAt) {
+public void setLastBiometricVerificationAt(final OffsetDateTime lastBiometricVerificationAt) {
         this.lastBiometricVerificationAt = lastBiometricVerificationAt;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setVersion(final Integer version) {
+public void setCityId(final String cityId) {
+        this.cityId = cityId;
+    }
+
+public void setVersion(final Integer version) {
         this.version = version;
     }
 
     @JsonIgnore
-    @java.lang.SuppressWarnings("all")
-    public void setLastKnownLocation(final Point lastKnownLocation) {
+public void setLastKnownLocation(final Point lastKnownLocation) {
         this.lastKnownLocation = lastKnownLocation;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setCreatedAt(final OffsetDateTime createdAt) {
+public void setCreatedAt(final OffsetDateTime createdAt) {
         this.createdAt = createdAt;
     }
 
-    @java.lang.SuppressWarnings("all")
-    public void setUpdatedAt(final OffsetDateTime updatedAt) {
+public void setUpdatedAt(final OffsetDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
 
     @java.lang.Override
-    @java.lang.SuppressWarnings("all")
-    public boolean equals(final java.lang.Object o) {
+public boolean equals(final java.lang.Object o) {
         if (o == this) return true;
         if (!(o instanceof DeliveryExecutive)) return false;
         final DeliveryExecutive other = (DeliveryExecutive) o;
@@ -269,14 +247,12 @@ public class DeliveryExecutive {
         return true;
     }
 
-    @java.lang.SuppressWarnings("all")
-    protected boolean canEqual(final java.lang.Object other) {
+protected boolean canEqual(final java.lang.Object other) {
         return other instanceof DeliveryExecutive;
     }
 
     @java.lang.Override
-    @java.lang.SuppressWarnings("all")
-    public int hashCode() {
+public int hashCode() {
         final int PRIME = 59;
         int result = 1;
         result = result * PRIME + (this.isActive() ? 79 : 97);
@@ -312,12 +288,10 @@ public class DeliveryExecutive {
     }
 
     @java.lang.Override
-    @java.lang.SuppressWarnings("all")
-    public java.lang.String toString() {
+public java.lang.String toString() {
         return "DeliveryExecutive(id=" + this.getId() + ", fullName=" + this.getFullName() + ", phoneNumber=" + this.getPhoneNumber() + ", vehicleNumber=" + this.getVehicleNumber() + ", photoUrl=" + this.getPhotoUrl() + ", email=" + this.getEmail() + ", status=" + this.getStatus() + ", verificationStatus=" + this.getVerificationStatus() + ", vehicleType=" + this.getVehicleType() + ", active=" + this.isActive() + ", lastBiometricVerificationAt=" + this.getLastBiometricVerificationAt() + ", version=" + this.getVersion() + ", lastKnownLocation=" + this.getLastKnownLocation() + ", createdAt=" + this.getCreatedAt() + ", updatedAt=" + this.getUpdatedAt() + ")";
     }
 
-    @java.lang.SuppressWarnings("all")
-    public DeliveryExecutive() {
+public DeliveryExecutive() {
     }
 }

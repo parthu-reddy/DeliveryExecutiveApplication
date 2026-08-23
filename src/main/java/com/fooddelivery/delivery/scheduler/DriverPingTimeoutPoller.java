@@ -10,32 +10,33 @@ import java.util.UUID;
 @Component
 @lombok.extern.slf4j.Slf4j
 public class DriverPingTimeoutPoller {
-    @java.lang.SuppressWarnings("all")
-
-    private final StringRedisTemplate redisTemplate;
+private final StringRedisTemplate redisTemplate;
     private final OrderAssignmentService orderAssignmentService;
 
     @Scheduled(fixedDelay = 5000)
     public void pollPingTimeouts() {
-        Boolean locked = redisTemplate.opsForValue().setIfAbsent(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_POLL_PING_TIMEOUTS, "1", java.time.Duration.ofSeconds(4));
-        if (!Boolean.TRUE.equals(locked)) {
-            return;
-        }
-        long currentTime = System.currentTimeMillis();
-        Set<String> timedOutOrders = redisTemplate.opsForZSet().rangeByScore(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_PING_TIMEOUTS, 0, currentTime);
-        if (timedOutOrders != null && !timedOutOrders.isEmpty()) {
-            for (String orderIdStr : timedOutOrders) {
-                try {
-                    orderAssignmentService.timeoutOrderPing(UUID.fromString(orderIdStr));
-                } catch (Exception e) {
-                    log.error("Failed to process ping timeout for order {}", orderIdStr, e);
+        com.fooddelivery.common.lock.RedisLock _redisLock = new com.fooddelivery.common.lock.RedisLock(redisTemplate);
+        String _lockToken = java.util.UUID.randomUUID().toString();
+        boolean locked = _redisLock.tryAcquire(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_POLL_PING_TIMEOUTS, _lockToken, java.time.Duration.ofSeconds(4));
+        if (!locked) { return; }
+        try {    
+            long currentTime = System.currentTimeMillis();
+            Set<String> timedOutOrders = redisTemplate.opsForZSet().rangeByScore(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_PING_TIMEOUTS, 0, currentTime);
+            if (timedOutOrders != null && !timedOutOrders.isEmpty()) {
+                for (String orderIdStr : timedOutOrders) {
+                    try {
+                        orderAssignmentService.timeoutOrderPing(UUID.fromString(orderIdStr));
+                    } catch (Exception e) {
+                        log.error("Failed to process ping timeout for order {}", orderIdStr, e);
+                    }
                 }
             }
-        }
-    }
+        
+        } finally {
+            _redisLock.release(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_POLL_PING_TIMEOUTS, _lockToken);
+        }}
 
-    @java.lang.SuppressWarnings("all")
-    public DriverPingTimeoutPoller(final StringRedisTemplate redisTemplate, final OrderAssignmentService orderAssignmentService) {
+public DriverPingTimeoutPoller(final StringRedisTemplate redisTemplate, final OrderAssignmentService orderAssignmentService) {
         this.redisTemplate = redisTemplate;
         this.orderAssignmentService = orderAssignmentService;
     }

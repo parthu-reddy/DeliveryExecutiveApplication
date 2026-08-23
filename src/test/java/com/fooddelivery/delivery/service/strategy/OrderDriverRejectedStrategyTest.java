@@ -14,11 +14,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ExtendWith(MockitoExtension.class)
 class OrderDriverRejectedStrategyTest {
 
-    private ObjectMapper objectMapper = new ObjectMapper();
+    @InjectMocks
+    private OrderDriverRejectedStrategy strategy;
 
     @Test
     void testGetEventTypes() {
-        // Basic check to ensure it returns something
-        // assertThat(true).isTrue();
+        assertThat(strategy.getEventTypes()).containsExactly("ORDER_DRIVER_REJECTED");
     }
 }

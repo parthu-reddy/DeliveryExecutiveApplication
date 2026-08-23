@@ -15,9 +15,7 @@ import java.util.UUID;
 @Component
 @lombok.extern.slf4j.Slf4j
 public class TerminalStateStrategy implements DeliveryEventStrategy {
-    @java.lang.SuppressWarnings("all")
-
-    private final StringRedisTemplate redisTemplate;
+private final StringRedisTemplate redisTemplate;
     private final IDeliveryExecutiveRepository executiveRepository;
     private final LogisticsDispatchService logisticsDispatchService;
     private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
@@ -84,8 +82,11 @@ public class TerminalStateStrategy implements DeliveryEventStrategy {
                         log.info("Reset driver {} to ONLINE after order {} was cancelled.", finalDriverId, orderId);
                         // Add back to available pool
                         try {
-                            String key = "drivers:available:" + com.fooddelivery.common.constants.AppConstants.DEFAULT_CITY_ID;
-                            redisTemplate.opsForSet().add(key, finalDriverId);
+                            String cityId = executive.getCityId();
+                            if (cityId != null) {
+                                String key = "drivers:available:" + cityId;
+                                redisTemplate.opsForSet().add(key, finalDriverId);
+                            }
                         } catch (Exception e) {
                             log.error("Failed to add driver {} back to Redis pool", finalDriverId, e);
                         }
@@ -114,8 +115,7 @@ public class TerminalStateStrategy implements DeliveryEventStrategy {
         return Arrays.asList(EventType.DRIVER_ASSIGNED.name(), EventType.DISPATCH_FAILED.name(), EventType.ORDER_CANCELLED.name(), EventType.DELIVERY_FAILED.name(), EventType.ORDER_CANCELLED_BY_RESTAURANT.name(), EventType.ORDER_CANCELLED_BY_CUSTOMER.name(), EventType.ORDER_CANCELLED_BY_ADMIN.name(), EventType.ORDER_REJECTED.name(), EventType.ORDER_DELAY_REJECTED.name(), EventType.MANUAL_INTERVENTION_REQUIRED.name());
     }
 
-    @java.lang.SuppressWarnings("all")
-    public TerminalStateStrategy(final StringRedisTemplate redisTemplate, final IDeliveryExecutiveRepository executiveRepository, final LogisticsDispatchService logisticsDispatchService, final org.springframework.transaction.support.TransactionTemplate transactionTemplate) {
+public TerminalStateStrategy(final StringRedisTemplate redisTemplate, final IDeliveryExecutiveRepository executiveRepository, final LogisticsDispatchService logisticsDispatchService, final org.springframework.transaction.support.TransactionTemplate transactionTemplate) {
         this.redisTemplate = redisTemplate;
         this.executiveRepository = executiveRepository;
         this.logisticsDispatchService = logisticsDispatchService;
