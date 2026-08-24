@@ -3,7 +3,6 @@ package com.fooddelivery;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import com.fooddelivery.common.outbox.config.EnableOutbox;
 
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
@@ -14,7 +13,6 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 @org.springframework.data.jpa.repository.config.EnableJpaRepositories(basePackages = {"com.fooddelivery", "com.fooddelivery.common.repository"})
 
 @EnableScheduling
-@EnableOutbox
 @EnableFeignClients
 public class DeliveryExecutiveApplication {
     public static void main(String[] args) {
