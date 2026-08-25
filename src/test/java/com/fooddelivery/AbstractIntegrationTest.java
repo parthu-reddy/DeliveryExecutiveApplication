@@ -1,6 +1,11 @@
 package com.fooddelivery;
 
+import org.junit.jupiter.api.Test;
+
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -17,5 +22,13 @@ public abstract class AbstractIntegrationTest {
 
         registry.add("spring.data.redis.host", () -> "localhost");
         registry.add("spring.data.redis.port", () -> 6379);
+    }
+
+    @Autowired
+    private ApplicationContext applicationContext;
+
+    @Test
+    void outboxProcessorBeanExists() {
+        assertTrue(applicationContext.containsBean("outboxProcessor"), "OutboxProcessor bean should be present");
     }
 }
