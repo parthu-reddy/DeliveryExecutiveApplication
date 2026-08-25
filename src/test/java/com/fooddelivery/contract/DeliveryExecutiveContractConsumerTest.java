@@ -33,8 +33,8 @@ public class DeliveryExecutiveContractConsumerTest {
     private com.fooddelivery.delivery.client.CustomerServiceClientFallback customerServiceClientFallback;
 
 
-    @Configuration
-    @EnableAutoConfiguration(exclude = {
+    @org.springframework.boot.SpringBootConfiguration
+    @org.springframework.boot.autoconfigure.EnableAutoConfiguration(exclude = {
             DataSourceAutoConfiguration.class,
             DataSourceTransactionManagerAutoConfiguration.class,
             HibernateJpaAutoConfiguration.class
