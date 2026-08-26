@@ -16,8 +16,8 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(trackingWebSocketHandler, "/api/delivery/ws/telemetry").setAllowedOrigins(com.fooddelivery.common.constants.AppConstants.ALLOWED_ORIGINS).addInterceptors(securityInterceptor);
-        registry.addHandler(locationTrackingWebSocketHandler, "/api/delivery/tracking").setAllowedOrigins(com.fooddelivery.common.constants.AppConstants.ALLOWED_ORIGINS).addInterceptors(securityInterceptor);
+        registry.addHandler(trackingWebSocketHandler, "/api/delivery/ws/telemetry").setAllowedOriginPatterns("*").addInterceptors(securityInterceptor);
+        registry.addHandler(locationTrackingWebSocketHandler, "/api/delivery/tracking").setAllowedOriginPatterns("*").addInterceptors(securityInterceptor);
     }
 
 public WebSocketConfig(final TrackingWebSocketHandler trackingWebSocketHandler, final LocationTrackingWebSocketHandler locationTrackingWebSocketHandler) {
