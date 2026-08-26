@@ -27,7 +27,7 @@ public class FeignClientInterceptor implements RequestInterceptor {
             
             // Forward trusted internal headers instead of JWT, as microservices trust these directly
             String[] headersToForward = {
-                "X-User-Id", "X-User-Roles", "X-User-Phone",
+                com.fooddelivery.common.constants.HeaderConstants.HEADER_USER_ID, com.fooddelivery.common.constants.HeaderConstants.HEADER_USER_ROLES, com.fooddelivery.common.constants.HeaderConstants.HEADER_USER_PHONE,
                 "X-Identity-Signature", "X-Issued-At", "X-Session-Id",
                 "X-Calling-Service", "X-Device-Id"
             };
@@ -54,9 +54,9 @@ public class FeignClientInterceptor implements RequestInterceptor {
             long issuedAt = Instant.now().getEpochSecond();
             String signature = identityTokenService.sign(userId, roles, phone, sessionId, issuedAt);
 
-            template.header("X-User-Id", userId);
-            template.header("X-User-Roles", roles);
-            template.header("X-User-Phone", phone);
+            template.header(com.fooddelivery.common.constants.HeaderConstants.HEADER_USER_ID, userId);
+            template.header(com.fooddelivery.common.constants.HeaderConstants.HEADER_USER_ROLES, roles);
+            template.header(com.fooddelivery.common.constants.HeaderConstants.HEADER_USER_PHONE, phone);
             template.header("X-Session-Id", sessionId);
             template.header("X-Issued-At", String.valueOf(issuedAt));
             template.header("X-Identity-Signature", signature);
