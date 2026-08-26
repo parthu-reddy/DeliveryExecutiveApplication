@@ -12,7 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/v1/logistics")
-@PreAuthorize("hasRole(\'DELIVERY\')")
+@PreAuthorize("hasAnyRole('DELIVERY', 'CUSTOMER', 'ADMIN')")
 @lombok.extern.slf4j.Slf4j
 @lombok.RequiredArgsConstructor
 public class LogisticsController {
