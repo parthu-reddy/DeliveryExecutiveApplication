@@ -43,11 +43,14 @@ public class DeliveredStateStrategy extends AbstractDeliveryOrderState {
     @Override
     protected void validate(UUID driverId, UUID orderId, String pickupOtp, String deliveryOtp) {
         String payload = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId);
+        log.info("Validating DELIVERED state for order {}, payload found: {}", orderId, payload != null);
         if (payload != null) {
             try {
                 JsonNode root = objectMapper.readTree(payload);
                 String expectedOtp = root.path("deliveryOtp").asText(null);
+                log.info("Validation for order {}: expectedOtp='{}', provided deliveryOtp='{}'", orderId, expectedOtp, deliveryOtp);
                 if (expectedOtp != null && !expectedOtp.isEmpty() && !expectedOtp.equals(deliveryOtp)) {
+                    log.error("OTP mismatch for order {}. Expected: {}, Provided: {}", orderId, expectedOtp, deliveryOtp);
                     throw new IllegalArgumentException("Invalid Delivery OTP");
                 }
             } catch (IllegalArgumentException e) {
@@ -55,6 +58,8 @@ public class DeliveredStateStrategy extends AbstractDeliveryOrderState {
             } catch (Exception e) {
                 log.error("Failed to parse dispatch payload for order {}", orderId, e);
             }
+        } else {
+            log.warn("Payload missing for order {} during DELIVERED validation. Skipping OTP check.", orderId);
         }
     }
 

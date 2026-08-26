@@ -32,6 +32,7 @@ private final LogisticsDispatchService logisticsDispatchService;
                 try {
                     // ALWAYS store the payload with a TTL so retries can work if drivers reject/timeout
                     redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId, root.toString(), java.time.Duration.ofHours(24));
+                    log.info("Cached ORDER_ACCEPTED payload in Redis for orderId: {} with pickupOtp: '{}', deliveryOtp: '{}'", orderId, root.path("pickupOtp").asText(""), root.path("deliveryOtp").asText(""));
                     if (System.currentTimeMillis() >= dispatchTime) {
                         log.info("Delivery Application received ORDER_ACCEPTED for order {}. Dispatching nearest driver immediately...", orderId);
                         logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, orderId, null);

@@ -57,22 +57,34 @@ private final KafkaTemplate<String, String> kafkaTemplate;
 
     public void releaseDriverLock(String driverId) {
         log.info("Requesting driver lock release for driver {} via MapsIntegration service", driverId);
-        try {
-            String cityId = repository.findById(UUID.fromString(driverId)).map(DeliveryExecutive::getCityId).orElse(null);
-            if (cityId == null) {
-                log.warn("Cannot release driver lock for driver {}: cityId is null", driverId);
-                return;
+        int maxRetries = 3;
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                String cityId = repository.findById(UUID.fromString(driverId)).map(DeliveryExecutive::getCityId).orElse(null);
+                if (cityId == null) {
+                    log.warn("Cannot release driver lock for driver {}: cityId is null", driverId);
+                    return;
+                }
+                com.fooddelivery.common.dto.maps.SetAvailabilityRequest request = new com.fooddelivery.common.dto.maps.SetAvailabilityRequest();
+                request.setCityId(cityId);
+                request.setDriverId(driverId);
+                request.setAvailable(true);
+                log.info("Sending request to MapsIntegration /api/fleet/release: {}", request);
+                Map<String, Object> response = mapsClient.releaseDriver(request);
+                log.info("Successfully requested driver lock release for driver {}. Response: {}", driverId, response);
+                return; // Success
+            } catch (Exception e) {
+                log.error("Failed to release driver lock for driver {} via FeignClient (Attempt {}/{}). Error: {}", driverId, attempt, maxRetries, e.getMessage(), e);
+                if (attempt == maxRetries) {
+                    throw new RuntimeException("Failed to release driver lock after " + maxRetries + " attempts", e);
+                }
+                try {
+                    Thread.sleep(1000 * attempt); // Exponential backoff
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted during lock release retry", ie);
+                }
             }
-            com.fooddelivery.common.dto.maps.SetAvailabilityRequest request = new com.fooddelivery.common.dto.maps.SetAvailabilityRequest();
-            request.setCityId(cityId);
-            request.setDriverId(driverId);
-            request.setAvailable(true);
-            log.info("Sending request to MapsIntegration /api/fleet/release: {}", request);
-            Map<String, Object> response = mapsClient.releaseDriver(request);
-            log.info("Successfully requested driver lock release for driver {}. Response: {}", driverId, response);
-        } catch (Exception e) {
-            log.error("Failed to release driver lock for driver {} via FeignClient. Error: {}", driverId, e.getMessage(), e);
-            throw new RuntimeException("Failed to release driver lock", e);
         }
     }
 

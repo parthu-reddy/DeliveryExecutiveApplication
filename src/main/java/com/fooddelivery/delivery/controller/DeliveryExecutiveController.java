@@ -254,14 +254,15 @@ public void setGoOfflineAfter(final Boolean goOfflineAfter) {
     }
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/status")
-    @PreAuthorize("hasRole(\'DELIVERY\') and #driverId.toString() == authentication.principal")
+    @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
     public ResponseEntity<ApiResponse<Object>> updateOrderStatus(@PathVariable UUID driverId, @PathVariable UUID orderId, @Valid @RequestBody UpdateOrderStatusRequest request) {
+        log.info("Received status update for driverId={}, orderId={}, status={}, pickupOtp='{}', deliveryOtp='{}'", driverId, orderId, request.getStatus(), request.getPickupOtp(), request.getDeliveryOtp());
         orderExecutionService.updateOrderStatus(driverId, orderId, request.getStatus(), request.getPickupOtp(), request.getDeliveryOtp(), request.getGoOfflineAfter());
         return ResponseEntity.ok(ApiResponse.<Object>builder().success(true).message("Order status updated").build());
     }
 
     @GetMapping(value = "/drivers/{driverId}/orders/{orderId}/restaurant-status-stream", produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
-    @PreAuthorize("hasRole(\'DELIVERY\') and #driverId.toString() == authentication.principal")
+    @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
     public org.springframework.web.servlet.mvc.method.annotation.SseEmitter streamRestaurantStatus(@PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
         org.springframework.web.servlet.mvc.method.annotation.SseEmitter emitter = new org.springframework.web.servlet.mvc.method.annotation.SseEmitter(600000L); // 10 minutes timeout
         String trackingChannel = "restaurant-status:order:" + orderId;

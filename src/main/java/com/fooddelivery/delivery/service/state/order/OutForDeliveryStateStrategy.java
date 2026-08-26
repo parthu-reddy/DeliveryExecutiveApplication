@@ -42,11 +42,14 @@ public class OutForDeliveryStateStrategy extends AbstractDeliveryOrderState {
             throw new IllegalArgumentException("Restaurant has not marked the order as ready yet.");
         }
         String payload = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId);
+        log.info("Validating OUT_FOR_DELIVERY state for order {}, payload found: {}", orderId, payload != null);
         if (payload != null) {
             try {
                 JsonNode root = objectMapper.readTree(payload);
                 String expectedOtp = root.path("pickupOtp").asText(null);
+                log.info("Validation for order {}: expectedOtp='{}', provided pickupOtp='{}'", orderId, expectedOtp, pickupOtp);
                 if (expectedOtp != null && !expectedOtp.isEmpty() && !expectedOtp.equals(pickupOtp)) {
+                    log.error("OTP mismatch for order {}. Expected: {}, Provided: {}", orderId, expectedOtp, pickupOtp);
                     throw new IllegalArgumentException("Invalid Pickup OTP");
                 }
             } catch (IllegalArgumentException e) {
@@ -54,6 +57,8 @@ public class OutForDeliveryStateStrategy extends AbstractDeliveryOrderState {
             } catch (Exception e) {
                 log.error("Failed to parse dispatch payload for order {}", orderId, e);
             }
+        } else {
+            log.warn("Payload missing for order {} during OUT_FOR_DELIVERY validation. Skipping OTP check.", orderId);
         }
     }
 }
