@@ -123,7 +123,7 @@ private final ObjectMapper objectMapper;
         if (userId != null) {
             userSessions.remove(userId, session);
         }
-        log.info("WebSocket closed: {}", session.getId());
+        log.info("WebSocket closed: {} for user: {} with code: {} reason: {}", session.getId(), userId, status.getCode(), status.getReason());
     }
 
     public void sendPingToDriver(String driverId, String orderId) {
