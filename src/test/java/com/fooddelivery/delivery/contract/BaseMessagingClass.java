@@ -30,8 +30,8 @@ public abstract class BaseMessagingClass {
     private StringRedisTemplate redisTemplate;
 
 
-    @org.springframework.boot.test.context.TestConfiguration
-    
+    @org.springframework.boot.SpringBootConfiguration
+    @org.springframework.boot.autoconfigure.EnableAutoConfiguration
     static class TestConfig {
         @Bean
         public KafkaMessageVerifier kafkaMessageVerifier() {
