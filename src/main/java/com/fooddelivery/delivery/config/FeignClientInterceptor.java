@@ -7,9 +7,17 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import com.fooddelivery.common.security.IdentityTokenService;
+import java.time.Instant;
 
 @Component
 public class FeignClientInterceptor implements RequestInterceptor {
+
+    private final IdentityTokenService identityTokenService;
+
+    public FeignClientInterceptor(IdentityTokenService identityTokenService) {
+        this.identityTokenService = identityTokenService;
+    }
 
     @Override
     public void apply(RequestTemplate template) {
@@ -18,14 +26,18 @@ public class FeignClientInterceptor implements RequestInterceptor {
             HttpServletRequest request = attributes.getRequest();
             
             // Forward trusted internal headers instead of JWT, as microservices trust these directly
-            String userId = request.getHeader("X-User-Id");
-            if (userId != null) template.header("X-User-Id", userId);
+            String[] headersToForward = {
+                "X-User-Id", "X-User-Roles", "X-User-Phone",
+                "X-Identity-Signature", "X-Issued-At", "X-Session-Id",
+                "X-Calling-Service", "X-Device-Id"
+            };
             
-            String userRoles = request.getHeader("X-User-Roles");
-            if (userRoles != null) template.header("X-User-Roles", userRoles);
-            
-            String userPhone = request.getHeader("X-User-Phone");
-            if (userPhone != null) template.header("X-User-Phone", userPhone);
+            for (String headerName : headersToForward) {
+                String headerValue = request.getHeader(headerName);
+                if (headerValue != null) {
+                    template.header(headerName, headerValue);
+                }
+            }
             
             // Still forward Authorization header just in case some legacy downstream needs it
             String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
@@ -35,8 +47,19 @@ public class FeignClientInterceptor implements RequestInterceptor {
         } else {
             // Background Job / Async Execution (e.g. OnboardingOrchestratorService via scheduler/kafka)
             // Inject internal service token/headers so GovernmentIDValidationService accepts it
-            template.header("X-User-Id", "system-internal");
-            template.header("X-User-Roles", "INTERNAL_SERVICE,DELIVERY,ADMIN");
+            String userId = "system-internal";
+            String roles = "INTERNAL_SERVICE,DELIVERY,ADMIN,RESTAURANT,CUSTOMER";
+            String phone = "";
+            String sessionId = "system-internal-session";
+            long issuedAt = Instant.now().getEpochSecond();
+            String signature = identityTokenService.sign(userId, roles, phone, sessionId, issuedAt);
+
+            template.header("X-User-Id", userId);
+            template.header("X-User-Roles", roles);
+            template.header("X-User-Phone", phone);
+            template.header("X-Session-Id", sessionId);
+            template.header("X-Issued-At", String.valueOf(issuedAt));
+            template.header("X-Identity-Signature", signature);
         }
     }
 }
