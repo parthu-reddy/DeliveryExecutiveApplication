@@ -1058,6 +1058,9 @@
           "message" : {
             "type" : "string"
           },
+          "errorCode" : {
+            "type" : "string"
+          },
           "data" : {
             "type" : "object"
           },
@@ -1131,6 +1134,9 @@
           "message" : {
             "type" : "string"
           },
+          "errorCode" : {
+            "type" : "string"
+          },
           "data" : {
             "type" : "object"
           },
@@ -1179,6 +1185,9 @@
             "type" : "boolean"
           },
           "message" : {
+            "type" : "string"
+          },
+          "errorCode" : {
             "type" : "string"
           },
           "data" : {
@@ -1239,17 +1248,23 @@
       "PageDeliveryExecutive" : {
         "type" : "object",
         "properties" : {
-          "totalElements" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
           "totalPages" : {
             "type" : "integer",
             "format" : "int32"
           },
+          "totalElements" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
           "numberOfElements" : {
             "type" : "integer",
             "format" : "int32"
+          },
+          "first" : {
+            "type" : "boolean"
+          },
+          "last" : {
+            "type" : "boolean"
           },
           "number" : {
             "type" : "integer",
@@ -1264,12 +1279,6 @@
             "items" : {
               "$ref" : "#/components/schemas/DeliveryExecutive"
             }
-          },
-          "first" : {
-            "type" : "boolean"
-          },
-          "last" : {
-            "type" : "boolean"
           },
           "sort" : {
             "type" : "array",
@@ -1363,17 +1372,23 @@
       "PageDriverLocationDTO" : {
         "type" : "object",
         "properties" : {
-          "totalElements" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
           "totalPages" : {
             "type" : "integer",
             "format" : "int32"
           },
+          "totalElements" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
           "numberOfElements" : {
             "type" : "integer",
             "format" : "int32"
+          },
+          "first" : {
+            "type" : "boolean"
+          },
+          "last" : {
+            "type" : "boolean"
           },
           "number" : {
             "type" : "integer",
@@ -1388,12 +1403,6 @@
             "items" : {
               "$ref" : "#/components/schemas/DriverLocationDTO"
             }
-          },
-          "first" : {
-            "type" : "boolean"
-          },
-          "last" : {
-            "type" : "boolean"
           },
           "sort" : {
             "type" : "array",
@@ -1422,6 +1431,9 @@
           "message" : {
             "type" : "string"
           },
+          "errorCode" : {
+            "type" : "string"
+          },
           "data" : {
             "type" : "object",
             "additionalProperties" : {
@@ -1442,6 +1454,9 @@
             "type" : "boolean"
           },
           "message" : {
+            "type" : "string"
+          },
+          "errorCode" : {
             "type" : "string"
           },
           "data" : {

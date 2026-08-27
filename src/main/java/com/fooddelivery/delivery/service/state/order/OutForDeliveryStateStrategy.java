@@ -48,7 +48,7 @@ public class OutForDeliveryStateStrategy extends AbstractDeliveryOrderState {
                 JsonNode root = objectMapper.readTree(payload);
                 String expectedOtp = root.path("pickupOtp").asText(null);
                 log.info("Validation for order {}: expectedOtp='{}', provided pickupOtp='{}'", orderId, expectedOtp, pickupOtp);
-                if (expectedOtp != null && !expectedOtp.isEmpty() && !expectedOtp.equals(pickupOtp)) {
+                if (expectedOtp == null || expectedOtp.isEmpty() || !expectedOtp.equals(pickupOtp)) {
                     log.error("OTP mismatch for order {}. Expected: {}, Provided: {}", orderId, expectedOtp, pickupOtp);
                     throw new IllegalArgumentException("Invalid Pickup OTP");
                 }
@@ -58,7 +58,8 @@ public class OutForDeliveryStateStrategy extends AbstractDeliveryOrderState {
                 log.error("Failed to parse dispatch payload for order {}", orderId, e);
             }
         } else {
-            log.warn("Payload missing for order {} during OUT_FOR_DELIVERY validation. Skipping OTP check.", orderId);
+            log.warn("Payload missing for order {} during OUT_FOR_DELIVERY validation. Rejecting OTP check.", orderId);
+            throw new IllegalArgumentException("Invalid Pickup OTP. Order payload not found.");
         }
     }
 }
