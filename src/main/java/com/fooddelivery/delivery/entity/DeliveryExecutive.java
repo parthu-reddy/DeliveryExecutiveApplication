@@ -23,10 +23,12 @@ import java.util.UUID;
 public class DeliveryExecutive {
 @Id
     @Column(name = "id")
+    @jakarta.validation.constraints.NotNull
     private UUID id;
     @Column(name = "full_name")
     private String fullName;
     @Column(name = "phone_number", unique = true)
+    @jakarta.validation.constraints.NotNull
     private String phoneNumber;
     @Column(name = "vehicle_number", unique = true)
     private String vehicleNumber;
@@ -36,6 +38,7 @@ public class DeliveryExecutive {
     private String email;
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
+    @jakarta.validation.constraints.NotNull
     private DeliveryExecutiveStatus status;
     @Enumerated(EnumType.STRING)
     @JdbcType(PostgreSQLEnumJdbcType.class)
@@ -67,8 +70,10 @@ public class DeliveryExecutive {
     private Point lastKnownLocation;
     @CreationTimestamp
     @Column(name = "created_at")
+    @io.swagger.v3.oas.annotations.media.Schema(requiredMode = io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED)
     private OffsetDateTime createdAt;
     @UpdateTimestamp
     @Column(name = "updated_at")
+    @io.swagger.v3.oas.annotations.media.Schema(requiredMode = io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED)
     private OffsetDateTime updatedAt;
 }

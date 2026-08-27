@@ -918,6 +918,7 @@
   "components" : {
     "schemas" : {
       "DeliveryExecutive" : {
+        "required" : [ "createdAt", "id", "phoneNumber", "status", "updatedAt" ],
         "type" : "object",
         "properties" : {
           "id" : {
@@ -976,6 +977,7 @@
         }
       },
       "LocationPayload" : {
+        "required" : [ "isMockLocation", "latitude", "longitude", "speedKmh", "timestampMs" ],
         "type" : "object",
         "properties" : {
           "latitude" : {
@@ -1246,6 +1248,7 @@
         }
       },
       "PageDeliveryExecutive" : {
+        "required" : [ "content", "empty", "first", "last", "number", "numberOfElements", "size", "totalElements", "totalPages" ],
         "type" : "object",
         "properties" : {
           "totalPages" : {
@@ -1295,6 +1298,7 @@
         }
       },
       "PageableObject" : {
+        "required" : [ "offset", "pageNumber", "pageSize", "paged", "unpaged" ],
         "type" : "object",
         "properties" : {
           "offset" : {
@@ -1344,6 +1348,7 @@
         }
       },
       "DriverLocationDTO" : {
+        "required" : [ "id", "lat", "lng", "status" ],
         "type" : "object",
         "properties" : {
           "id" : {
@@ -1370,6 +1375,7 @@
         }
       },
       "PageDriverLocationDTO" : {
+        "required" : [ "content", "empty", "first", "last", "number", "numberOfElements", "size", "totalElements", "totalPages" ],
         "type" : "object",
         "properties" : {
           "totalPages" : {
