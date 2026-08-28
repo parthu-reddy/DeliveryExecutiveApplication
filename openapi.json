@@ -1240,10 +1240,7 @@
             "format" : "int32"
           },
           "sort" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
+            "$ref" : "#/components/schemas/SortObject"
           }
         }
       },
@@ -1251,25 +1248,11 @@
         "required" : [ "content", "empty", "first", "last", "number", "numberOfElements", "size", "totalElements", "totalPages" ],
         "type" : "object",
         "properties" : {
-          "totalPages" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
           "totalElements" : {
             "type" : "integer",
             "format" : "int64"
           },
-          "numberOfElements" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "first" : {
-            "type" : "boolean"
-          },
-          "last" : {
-            "type" : "boolean"
-          },
-          "number" : {
+          "totalPages" : {
             "type" : "integer",
             "format" : "int32"
           },
@@ -1283,11 +1266,22 @@
               "$ref" : "#/components/schemas/DeliveryExecutive"
             }
           },
+          "numberOfElements" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "number" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "first" : {
+            "type" : "boolean"
+          },
+          "last" : {
+            "type" : "boolean"
+          },
           "sort" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/SortObject"
-            }
+            "$ref" : "#/components/schemas/SortObject"
           },
           "pageable" : {
             "$ref" : "#/components/schemas/PageableObject"
@@ -1306,10 +1300,7 @@
             "format" : "int64"
           },
           "sort" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/SortObject"
-            }
+            "$ref" : "#/components/schemas/SortObject"
           },
           "paged" : {
             "type" : "boolean"
@@ -1328,21 +1319,16 @@
         }
       },
       "SortObject" : {
+        "required" : [ "empty", "sorted", "unsorted" ],
         "type" : "object",
         "properties" : {
-          "direction" : {
-            "type" : "string"
-          },
-          "nullHandling" : {
-            "type" : "string"
-          },
-          "ascending" : {
+          "empty" : {
             "type" : "boolean"
           },
-          "property" : {
-            "type" : "string"
+          "sorted" : {
+            "type" : "boolean"
           },
-          "ignoreCase" : {
+          "unsorted" : {
             "type" : "boolean"
           }
         }
@@ -1378,25 +1364,11 @@
         "required" : [ "content", "empty", "first", "last", "number", "numberOfElements", "size", "totalElements", "totalPages" ],
         "type" : "object",
         "properties" : {
-          "totalPages" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
           "totalElements" : {
             "type" : "integer",
             "format" : "int64"
           },
-          "numberOfElements" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "first" : {
-            "type" : "boolean"
-          },
-          "last" : {
-            "type" : "boolean"
-          },
-          "number" : {
+          "totalPages" : {
             "type" : "integer",
             "format" : "int32"
           },
@@ -1410,11 +1382,22 @@
               "$ref" : "#/components/schemas/DriverLocationDTO"
             }
           },
+          "numberOfElements" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "number" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "first" : {
+            "type" : "boolean"
+          },
+          "last" : {
+            "type" : "boolean"
+          },
           "sort" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/SortObject"
-            }
+            "$ref" : "#/components/schemas/SortObject"
           },
           "pageable" : {
             "$ref" : "#/components/schemas/PageableObject"

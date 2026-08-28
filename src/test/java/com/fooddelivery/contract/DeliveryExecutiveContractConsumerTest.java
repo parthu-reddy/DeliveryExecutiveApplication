@@ -22,7 +22,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
     // differ for these services, so the stub must be registered under the name the client asks for.
     "stubrunner.idsToServiceIds.food-delivery-backend=customer-service"
 })
-@AutoConfigureStubRunner(ids = { "com.fooddelivery:food-delivery-backend:+:stubs:8090" }, stubsMode = StubRunnerProperties.StubsMode.LOCAL)
+@AutoConfigureStubRunner(ids = { "com.fooddelivery:food-delivery-backend:+:stubs" }, stubsMode = StubRunnerProperties.StubsMode.LOCAL)
 public class DeliveryExecutiveContractConsumerTest {
 
 
