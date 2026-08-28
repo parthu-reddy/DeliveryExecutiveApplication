@@ -17,6 +17,13 @@ import java.util.stream.Collectors;
 @Component
 @lombok.extern.slf4j.Slf4j
 @lombok.RequiredArgsConstructor
+/**
+ * <strong>@replication-safe: distributed-lock</strong> -- holds a Redis lock for the sweep.
+ *
+ * <p>Classification recorded 2026-08-27 (Phase 7). Every @Scheduled class in this workspace
+ * carries one of these markers; the BOOT-SCHEDULE-CLASSIFIED check fails on a new one that
+ * does not. Change the marker only after re-reading what the job actually does.
+ */
 public class StaleDriverSweeperDaemon {
 private final StringRedisTemplate redisTemplate;
     private final IDeliveryExecutiveRepository deliveryExecutiveRepository;
