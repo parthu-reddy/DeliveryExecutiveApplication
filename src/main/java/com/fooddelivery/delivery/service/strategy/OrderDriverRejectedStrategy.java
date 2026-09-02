@@ -37,11 +37,14 @@ private final LogisticsDispatchService logisticsDispatchService;
             double deliveryLng = cachedRoot.path("deliveryLng").asDouble(0.0);
             String deliveryAddress = cachedRoot.path("deliveryAddress").asText("");
             if (lat != 0.0 && lng != 0.0) {
-                Long failedCycles = redisTemplate.opsForValue().increment("order:dispatch_failed_cycles:" + orderId);
-                redisTemplate.expire("order:dispatch_failed_cycles:" + orderId, java.time.Duration.ofHours(2));
-                long delayMs = 10000; // 10-second cooldown between batch re-dispatches
+                // NOTE: Do NOT increment dispatch_failed_cycles here.
+                // The cycle counter is managed exclusively by DelayedDispatchPoller
+                // (one increment per re-dispatch attempt). Incrementing here or in
+                // TerminalStateStrategy caused double-counting when rejection led to
+                // a subsequent DISPATCH_FAILED in the same logical cycle.
+                long delayMs = 15000; // 15-second cooldown to allow releaseDriverLock() Feign call to complete
                 long dispatchAt = System.currentTimeMillis() + delayMs;
-                log.info("Queueing order {} for delayed dispatch retry via poller (Cycle: {}). Will dispatch at {} ({}ms delay).", orderId, failedCycles, dispatchAt, delayMs);
+                log.info("Queueing order {} for delayed dispatch retry via poller. Will dispatch at {} ({}ms delay).", orderId, dispatchAt, delayMs);
                 redisTemplate.opsForZSet().add("delayed_dispatch_queue", orderId.toString(), dispatchAt);
             } else {
                 log.warn("Cached payload for order {} has missing coordinates. Cannot redispatch.", orderId);

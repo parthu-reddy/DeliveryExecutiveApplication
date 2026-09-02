@@ -52,7 +52,7 @@ private final StringRedisTemplate redisTemplate;
                         }
                         String failedCyclesStr = redisTemplate.opsForValue().get("order:dispatch_failed_cycles:" + orderIdStr);
                         int failedCycles = failedCyclesStr != null ? Integer.parseInt(failedCyclesStr) : 0;
-                        log.info("Processing delayed dispatch for order {}. dispatch_failed_cycles={}", orderIdStr, failedCycles);
+                        log.info("Processing delayed dispatch for order {}. dispatch_failed_cycles={}, dispatch_lock={}", orderIdStr, failedCycles, dispatchLock);
                         if (failedCycles >= 5) {
                             log.error("Order {} failed to find any drivers 5 consecutive times. Emitting MANUAL_INTERVENTION_REQUIRED", orderIdStr);
                             redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderIdStr);
@@ -90,6 +90,12 @@ private final StringRedisTemplate redisTemplate;
                                     }
                                 }
                                 log.info("Delayed dispatch triggered for order {}. excludedDriverIds={}. Dispatching nearest driver...", orderIdStr, excludedDriverIds);
+                                // Increment the cycle counter HERE — one increment per poller dispatch.
+                                // This is the single source of truth for cycle counting, preventing
+                                // double-counting that occurred when both OrderDriverRejectedStrategy
+                                // and TerminalStateStrategy incremented independently.
+                                redisTemplate.opsForValue().increment("order:dispatch_failed_cycles:" + orderIdStr);
+                                redisTemplate.expire("order:dispatch_failed_cycles:" + orderIdStr, java.time.Duration.ofHours(2));
                                 logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, UUID.fromString(orderIdStr), excludedDriverIds);
                             }
                         } else {

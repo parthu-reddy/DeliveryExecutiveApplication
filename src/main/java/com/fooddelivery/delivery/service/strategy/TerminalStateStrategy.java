@@ -33,7 +33,11 @@ private final StringRedisTemplate redisTemplate;
         if (!EventType.DRIVER_ASSIGNED.name().equals(eventType) && !EventType.DISPATCH_FAILED.name().equals(eventType)) {
             redisTemplate.delete(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId);
         }
-        redisTemplate.delete(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderId);
+        // Only clear rejected-drivers list on true terminal events, NOT on DISPATCH_FAILED.
+        // Retries need the rejection history to build the excluded-driver list in DelayedDispatchPoller.
+        if (!EventType.DISPATCH_FAILED.name().equals(eventType)) {
+            redisTemplate.delete(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderId);
+        }
         if (!EventType.DISPATCH_FAILED.name().equals(eventType)) {
             redisTemplate.delete("order:dispatch_failed_cycles:" + orderId);
         }
@@ -99,11 +103,14 @@ private final StringRedisTemplate redisTemplate;
             redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId, "CANCELLED", java.time.Duration.ofHours(24));
         }
         if (EventType.DISPATCH_FAILED.name().equals(eventType)) {
-            // If dispatch failed (no drivers available), we should retry in 10 seconds.
-            Long failedCycles = redisTemplate.opsForValue().increment("order:dispatch_failed_cycles:" + orderId);
-            redisTemplate.expire("order:dispatch_failed_cycles:" + orderId, java.time.Duration.ofHours(2));
-            log.info("Dispatch failed for order {} (Consecutive Failures: {}). Retrying in 10 seconds...", orderId, failedCycles);
-            redisTemplate.opsForZSet().add("delayed_dispatch_queue", orderId.toString(), System.currentTimeMillis() + 10000);
+            // No drivers available — re-queue for retry.
+            // NOTE: Do NOT increment dispatch_failed_cycles here. The counter is now
+            // managed exclusively by DelayedDispatchPoller to avoid double-counting
+            // (rejection + no-drivers would both increment in the same logical cycle).
+            String failedCyclesStr = redisTemplate.opsForValue().get("order:dispatch_failed_cycles:" + orderId);
+            int failedCycles = failedCyclesStr != null ? Integer.parseInt(failedCyclesStr) : 0;
+            log.info("Dispatch failed for order {} (Consecutive Failures: {}). Retrying in 15 seconds...", orderId, failedCycles);
+            redisTemplate.opsForZSet().add("delayed_dispatch_queue", orderId.toString(), System.currentTimeMillis() + 15000);
         } else {
             // For ALL terminal events (excluding DISPATCH_FAILED), mark dispatch as complete
             // This prevents stale Kafka retries of ORDER_DRIVER_REJECTED from re-dispatching
