@@ -54,7 +54,7 @@ private final LogisticsDispatchService logisticsDispatchService;
 
     @Override
     public List<String> getEventTypes() {
-        return Collections.singletonList(EventType.ORDER_ACCEPTED.name());
+        return java.util.Arrays.asList(EventType.ORDER_ACCEPTED.name());
     }
 
 }

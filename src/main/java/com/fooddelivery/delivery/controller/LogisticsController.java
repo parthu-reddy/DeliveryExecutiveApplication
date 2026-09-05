@@ -23,7 +23,7 @@ private final MapsServiceClient mapsClient;
         try {
             String origin = sourceLat + "," + sourceLng;
             String destination = destLat + "," + destLng;
-            Map<String, Object> response = mapsClient.getRoute(origin, destination);
+            com.fooddelivery.common.dto.maps.RouteResponseDto response = mapsClient.getRoute(origin, destination);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(ApiResponse.error("Failed to calculate route: " + e.getMessage()));

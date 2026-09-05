@@ -70,7 +70,7 @@ private final KafkaTemplate<String, String> kafkaTemplate;
                 request.setDriverId(driverId);
                 request.setAvailable(true);
                 log.info("Sending request to MapsIntegration /api/fleet/release: {}", request);
-                Map<String, Object> response = mapsClient.releaseDriver(request);
+                java.util.Map<String, Object> response = mapsClient.releaseDriver(request);
                 log.info("Successfully requested driver lock release for driver {}. Response: {}", driverId, response);
                 return; // Success
             } catch (Exception e) {

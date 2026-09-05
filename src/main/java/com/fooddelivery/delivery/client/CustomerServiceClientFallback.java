@@ -22,4 +22,14 @@ public class CustomerServiceClientFallback implements CustomerServiceClient {
     public List<JsonNode> getUnassignedOrders() {
         throw new IllegalStateException("Customer service is currently unavailable.");
     }
+
+    @Override
+    public com.fooddelivery.common.dto.order.DriverOrderEarnings getOrderEarnings(UUID orderId) {
+        throw new IllegalStateException("Customer service is currently unavailable.");
+    }
+
+    @Override
+    public List<com.fooddelivery.common.dto.order.DriverOrderEarnings> getDriverOrderMoneyBatch(UUID driverId, List<String> orderIds) {
+        throw new IllegalStateException("Customer service is currently unavailable.");
+    }
 }

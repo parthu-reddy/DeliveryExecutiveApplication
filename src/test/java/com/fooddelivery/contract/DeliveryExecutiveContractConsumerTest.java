@@ -76,4 +76,16 @@ public class DeliveryExecutiveContractConsumerTest {
         assertEquals(1, response.size());
         assertEquals("PREPARING", response.get(0).get("status").asText());
     }
+
+    @Test
+    public void testGetDriverOrderMoney() {
+        com.fooddelivery.common.dto.order.DriverOrderEarnings response = customerServiceClient.getOrderEarnings(
+                java.util.UUID.fromString("123e4567-e89b-12d3-a456-426614174000"));
+
+        assertNotNull(response);
+        assertEquals(new java.math.BigDecimal("25.0"), response.getGrossPayout());
+        assertEquals(new java.math.BigDecimal("5.0"), response.getTaxes());
+        assertEquals(new java.math.BigDecimal("20.0"), response.getNetPayout());
+        assertEquals(new java.math.BigDecimal("5.0"), response.getPlatformBonus());
+    }
 }

@@ -68,7 +68,11 @@ private final ObjectMapper objectMapper;
                             strategy.process(payloadNode, eventType);
                         }
                     } else {
-                        log.info("No strategy mapped for event type: {}. Ignoring in DeliveryExecutiveApplication.", eventType);
+                        if (com.fooddelivery.common.constants.EventType.ORDER_PLACED_COD.name().equals(eventType)) {
+                            log.info("Ignoring ORDER_PLACED_COD in delivery app: no action needed until restaurant accepts");
+                        } else {
+                            log.info("No strategy mapped for event type: {}. Ignoring in DeliveryExecutiveApplication.", eventType);
+                        }
                     }
                     return null;
                 } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {

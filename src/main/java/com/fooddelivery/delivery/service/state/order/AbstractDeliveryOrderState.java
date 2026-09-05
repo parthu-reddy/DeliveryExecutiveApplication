@@ -28,7 +28,7 @@ protected final StringRedisTemplate redisTemplate;
 
 
     @Override
-    public void handleStatusUpdate(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp, Boolean goOfflineAfter) {
+    public void handleStatusUpdate(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp, Boolean goOfflineAfter, java.math.BigDecimal cashCollectedAmount) {
         log.info("Driver {} updating order {} to {}", driverId, orderId, status);
         String currentAssignee = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId);
         if (currentAssignee != null && !driverId.toString().equals(currentAssignee)) {
@@ -37,7 +37,7 @@ protected final StringRedisTemplate redisTemplate;
         }
         validate(driverId, orderId, pickupOtp, deliveryOtp);
         transactionTemplate.execute(txStatus -> {
-            saveOutboxEvent(orderId, status, pickupOtp, deliveryOtp);
+            saveOutboxEvent(orderId, status, pickupOtp, deliveryOtp, cashCollectedAmount);
             updateExecutiveState(driverId, goOfflineAfter);
             return null;
         });
@@ -48,7 +48,7 @@ protected final StringRedisTemplate redisTemplate;
         // Default no-op. Override in subclasses if validation is needed.
     }
 
-    protected void saveOutboxEvent(UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp) {
+    protected void saveOutboxEvent(UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp, java.math.BigDecimal cashCollectedAmount) {
         ObjectNode payloadNode = objectMapper.createObjectNode();
         payloadNode.put("eventType", getEventType().name());
         payloadNode.put("orderId", orderId.toString());
@@ -58,6 +58,9 @@ protected final StringRedisTemplate redisTemplate;
         }
         if (deliveryOtp != null && !deliveryOtp.isEmpty()) {
             payloadNode.put("deliveryOtp", deliveryOtp);
+        }
+        if (cashCollectedAmount != null) {
+            payloadNode.put("cashCollectedAmount", cashCollectedAmount.toString());
         }
         String payload;
         try {

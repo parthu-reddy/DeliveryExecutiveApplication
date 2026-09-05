@@ -139,44 +139,50 @@ public void setAvailable(final Boolean available) {
         @Pattern(regexp = "^\\d+$")
         private String deliveryOtp;
         private Boolean goOfflineAfter;
+        private java.math.BigDecimal cashCollectedAmount;
 
-public UpdateOrderStatusRequest() {
+        public UpdateOrderStatusRequest() {
         }
 
-public DeliveryStatus getStatus() {
+        public DeliveryStatus getStatus() {
             return this.status;
         }
 
-public String getPickupOtp() {
+        public String getPickupOtp() {
             return this.pickupOtp;
         }
 
-public String getDeliveryOtp() {
+        public String getDeliveryOtp() {
             return this.deliveryOtp;
         }
 
-public Boolean getGoOfflineAfter() {
+        public Boolean getGoOfflineAfter() {
             return this.goOfflineAfter;
         }
 
-public void setStatus(final DeliveryStatus status) {
+        public java.math.BigDecimal getCashCollectedAmount() {
+            return this.cashCollectedAmount;
+        }
+
+        public void setStatus(final DeliveryStatus status) {
             this.status = status;
         }
 
-public void setPickupOtp(final String pickupOtp) {
+        public void setPickupOtp(final String pickupOtp) {
             this.pickupOtp = pickupOtp;
         }
 
-public void setDeliveryOtp(final String deliveryOtp) {
+        public void setDeliveryOtp(final String deliveryOtp) {
             this.deliveryOtp = deliveryOtp;
         }
 
-public void setGoOfflineAfter(final Boolean goOfflineAfter) {
+        public void setGoOfflineAfter(final Boolean goOfflineAfter) {
             this.goOfflineAfter = goOfflineAfter;
         }
-
-
-
+        
+        public void setCashCollectedAmount(final java.math.BigDecimal cashCollectedAmount) {
+            this.cashCollectedAmount = cashCollectedAmount;
+        }
 
     }
 
@@ -197,10 +203,18 @@ public void setGoOfflineAfter(final Boolean goOfflineAfter) {
         return profileService.findById(driverId).map(executive -> ResponseEntity.ok(ApiResponse.success(executive, "Profile fetched successfully"))).orElseGet(() -> ResponseEntity.status(404).body(ApiResponse.<com.fooddelivery.delivery.entity.DeliveryExecutive>builder().success(false).message("Profile not found").build()));
     }
 
+    @lombok.Data
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class PendingPingResponse {
+        private String id;
+        private Long expiresAt;
+    }
+
     @GetMapping("/drivers/{driverId}/pings")
-    public ResponseEntity<ApiResponse<java.util.List<Map<String, Object>>>> getPendingPings(java.security.Principal principal, @PathVariable UUID driverId) {
+    public ResponseEntity<ApiResponse<java.util.List<PendingPingResponse>>> getPendingPings(java.security.Principal principal, @PathVariable UUID driverId) {
         if (!principal.getName().equals(driverId.toString())) {
-            return ResponseEntity.status(401).body(ApiResponse.<java.util.List<Map<String, Object>>>builder().success(false).message("Unauthorized").build());
+            return ResponseEntity.status(401).body(ApiResponse.<java.util.List<PendingPingResponse>>builder().success(false).message("Unauthorized").build());
         }
         String pendingOrderId = orderAssignmentService.getPendingPing(driverId);
         if (pendingOrderId == null) {
@@ -210,7 +224,7 @@ public void setGoOfflineAfter(final Boolean goOfflineAfter) {
         if (expiresAt == null) {
             return ResponseEntity.ok(ApiResponse.success(java.util.Collections.emptyList(), "No pending pings"));
         }
-        return ResponseEntity.ok(ApiResponse.success(java.util.Collections.singletonList(Map.of("id", pendingOrderId, "expiresAt", expiresAt)), "Pending ping retrieved"));
+        return ResponseEntity.ok(ApiResponse.success(java.util.Collections.singletonList(new PendingPingResponse(pendingOrderId, expiresAt)), "Pending ping retrieved"));
     }
 
     @PostMapping("/status")
@@ -255,10 +269,10 @@ public void setGoOfflineAfter(final Boolean goOfflineAfter) {
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/status")
     @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
-    public ResponseEntity<ApiResponse<Object>> updateOrderStatus(@PathVariable UUID driverId, @PathVariable UUID orderId, @Valid @RequestBody UpdateOrderStatusRequest request) {
-        log.info("Received status update for driverId={}, orderId={}, status={}, pickupOtp='{}', deliveryOtp='{}'", driverId, orderId, request.getStatus(), request.getPickupOtp(), request.getDeliveryOtp());
-        orderExecutionService.updateOrderStatus(driverId, orderId, request.getStatus(), request.getPickupOtp(), request.getDeliveryOtp(), request.getGoOfflineAfter());
-        return ResponseEntity.ok(ApiResponse.<Object>builder().success(true).message("Order status updated").build());
+    public ResponseEntity<ApiResponse<Void>> updateOrderStatus(@PathVariable UUID driverId, @PathVariable UUID orderId, @Valid @RequestBody UpdateOrderStatusRequest request) {
+        log.info("Received status update for driverId={}, orderId={}, status={}, pickupOtp='{}', deliveryOtp='{}', cashCollectedAmount={}", driverId, orderId, request.getStatus(), request.getPickupOtp(), request.getDeliveryOtp(), request.getCashCollectedAmount());
+        orderExecutionService.updateOrderStatus(driverId, orderId, request.getStatus(), request.getPickupOtp(), request.getDeliveryOtp(), request.getGoOfflineAfter(), request.getCashCollectedAmount());
+        return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order status updated").build());
     }
 
     @GetMapping(value = "/drivers/{driverId}/orders/{orderId}/restaurant-status-stream", produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)

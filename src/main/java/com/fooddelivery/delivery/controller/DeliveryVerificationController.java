@@ -19,7 +19,7 @@ private final GovernmentIdServiceClient governmentIdClient;
     private final com.fooddelivery.delivery.service.OnboardingOrchestratorService onboardingOrchestratorService;
 
     @GetMapping("/status")
-    public ResponseEntity<ApiResponse<Object>> getVerificationStatus(Principal principal) {
+    public ResponseEntity<ApiResponse<GovernmentIdServiceClient.VerificationSummary>> getVerificationStatus(Principal principal) {
         UUID executiveId = UUID.fromString(principal.getName());
         GovernmentIdServiceClient.VerificationSummary summary = governmentIdClient.getVerificationSummary(executiveId);
         // Evaluate and sync onboarding status with the Executive Profile
@@ -40,26 +40,26 @@ private final GovernmentIdServiceClient governmentIdClient;
     }
 
     @PostMapping("/driving-license")
-    public ResponseEntity<ApiResponse<Object>> verifyDrivingLicense(@RequestBody com.fooddelivery.common.dto.governmentid.DLRequest request) {
-        Object result = governmentIdClient.verifyDrivingLicense(request);
+    public ResponseEntity<ApiResponse<com.fooddelivery.common.dto.governmentid.StatusResponseDto>> verifyDrivingLicense(@RequestBody com.fooddelivery.common.dto.governmentid.DLRequest request) {
+        com.fooddelivery.common.dto.governmentid.StatusResponseDto result = governmentIdClient.verifyDrivingLicense(request);
         return ResponseEntity.ok(ApiResponse.success(result, "Driving license verification initiated"));
     }
 
     @PostMapping("/vehicle-rc")
-    public ResponseEntity<ApiResponse<Object>> verifyVehicleRC(@RequestBody com.fooddelivery.common.dto.governmentid.RCRequest request) {
-        Object result = governmentIdClient.verifyVehicleRC(request);
+    public ResponseEntity<ApiResponse<com.fooddelivery.common.dto.governmentid.StatusResponseDto>> verifyVehicleRC(@RequestBody com.fooddelivery.common.dto.governmentid.RCRequest request) {
+        com.fooddelivery.common.dto.governmentid.StatusResponseDto result = governmentIdClient.verifyVehicleRC(request);
         return ResponseEntity.ok(ApiResponse.success(result, "Vehicle RC verification initiated"));
     }
 
     @PostMapping("/bank-account")
-    public ResponseEntity<ApiResponse<Object>> verifyBankAccount(@RequestBody com.fooddelivery.common.dto.governmentid.BankRequest request) {
-        Object result = governmentIdClient.verifyBankAccount(request);
+    public ResponseEntity<ApiResponse<com.fooddelivery.common.dto.governmentid.StatusResponseDto>> verifyBankAccount(@RequestBody com.fooddelivery.common.dto.governmentid.BankRequest request) {
+        com.fooddelivery.common.dto.governmentid.StatusResponseDto result = governmentIdClient.verifyBankAccount(request);
         return ResponseEntity.ok(ApiResponse.success(result, "Bank account verification initiated"));
     }
 
     @PostMapping("/biometric")
-    public ResponseEntity<ApiResponse<Object>> verifyBiometric(@RequestBody com.fooddelivery.common.dto.governmentid.BiometricRequest request) {
-        Object result = governmentIdClient.verifyBiometric(request);
+    public ResponseEntity<ApiResponse<com.fooddelivery.common.dto.governmentid.StatusResponseDto>> verifyBiometric(@RequestBody com.fooddelivery.common.dto.governmentid.BiometricRequest request) {
+        com.fooddelivery.common.dto.governmentid.StatusResponseDto result = governmentIdClient.verifyBiometric(request);
         return ResponseEntity.ok(ApiResponse.success(result, "Biometric verification initiated"));
     }
 
