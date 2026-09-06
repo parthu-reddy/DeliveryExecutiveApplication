@@ -38,6 +38,7 @@ import static org.mockito.Mockito.verify;
 @ActiveProfiles("contract-test")
 @AutoConfigureStubRunner(ids = "com.fooddelivery:food-delivery-backend:+:stubs",
         stubsMode = StubRunnerProperties.StubsMode.LOCAL)
+@org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.BEFORE_CLASS)
 @EmbeddedKafka(partitions = 1, topics = {"order-events"})
 class OrderEventConsumerContractTest {
 
