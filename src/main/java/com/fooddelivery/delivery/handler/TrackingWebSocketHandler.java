@@ -24,7 +24,7 @@ private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
     // Use Sinks.Many to create a reactive stream for telemetry data with backpressure buffering
-    private final Sinks.Many<Map<String, Object>> telemetrySink = Sinks.many().multicast().onBackpressureBuffer(10000, false);
+    private final Sinks.Many<com.fooddelivery.delivery.dto.FleetTrackingUpdateDto> telemetrySink = Sinks.many().multicast().onBackpressureBuffer(10000, false);
 
     @PostConstruct
     public void init() {
@@ -44,13 +44,12 @@ private final StringRedisTemplate redisTemplate;
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         try {
             String sessionUser = (String) session.getAttributes().get("userId");
-            Map<String, Object> event = objectMapper.readValue(message.getPayload(), Map.class);
+            com.fooddelivery.delivery.dto.FleetTrackingUpdateDto event = objectMapper.readValue(message.getPayload(), com.fooddelivery.delivery.dto.FleetTrackingUpdateDto.class);
             String driverId = sessionUser;
-            String payloadDriverId = (String) event.get("driverId");
+            String payloadDriverId = event.getDriverId();
             
             if (payloadDriverId != null && !driverId.equals(payloadDriverId)) {
                 log.warn("Driver ID mismatch: session user {}, payload driver {}", driverId, payloadDriverId);
@@ -58,12 +57,12 @@ private final StringRedisTemplate redisTemplate;
                 return;
             }
             
-            String orderId = (String) event.get("orderId");
+            String orderId = event.getOrderId();
             if (orderId != null) {
                 String activeOrder = redisTemplate.opsForValue().get("driver:active_order:" + driverId);
                 if (!orderId.equals(activeOrder)) {
                     log.warn("Driver {} is not assigned to order {}, active is {}", driverId, orderId, activeOrder);
-                    event.remove("orderId"); // Ignore the orderId for telemetry
+                    event.setOrderId(null); // Ignore the orderId for telemetry
                 }
             }
 
@@ -82,19 +81,19 @@ private final StringRedisTemplate redisTemplate;
         log.info("WebSocket connection closed: {}", session.getId());
     }
 
-    private void processBatch(List<Map<String, Object>> batch) {
+    private void processBatch(List<com.fooddelivery.delivery.dto.FleetTrackingUpdateDto> batch) {
         if (batch.isEmpty()) return;
         log.info("Processing reactive telemetry batch of size {}", batch.size());
         try {
-            for (Map<String, Object> event : batch) {
-                String driverId = (String) event.get("driverId");
-                Number latNum = (Number) event.get("lat");
-                Number lngNum = (Number) event.get("lng");
-                String orderId = (String) event.get("orderId");
+            for (com.fooddelivery.delivery.dto.FleetTrackingUpdateDto event : batch) {
+                String driverId = event.getDriverId();
+                Double latNum = event.getLat();
+                Double lngNum = event.getLng();
+                String orderId = event.getOrderId();
                 if (driverId != null && latNum != null && lngNum != null) {
-                    double lat = latNum.doubleValue();
-                    double lng = lngNum.doubleValue();
-                    String cityId = (String) event.get("cityId");
+                    double lat = latNum;
+                    double lng = lngNum;
+                    String cityId = event.getCityId();
                     if (cityId == null) {
                         log.warn("Dropped telemetry event due to missing cityId: {}", driverId);
                         continue;

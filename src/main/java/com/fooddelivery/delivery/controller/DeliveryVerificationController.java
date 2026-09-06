@@ -19,12 +19,19 @@ private final GovernmentIdServiceClient governmentIdClient;
     private final com.fooddelivery.delivery.service.OnboardingOrchestratorService onboardingOrchestratorService;
 
     @GetMapping("/status")
-    public ResponseEntity<ApiResponse<GovernmentIdServiceClient.VerificationSummary>> getVerificationStatus(Principal principal) {
+    public ResponseEntity<ApiResponse<com.fooddelivery.delivery.dto.RiderVerificationStatusDto>> getVerificationStatus(Principal principal) {
         UUID executiveId = UUID.fromString(principal.getName());
         GovernmentIdServiceClient.VerificationSummary summary = governmentIdClient.getVerificationSummary(executiveId);
         // Evaluate and sync onboarding status with the Executive Profile
         onboardingOrchestratorService.evaluateOnboardingStatus(executiveId, summary);
-        return ResponseEntity.ok(ApiResponse.success(summary, "Verification status fetched"));
+        com.fooddelivery.delivery.dto.RiderVerificationStatusDto dto = com.fooddelivery.delivery.dto.RiderVerificationStatusDto.builder()
+            .dlStatus(summary.dlApproved() ? "VERIFIED" : "PENDING")
+            .rcStatus(summary.rcApproved() ? "VERIFIED" : "PENDING")
+            .bankStatus(summary.bankApproved() ? "VERIFIED" : "PENDING")
+            .biometricStatus(summary.lastBiometricVerificationAt() != null ? "VERIFIED" : "PENDING")
+            .fullyVerified(summary.allDocsApproved())
+            .build();
+        return ResponseEntity.ok(ApiResponse.success(dto, "Verification status fetched"));
     }
 
     @GetMapping("/upload-url")
