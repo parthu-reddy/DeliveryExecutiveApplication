@@ -22,24 +22,7 @@ public class TelemetryEventRequest {
     private Boolean isMockLocation;
     private Long timestampMs;
 
-
-
-
-
-
-
-
-
-
-
-
-
 public void setIsMockLocation(final Boolean isMockLocation) {
         this.isMockLocation = isMockLocation;
     }
-
-
-
-
-
 }

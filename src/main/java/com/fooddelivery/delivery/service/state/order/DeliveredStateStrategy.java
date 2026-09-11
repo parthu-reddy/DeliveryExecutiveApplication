@@ -7,6 +7,7 @@ import com.fooddelivery.common.constants.EventType;
 import com.fooddelivery.common.enums.DeliveryStatus;
 import com.fooddelivery.common.outbox.repository.OutboxEventRepository;
 import com.fooddelivery.delivery.entity.DeliveryExecutive;
+import com.fooddelivery.delivery.entity.OrderAssignment;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
 import com.fooddelivery.delivery.service.LogisticsDispatchService;
 import com.fooddelivery.delivery.service.state.DeliveryExecutiveState;
@@ -25,8 +26,9 @@ public class DeliveredStateStrategy extends AbstractDeliveryOrderState {
                  org.springframework.transaction.support.TransactionTemplate transactionTemplate,
                  com.fooddelivery.common.outbox.repository.OutboxEventRepository outboxEventRepository,
                  com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository repository,
-                 com.fooddelivery.delivery.service.LogisticsDispatchService logisticsDispatchService) {
-        super(redisTemplate, objectMapper, transactionTemplate, outboxEventRepository, repository, logisticsDispatchService);
+                 com.fooddelivery.delivery.service.LogisticsDispatchService logisticsDispatchService,
+                 com.fooddelivery.delivery.repository.OrderAssignmentRepository assignmentRepository) {
+        super(redisTemplate, objectMapper, transactionTemplate, outboxEventRepository, repository, logisticsDispatchService, assignmentRepository);
     }
 
 
@@ -40,28 +42,25 @@ public class DeliveredStateStrategy extends AbstractDeliveryOrderState {
         return EventType.ORDER_DELIVERED;
     }
 
+    /**
+     * The delivery OTP comes from the assignment row, not from the cached dispatch payload.
+     *
+     * <p>The payload key has a 24-hour TTL. When it expired the rider got "Invalid Delivery OTP.
+     * Order payload not found." and the order could never be completed by anyone, by any route.
+     */
     @Override
-    protected void validate(UUID driverId, UUID orderId, String pickupOtp, String deliveryOtp) {
-        String payload = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId);
-        log.info("Validating DELIVERED state for order {}, payload found: {}", orderId, payload != null);
-        if (payload != null) {
-            try {
-                JsonNode root = objectMapper.readTree(payload);
-                String expectedOtp = root.path("deliveryOtp").asText(null);
-                log.info("Validation for order {}: expectedOtp='{}', provided deliveryOtp='{}'", orderId, expectedOtp, deliveryOtp);
-                if (expectedOtp == null || expectedOtp.isEmpty() || !expectedOtp.equals(deliveryOtp)) {
-                    log.error("OTP mismatch for order {}. Expected: {}, Provided: {}", orderId, expectedOtp, deliveryOtp);
-                    throw new IllegalArgumentException("Invalid Delivery OTP");
-                }
-            } catch (IllegalArgumentException e) {
-                throw e;
-            } catch (Exception e) {
-                log.error("Failed to parse dispatch payload for order {}", orderId, e);
-            }
-        } else {
-            log.warn("Payload missing for order {} during DELIVERED validation. Rejecting OTP check.", orderId);
-            throw new IllegalArgumentException("Invalid Delivery OTP. Order payload not found.");
+    protected void validate(OrderAssignment assignment, String pickupOtp, String deliveryOtp,
+                            java.math.BigDecimal cashCollectedAmount) {
+        // A cash delivery ends with the rider handing over money. Accepting the status update
+        // without the amount leaves the customer service booking a collection for a number nobody
+        // declared -- which is exactly what it used to do, using the order total as a stand-in.
+        if (assignment.isCashOnDelivery() && cashCollectedAmount == null) {
+            throw new IllegalArgumentException("Declare the cash you collected for this order.");
         }
+        if (cashCollectedAmount != null && cashCollectedAmount.signum() < 0) {
+            throw new IllegalArgumentException("Cash collected cannot be negative.");
+        }
+        requireOtp(assignment.getDeliveryOtp(), deliveryOtp, "delivery");
     }
 
     @Override
@@ -80,6 +79,7 @@ public class DeliveredStateStrategy extends AbstractDeliveryOrderState {
 
     @Override
     protected void postProcess(UUID driverId, UUID orderId, Boolean goOfflineAfter) {
+        releaseAssignment(orderId);
         try {
             logisticsDispatchService.releaseDriverLock(driverId.toString());
         } catch (Exception e) {

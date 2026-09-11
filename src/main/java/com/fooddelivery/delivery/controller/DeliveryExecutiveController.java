@@ -28,6 +28,7 @@ public class DeliveryExecutiveController {
 private final DeliveryExecutiveProfileService profileService;
     private final OrderAssignmentService orderAssignmentService;
     private final OrderExecutionService orderExecutionService;
+    private final com.fooddelivery.delivery.repository.OrderAssignmentRepository assignmentRepository;
     private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
     private final org.springframework.data.redis.listener.RedisMessageListenerContainer redisMessageListenerContainer;
 
@@ -278,6 +279,13 @@ public void setAvailable(final Boolean available) {
     @GetMapping(value = "/drivers/{driverId}/orders/{orderId}/restaurant-status-stream", produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
     @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
     public org.springframework.web.servlet.mvc.method.annotation.SseEmitter streamRestaurantStatus(@PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
+        // @PreAuthorize proves the caller is this driver; it says nothing about the order. Without
+        // this, any authenticated driver could subscribe to any order's restaurant-status channel.
+        // Found by the binding scan added in Phase 2, not by the review that motivated it.
+        assignmentRepository.findByOrderId(orderId)
+                .filter(a -> a.authorises(driverId))
+                .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException(
+                        "This order is not assigned to you."));
         org.springframework.web.servlet.mvc.method.annotation.SseEmitter emitter = new org.springframework.web.servlet.mvc.method.annotation.SseEmitter(600000L); // 10 minutes timeout
         String trackingChannel = "restaurant-status:order:" + orderId;
         org.springframework.data.redis.connection.MessageListener listener = (message, pattern) -> {

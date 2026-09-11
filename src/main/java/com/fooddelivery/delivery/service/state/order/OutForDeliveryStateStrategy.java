@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fooddelivery.common.constants.EventType;
 import com.fooddelivery.common.enums.DeliveryStatus;
 import com.fooddelivery.common.outbox.repository.OutboxEventRepository;
+import com.fooddelivery.delivery.entity.OrderAssignment;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
 import com.fooddelivery.delivery.service.LogisticsDispatchService;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -20,8 +21,9 @@ public class OutForDeliveryStateStrategy extends AbstractDeliveryOrderState {
                  org.springframework.transaction.support.TransactionTemplate transactionTemplate,
                  com.fooddelivery.common.outbox.repository.OutboxEventRepository outboxEventRepository,
                  com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository repository,
-                 com.fooddelivery.delivery.service.LogisticsDispatchService logisticsDispatchService) {
-        super(redisTemplate, objectMapper, transactionTemplate, outboxEventRepository, repository, logisticsDispatchService);
+                 com.fooddelivery.delivery.service.LogisticsDispatchService logisticsDispatchService,
+                 com.fooddelivery.delivery.repository.OrderAssignmentRepository assignmentRepository) {
+        super(redisTemplate, objectMapper, transactionTemplate, outboxEventRepository, repository, logisticsDispatchService, assignmentRepository);
     }
 
 
@@ -35,31 +37,19 @@ public class OutForDeliveryStateStrategy extends AbstractDeliveryOrderState {
         return EventType.ORDER_STATUS_UPDATED;
     }
 
+    /**
+     * The restaurant must have marked the order ready, and the pickup OTP must match the
+     * assignment. The readiness flag stays in Redis -- it is a live status, not an authorization,
+     * and a missing one already denies here.
+     */
     @Override
-    protected void validate(UUID driverId, UUID orderId, String pickupOtp, String deliveryOtp) {
-        String restaurantStatus = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_RESTAURANT_STATUS + orderId);
-        if (restaurantStatus == null || !(restaurantStatus.equals(com.fooddelivery.common.enums.OrderStatus.READY_FOR_PICKUP.name()))) {
+    protected void validate(OrderAssignment assignment, String pickupOtp, String deliveryOtp,
+                            java.math.BigDecimal cashCollectedAmount) {
+        String restaurantStatus = redisTemplate.opsForValue()
+                .get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_RESTAURANT_STATUS + assignment.getOrderId());
+        if (!com.fooddelivery.common.enums.OrderStatus.READY_FOR_PICKUP.name().equals(restaurantStatus)) {
             throw new IllegalArgumentException("Restaurant has not marked the order as ready yet.");
         }
-        String payload = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId);
-        log.info("Validating OUT_FOR_DELIVERY state for order {}, payload found: {}", orderId, payload != null);
-        if (payload != null) {
-            try {
-                JsonNode root = objectMapper.readTree(payload);
-                String expectedOtp = root.path("pickupOtp").asText(null);
-                log.info("Validation for order {}: expectedOtp='{}', provided pickupOtp='{}'", orderId, expectedOtp, pickupOtp);
-                if (expectedOtp == null || expectedOtp.isEmpty() || !expectedOtp.equals(pickupOtp)) {
-                    log.error("OTP mismatch for order {}. Expected: {}, Provided: {}", orderId, expectedOtp, pickupOtp);
-                    throw new IllegalArgumentException("Invalid Pickup OTP");
-                }
-            } catch (IllegalArgumentException e) {
-                throw e;
-            } catch (Exception e) {
-                log.error("Failed to parse dispatch payload for order {}", orderId, e);
-            }
-        } else {
-            log.warn("Payload missing for order {} during OUT_FOR_DELIVERY validation. Rejecting OTP check.", orderId);
-            throw new IllegalArgumentException("Invalid Pickup OTP. Order payload not found.");
-        }
+        requireOtp(assignment.getPickupOtp(), pickupOtp, "pickup");
     }
 }

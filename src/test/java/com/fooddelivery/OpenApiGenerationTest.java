@@ -115,6 +115,14 @@ public class OpenApiGenerationTest {
     @org.springframework.boot.test.mock.mockito.MockBean
     private com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository iDeliveryExecutiveRepository;
 
+    // DeliveryExecutiveController took this in Phase 2, when the OTP and the authorization decision
+    // moved off the Redis dispatch payload and onto order_assignments. This class mocks every
+    // collaborator by hand, so a new constructor parameter breaks it -- and it is excluded from the
+    // default surefire run (-P specs enables it), so the break sat here unseen and the committed
+    // openapi.json silently stopped being regenerated.
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private com.fooddelivery.delivery.repository.OrderAssignmentRepository orderAssignmentRepository;
+
     @org.springframework.context.annotation.Configuration
     // Relabels structured responses from */* to application/json. Without it every
     // generated Zod response validator degrades to z.void(); the scoped scan below

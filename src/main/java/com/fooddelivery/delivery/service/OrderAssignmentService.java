@@ -23,6 +23,8 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
     private final OutboxEventHelper outboxEventHelper;
     private final IDeliveryExecutiveRepository repository;
     private final LogisticsDispatchService logisticsDispatchService;
+    private final com.fooddelivery.delivery.repository.OrderAssignmentRepository assignmentRepository;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     public String getPendingPing(UUID driverId) {
         return redisTemplate.opsForValue().get(RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + driverId);
@@ -64,6 +66,7 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
                 com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = outboxEventHelper.createOutboxEvent(com.fooddelivery.common.constants.AggregateType.ORDER, orderId.toString(), com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED, java.util.Map.of("orderId", orderId.toString(), "driverId", driverId.toString(), "driverName", executive.getFullName()));
                 log.info("Triggering event: DRIVER_ASSIGNED for executive: {}", executive.getId());
                 outboxEventRepository.save(outboxEvent);
+                recordAssignment(orderId, driverId);
                 com.fooddelivery.delivery.service.state.DeliveryExecutiveState state = com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory.getState(executive.getStatus());
                 state.acceptOrder(executive);
                 repository.save(executive);
@@ -217,6 +220,7 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
                 com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = outboxEventHelper.createOutboxEvent(com.fooddelivery.common.constants.AggregateType.ORDER, orderId.toString(), com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED, java.util.Map.of("orderId", orderId.toString(), "driverId", driverId.toString(), "driverName", executive.getFullName()));
                 log.info("Triggering event: DRIVER_ASSIGNED for executive: {}", driverId);
                 outboxEventRepository.save(outboxEvent);
+                recordAssignment(orderId, driverId);
                 com.fooddelivery.delivery.service.state.DeliveryExecutiveState state = com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory.getState(executive.getStatus());
                 if (executive.getStatus() == com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.OFFLINE) {
                     executive.setStatus(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.ONLINE);
@@ -242,4 +246,68 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
         }
     }
 
+    /**
+     * Records who holds the order, in the same transaction as the DRIVER_ASSIGNED event.
+     *
+     * <p>The OTPs are lifted out of the cached ORDER_ACCEPTED payload here and persisted, so that
+     * from this point on neither the assignment nor the handover proof depends on a Redis key with
+     * a 24-hour TTL. If the payload is already gone at assignment time the row is still written --
+     * an assignment with no OTP denies the handover, which is the safe direction, whereas the old
+     * behaviour of reading a missing key at handover time denied it permanently and silently.
+     */
+    // Package-private, not private: the wiring from the ORDER_ACCEPTED payload into this row is
+    // what makes a COD handover enforceable downstream, and nothing pinned it until a break-test
+    // removed the paymentMethod assignment and every test still passed.
+    void recordAssignment(UUID orderId, UUID driverId) {
+        String pickupOtp = null;
+        String deliveryOtp = null;
+        com.fooddelivery.common.enums.PaymentMethod paymentMethod = null;
+        String payload = redisTemplate.opsForValue()
+                .get(RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId);
+        if (payload != null) {
+            try {
+                com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(payload);
+                pickupOtp = emptyToNull(root.path("pickupOtp").asText(null));
+                deliveryOtp = emptyToNull(root.path("deliveryOtp").asText(null));
+                String method = emptyToNull(root.path("paymentMethod").asText(null));
+                if (method != null) {
+                    try {
+                        paymentMethod = com.fooddelivery.common.enums.PaymentMethod.valueOf(method);
+                    } catch (IllegalArgumentException e) {
+                        log.error("Unknown payment method '{}' on order {}", method, orderId);
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Could not read the OTPs out of the dispatch payload for order {}", orderId, e);
+            }
+        } else {
+            log.warn("No dispatch payload for order {} at assignment: the assignment is recorded "
+                    + "without OTPs and the handover will be refused until they are known.", orderId);
+        }
+
+        com.fooddelivery.delivery.entity.OrderAssignment assignment = assignmentRepository
+                .findByOrderId(orderId)
+                .orElseGet(() -> com.fooddelivery.delivery.entity.OrderAssignment.builder()
+                        .orderId(orderId)
+                        .build());
+        assignment.setDriverId(driverId);
+        assignment.setState(com.fooddelivery.delivery.entity.OrderAssignment.State.ASSIGNED);
+        assignment.setAssignedAt(java.time.OffsetDateTime.now());
+        assignment.setReleasedAt(null);
+        if (pickupOtp != null) {
+            assignment.setPickupOtp(pickupOtp);
+        }
+        if (deliveryOtp != null) {
+            assignment.setDeliveryOtp(deliveryOtp);
+        }
+        if (paymentMethod != null) {
+            assignment.setPaymentMethod(paymentMethod);
+        }
+        assignmentRepository.save(assignment);
+        log.info("Recorded assignment of order {} to driver {}", orderId, driverId);
+    }
+
+    private static String emptyToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value;
+    }
 }

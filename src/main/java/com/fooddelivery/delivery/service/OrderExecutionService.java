@@ -22,12 +22,18 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
     private final IDeliveryExecutiveRepository repository;
     private final LogisticsDispatchService logisticsDispatchService;
     private final com.fooddelivery.delivery.service.state.order.DeliveryOrderStateFactory deliveryOrderStateFactory;
+    private final com.fooddelivery.delivery.repository.OrderAssignmentRepository assignmentRepository;
     private final ObjectMapper objectMapper;
 
     public void abortOrder(UUID driverId, UUID orderId) {
-        String currentLock = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId);
-        if (currentLock == null || !currentLock.equals(driverId.toString())) {
-            throw new IllegalArgumentException("Driver is not assigned to this order or order lock missing");
+        // The assignment row, not the Redis lock. This path already failed closed on a missing lock,
+        // but it has to agree with handleStatusUpdate about what "assigned" means or a driver can be
+        // authorised to deliver an order they are not authorised to abort.
+        com.fooddelivery.delivery.entity.OrderAssignment assignment =
+                assignmentRepository.findByOrderId(orderId).orElse(null);
+        if (assignment == null || !assignment.authorises(driverId)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "This order is not assigned to you.");
         }
         int maxRetries = 3;
         for (int i = 0; i < maxRetries; i++) {
@@ -40,6 +46,9 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
                     redisTemplate.opsForHash().put("drivers:status", driverId.toString(), executive.getStatus().name());
                     com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = outboxEventHelper.createOutboxEvent(com.fooddelivery.common.constants.AggregateType.ORDER, orderId.toString(), com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED, java.util.Map.of("orderId", orderId.toString(), "driverId", driverId.toString()));
                     outboxEventRepository.save(outboxEvent);
+                    assignment.setState(com.fooddelivery.delivery.entity.OrderAssignment.State.RELEASED);
+                    assignment.setReleasedAt(java.time.OffsetDateTime.now());
+                    assignmentRepository.save(assignment);
                 });
                 break; // exit loop on success
             } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {

@@ -16,21 +16,4 @@ public class DriverLocationDTO {
     private Double lng;
     @jakarta.validation.constraints.NotNull
     private String status;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }

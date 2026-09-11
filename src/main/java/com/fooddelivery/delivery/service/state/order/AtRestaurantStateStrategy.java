@@ -19,8 +19,9 @@ public class AtRestaurantStateStrategy extends AbstractDeliveryOrderState {
                  org.springframework.transaction.support.TransactionTemplate transactionTemplate,
                  com.fooddelivery.common.outbox.repository.OutboxEventRepository outboxEventRepository,
                  com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository repository,
-                 com.fooddelivery.delivery.service.LogisticsDispatchService logisticsDispatchService) {
-        super(redisTemplate, objectMapper, transactionTemplate, outboxEventRepository, repository, logisticsDispatchService);
+                 com.fooddelivery.delivery.service.LogisticsDispatchService logisticsDispatchService,
+                 com.fooddelivery.delivery.repository.OrderAssignmentRepository assignmentRepository) {
+        super(redisTemplate, objectMapper, transactionTemplate, outboxEventRepository, repository, logisticsDispatchService, assignmentRepository);
     }
 
 

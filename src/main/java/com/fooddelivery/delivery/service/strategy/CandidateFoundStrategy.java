@@ -47,7 +47,7 @@ private final StringRedisTemplate redisTemplate;
                 locationTrackingWebSocketHandler.sendPingToDriver(driverId, orderId.toString());
             } else {
                 // Send a push notification to the driver
-                com.fooddelivery.common.event.NotificationRequestEvent notificationEvent = com.fooddelivery.common.event.NotificationRequestEvent.builder().userId(UUID.fromString(driverId)).channel(com.fooddelivery.common.enums.ChannelType.PUSH).eventName("NEW_ORDER_DISPATCH").payload(java.util.Map.of("orderId", orderId.toString())).build();
+                com.fooddelivery.common.event.NotificationRequestEvent notificationEvent = com.fooddelivery.common.event.NotificationRequestEvent.builder().userId(UUID.fromString(driverId)).channel(com.fooddelivery.common.enums.ChannelType.PUSH).eventName(com.fooddelivery.common.constants.NotificationTemplate.NEW_ORDER_DISPATCH).templateParams(java.util.List.of(orderId.toString())).payload(java.util.Map.of("orderId", orderId.toString())).build();
                 notificationRouterService.routeNotification(notificationEvent);
             }
         }

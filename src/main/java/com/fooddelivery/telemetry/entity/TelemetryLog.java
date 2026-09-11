@@ -32,18 +32,7 @@ public class TelemetryLog {
     @Column(name = "recorded_at", nullable = false)
     private OffsetDateTime recordedAt;
 
-
-
-
-
-
-
-
-
-
-
 public void setMockLocation(final boolean isMockLocation) {
         this.isMockLocation = isMockLocation;
     }
-
 }

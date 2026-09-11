@@ -66,4 +66,59 @@ class EndpointAuthorizationCoverageTest {
                         + "today but will silently exempt the next method that takes that name.")
                 .isEmpty();
     }
+
+    /**
+     * Multi-resource endpoints whose authorization rule does not itself name every id.
+     *
+     * <p>Each entry was read this session and the binding confirmed to exist somewhere the
+     * reflective scan cannot see -- in the method body, in the repository query, or in a Redis
+     * claim. The value of the list is not the exemptions: it is that a NEW endpoint taking an owned
+     * tenant id and an unowned resource id arrives red, which is exactly how
+     * {@code FulfillmentController} shipped a cross-tenant write past a green build.
+     */
+    private static final Set<String> RESOURCE_BINDING_VERIFIED_ELSEWHERE = Set.of(
+            // acceptOrderPing claims the order through a Redis SISMEMBER on the ping set: a driver who was
+            // not pinged gets INVALID.
+            "DeliveryExecutiveController#acceptOrder",
+            // rejectOrderPing is scoped to this driver's own pending ping.
+            "DeliveryExecutiveController#rejectOrder",
+            // OrderExecutionService.abortOrder denies unless order_assignments authorises this driver.
+            "DeliveryExecutiveController#abortOrder",
+            // AbstractDeliveryOrderState.handleStatusUpdate denies unless order_assignments authorises.
+            "DeliveryExecutiveController#updateOrderStatus",
+            // The handler denies unless order_assignments authorises this driver (added in Phase 2 --
+            // this endpoint was genuinely unbound and the scan is what found it).
+            "DeliveryExecutiveController#streamRestaurantStatus"
+);
+
+    @Test
+    void everyMultiResourceEndpointBindsItsResource() {
+        List<EndpointAuthorizationCoverage.UnboundResource> unbound =
+                EndpointAuthorizationCoverage.unboundResourceParameters(
+                        BASE_PACKAGE, RESOURCE_BINDING_VERIFIED_ELSEWHERE);
+
+        assertThat(unbound)
+                .describedAs("Endpoints taking two or more resource ids whose authorization rule "
+                        + "constrains only some of them. Bind the resource -- preferably in the "
+                        + "query, so it cannot be forgotten on the next method -- or add it to "
+                        + "RESOURCE_BINDING_VERIFIED_ELSEWHERE with the place the binding lives.")
+                .isEmpty();
+    }
+
+    @Test
+    void theBindingScanActuallyFindsMultiResourceEndpoints() {
+        // Without this the exemption list could grow to cover everything and the scan above would
+        // pass while guarding nothing -- the vacuous-test failure recorded as I-17.
+        assertThat(EndpointAuthorizationCoverage.countMultiResourceEndpoints(BASE_PACKAGE))
+                .describedAs("multi-resource endpoints discovered under " + BASE_PACKAGE)
+                .isGreaterThanOrEqualTo(5);
+    }
+
+    @Test
+    void theBindingAllowlistHasNoStaleEntries() {
+        assertThat(EndpointAuthorizationCoverage.staleBindingAllowlistEntries(
+                        BASE_PACKAGE, RESOURCE_BINDING_VERIFIED_ELSEWHERE))
+                .describedAs("Binding-allowlist entries matching no multi-resource endpoint.")
+                .isEmpty();
+    }
 }

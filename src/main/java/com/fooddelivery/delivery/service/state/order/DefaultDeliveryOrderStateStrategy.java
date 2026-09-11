@@ -17,8 +17,9 @@ public class DefaultDeliveryOrderStateStrategy extends AbstractDeliveryOrderStat
 
     private final ThreadLocal<DeliveryStatus> currentStatus = new ThreadLocal<>();
 
-    public DefaultDeliveryOrderStateStrategy(StringRedisTemplate redisTemplate, ObjectMapper objectMapper, TransactionTemplate transactionTemplate, OutboxEventRepository outboxEventRepository, IDeliveryExecutiveRepository repository, LogisticsDispatchService logisticsDispatchService) {
-        super(redisTemplate, objectMapper, transactionTemplate, outboxEventRepository, repository, logisticsDispatchService);
+    public DefaultDeliveryOrderStateStrategy(StringRedisTemplate redisTemplate, ObjectMapper objectMapper, TransactionTemplate transactionTemplate, OutboxEventRepository outboxEventRepository, IDeliveryExecutiveRepository repository, LogisticsDispatchService logisticsDispatchService,
+            com.fooddelivery.delivery.repository.OrderAssignmentRepository assignmentRepository) {
+        super(redisTemplate, objectMapper, transactionTemplate, outboxEventRepository, repository, logisticsDispatchService, assignmentRepository);
     }
 
     @Override
