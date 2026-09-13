@@ -12,7 +12,6 @@ import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfigurat
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.cloud.contract.stubrunner.spring.AutoConfigureStubRunner;
-import org.springframework.cloud.contract.stubrunner.spring.StubRunnerProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
@@ -22,7 +21,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
     // differ for these services, so the stub must be registered under the name the client asks for.
     "stubrunner.idsToServiceIds.food-delivery-backend=customer-service"
 })
-@AutoConfigureStubRunner(ids = { "com.fooddelivery:food-delivery-backend:+:stubs" }, stubsMode = StubRunnerProperties.StubsMode.LOCAL)
+@AutoConfigureStubRunner(ids = { "com.fooddelivery:food-delivery-backend:+:stubs" })
 public class DeliveryExecutiveContractConsumerTest {
 
 

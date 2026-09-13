@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.contract.stubrunner.spring.AutoConfigureStubRunner;
-import org.springframework.cloud.contract.stubrunner.spring.StubRunnerProperties;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Configuration;
@@ -25,7 +24,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(classes = GovIdContractConsumerTest.TestConfig.class, webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @AutoConfigureStubRunner(
-        stubsMode = StubRunnerProperties.StubsMode.LOCAL,
         ids = {"com.fooddelivery:government-id-validation-service:+:stubs"}
 )
 @ActiveProfiles("contract-test")
