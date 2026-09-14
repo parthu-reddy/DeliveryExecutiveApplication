@@ -1,6 +1,5 @@
 package com.fooddelivery.delivery.service.strategy;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fooddelivery.common.constants.EventType;
 import com.fooddelivery.delivery.service.LogisticsDispatchService;
@@ -13,14 +12,19 @@ import java.util.UUID;
 @Component
 @lombok.extern.slf4j.Slf4j
 @lombok.RequiredArgsConstructor
-public class OrderDriverRejectedStrategy implements DeliveryEventStrategy {
+public class OrderDriverRejectedStrategy implements DeliveryEventStrategy<com.fooddelivery.common.event.OrderDriverRejectedEvent> {
 private final LogisticsDispatchService logisticsDispatchService;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
     @Override
-    public void process(JsonNode root, String eventType) throws Exception {
-        UUID orderId = UUID.fromString(root.path("orderId").asText());
+    public Class<com.fooddelivery.common.event.OrderDriverRejectedEvent> eventClass() {
+        return com.fooddelivery.common.event.OrderDriverRejectedEvent.class;
+    }
+
+    @Override
+    public void handle(com.fooddelivery.common.event.OrderDriverRejectedEvent event, String eventType) throws Exception {
+        UUID orderId = event.orderUuid();
         log.info("Delivery Application received ORDER_DRIVER_REJECTED for order {}. Fetching original payload to retry dispatch...", orderId);
         // Guard: if the order was cancelled/terminal, the dispatch lock is set to "CANCELLED" — skip redispatch
         String dispatchLock = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId);
@@ -30,12 +34,12 @@ private final LogisticsDispatchService logisticsDispatchService;
         }
         String cachedPayload = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId);
         if (cachedPayload != null) {
-            JsonNode cachedRoot = objectMapper.readTree(cachedPayload);
-            double lat = cachedRoot.path("restaurantLat").asDouble(0.0);
-            double lng = cachedRoot.path("restaurantLng").asDouble(0.0);
-            double deliveryLat = cachedRoot.path("deliveryLat").asDouble(0.0);
-            double deliveryLng = cachedRoot.path("deliveryLng").asDouble(0.0);
-            String deliveryAddress = cachedRoot.path("deliveryAddress").asText("");
+            com.fooddelivery.common.event.OrderAcceptedEvent cachedEvent = objectMapper.readValue(cachedPayload, com.fooddelivery.common.event.OrderAcceptedEvent.class);
+            double lat = cachedEvent.getRestaurantLat() != null ? cachedEvent.getRestaurantLat() : 0.0;
+            double lng = cachedEvent.getRestaurantLng() != null ? cachedEvent.getRestaurantLng() : 0.0;
+            double deliveryLat = cachedEvent.getDeliveryLat() != null ? cachedEvent.getDeliveryLat() : 0.0;
+            double deliveryLng = cachedEvent.getDeliveryLng() != null ? cachedEvent.getDeliveryLng() : 0.0;
+            String deliveryAddress = cachedEvent.getDeliveryAddress() != null ? cachedEvent.getDeliveryAddress() : "";
             if (lat != 0.0 && lng != 0.0) {
                 // NOTE: Do NOT increment dispatch_failed_cycles here.
                 // The cycle counter is managed exclusively by DelayedDispatchPoller

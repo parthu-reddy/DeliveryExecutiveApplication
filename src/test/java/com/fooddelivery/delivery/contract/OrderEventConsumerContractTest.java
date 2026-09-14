@@ -66,6 +66,11 @@ class OrderEventConsumerContractTest {
         public DeliveryEventStrategy[] strategies() {
             return new DeliveryEventStrategy[0];
         }
+        
+        @Bean
+        public com.fooddelivery.common.event.EventBinder eventBinder(com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
+            return new com.fooddelivery.common.event.EventBinder(objectMapper, jakarta.validation.Validation.buildDefaultValidatorFactory().getValidator());
+        }
     }
 
     @MockBean

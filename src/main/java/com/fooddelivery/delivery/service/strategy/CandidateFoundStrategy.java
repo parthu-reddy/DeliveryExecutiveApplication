@@ -12,20 +12,24 @@ import java.util.UUID;
 @Component
 @lombok.extern.slf4j.Slf4j
 @lombok.RequiredArgsConstructor
-public class CandidateFoundStrategy implements DeliveryEventStrategy {
+public class CandidateFoundStrategy implements DeliveryEventStrategy<com.fooddelivery.common.event.DispatchCandidateFoundEvent> {
 private final StringRedisTemplate redisTemplate;
     private final com.fooddelivery.common.service.NotificationRouterService notificationRouterService;
     private final org.springframework.core.env.Environment env;
     private final com.fooddelivery.delivery.websocket.LocationTrackingWebSocketHandler locationTrackingWebSocketHandler;
 
     @Override
-    public void process(JsonNode root, String eventType) throws Exception {
-        UUID orderId = UUID.fromString(root.path("orderId").asText());
+    public Class<com.fooddelivery.common.event.DispatchCandidateFoundEvent> eventClass() {
+        return com.fooddelivery.common.event.DispatchCandidateFoundEvent.class;
+    }
+
+    @Override
+    public void handle(com.fooddelivery.common.event.DispatchCandidateFoundEvent event, String eventType) throws Exception {
+        UUID orderId = event.orderUuid();
         List<String> driverIds = new java.util.ArrayList<>();
-        JsonNode driverIdsNode = root.path("driverIds");
-        if (driverIdsNode.isArray()) {
-            for (JsonNode idNode : driverIdsNode) {
-                driverIds.add(idNode.asText());
+        if (event.getDriverIds() != null) {
+            for (java.util.UUID id : event.getDriverIds()) {
+                driverIds.add(id.toString());
             }
         }
         log.info("Delivery Application received DISPATCH_CANDIDATE_FOUND for order {}. Drivers {} will be pinged.", orderId, driverIds);

@@ -66,18 +66,21 @@ class DispatchLockAfterCommitTest {
         }
     }
 
-    private com.fasterxml.jackson.databind.JsonNode event() throws Exception {
-        return new ObjectMapper().readTree("{"
-                + "\"orderId\":\"" + orderId + "\","
-                + "\"restaurantLat\":12.9,\"restaurantLng\":77.6,"
-                + "\"deliveryLat\":12.95,\"deliveryLng\":77.65,"
-                + "\"deliveryAddress\":\"1 Test Road\","
-                + "\"estimatedCompletionTime\":0}");
+    private com.fooddelivery.common.event.OrderAcceptedEvent event() {
+        com.fooddelivery.common.event.OrderAcceptedEvent evt = new com.fooddelivery.common.event.OrderAcceptedEvent();
+        evt.setOrderId(orderId.toString());
+        evt.setRestaurantLat(12.9);
+        evt.setRestaurantLng(77.6);
+        evt.setDeliveryLat(12.95);
+        evt.setDeliveryLng(77.65);
+        evt.setDeliveryAddress("1 Test Road");
+        evt.setEstimatedCompletionTime(0L);
+        return evt;
     }
 
     @Test
     void noRedisLockIsTakenWhileTheTransactionIsStillOpen() throws Exception {
-        strategy.process(event(), EventType.ORDER_ACCEPTED.name());
+        strategy.handle(event(), EventType.ORDER_ACCEPTED.name());
 
         // Nothing has committed yet: a lock taken here would survive a rollback that discards the
         // idempotency claim, and the redelivery would be ignored as a duplicate.
@@ -90,7 +93,7 @@ class DispatchLockAfterCommitTest {
 
     @Test
     void theLockAndTheDispatchHappenOnceTheTransactionCommits() throws Exception {
-        strategy.process(event(), EventType.ORDER_ACCEPTED.name());
+        strategy.handle(event(), EventType.ORDER_ACCEPTED.name());
 
         TransactionSynchronizationUtils.triggerAfterCommit();
 
@@ -104,7 +107,7 @@ class DispatchLockAfterCommitTest {
     void aSecondDeliveryOfTheSameEventIsIgnored() throws Exception {
         when(valueOps.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(false);
 
-        strategy.process(event(), EventType.ORDER_ACCEPTED.name());
+        strategy.handle(event(), EventType.ORDER_ACCEPTED.name());
         TransactionSynchronizationUtils.triggerAfterCommit();
 
         verify(valueOps).setIfAbsent(anyString(), anyString(), any(Duration.class));

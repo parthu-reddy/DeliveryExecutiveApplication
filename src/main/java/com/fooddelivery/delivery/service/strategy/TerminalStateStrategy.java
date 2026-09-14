@@ -15,16 +15,33 @@ import java.util.UUID;
 @Component
 @lombok.extern.slf4j.Slf4j
 @lombok.RequiredArgsConstructor
-public class TerminalStateStrategy implements DeliveryEventStrategy {
+public class TerminalStateStrategy
+        implements DeliveryEventStrategy<com.fooddelivery.common.event.OrderScopedEvent> {
 private final StringRedisTemplate redisTemplate;
     private final IDeliveryExecutiveRepository executiveRepository;
     private final LogisticsDispatchService logisticsDispatchService;
     private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
 
     @Override
-    public void process(JsonNode root, String eventType) throws Exception {
-        UUID orderId = UUID.fromString(root.path("orderId").asText());
-        String driverId = root.path("driverId").asText(null);
+    public Class<com.fooddelivery.common.event.OrderScopedEvent> eventClass() {
+        return com.fooddelivery.common.event.OrderScopedEvent.class;
+    }
+
+    @Override
+    public void handle(com.fooddelivery.common.event.OrderScopedEvent event, String eventType) throws Exception {
+        // Was a twelve-branch instanceof chain doing nothing but pulling orderId out of each
+        // concrete class -- plus two branches (DeliveredEvent, PaymentFailedEvent) for event types
+        // this strategy does not declare in getEventTypes() and therefore can never receive.
+        UUID orderId = event.orderUuid();
+        // driverId is genuinely type-specific: only DRIVER_ASSIGNED carries one.
+        String driverId = event instanceof com.fooddelivery.common.event.DriverAssignedEvent assigned
+                ? assigned.getDriverId()
+                : null;
+
+        if (orderId == null) {
+            log.warn("Missing orderId in terminal event");
+            return;
+        }
         log.info("Delivery Application received {} for order {}. Cleaning up pending dispatches.", eventType, orderId);
         // Only delete dispatch payload for cancellation/failure events — NOT for DRIVER_ASSIGNED.
         // OutForDeliveryStateStrategy reads order:dispatchPayload to validate pickup OTP,
@@ -78,13 +95,14 @@ private final StringRedisTemplate redisTemplate;
                 }
                 // Reset driver status in DB
                 final String finalDriverId = driverId;
+                final UUID finalOrderId = orderId;
                 transactionTemplate.executeWithoutResult(status -> {
                     DeliveryExecutive executive = executiveRepository.findLockedById(UUID.fromString(finalDriverId)).orElse(null);
                     if (executive != null && executive.getStatus() == DeliveryExecutiveStatus.ON_DELIVERY) {
                         executive.setStatus(DeliveryExecutiveStatus.ONLINE);
                         // updatedAt is auto-managed by @UpdateTimestamp
                         executiveRepository.save(executive);
-                        log.info("Reset driver {} to ONLINE after order {} was cancelled.", finalDriverId, orderId);
+                        log.info("Reset driver {} to ONLINE after order {} was cancelled.", finalDriverId, finalOrderId);
                         // Add back to available pool
                         try {
                             String cityId = executive.getCityId();

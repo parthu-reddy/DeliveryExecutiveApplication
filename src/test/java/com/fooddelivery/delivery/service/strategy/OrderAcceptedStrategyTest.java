@@ -32,12 +32,12 @@ class OrderAcceptedStrategyTest {
         org.mockito.Mockito.when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         org.mockito.Mockito.when(valueOperations.setIfAbsent(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any())).thenReturn(true);
 
-        ObjectNode node = objectMapper.createObjectNode();
-        node.put("orderId", UUID.randomUUID().toString());
-        node.put("restaurantLat", 12.0);
-        node.put("restaurantLng", 13.0);
+        com.fooddelivery.common.event.OrderAcceptedEvent event = new com.fooddelivery.common.event.OrderAcceptedEvent();
+        event.setOrderId(UUID.randomUUID().toString());
+        event.setRestaurantLat(12.0);
+        event.setRestaurantLng(13.0);
         
-        strategy.process(node, "ORDER_ACCEPTED");
+        strategy.handle(event, "ORDER_ACCEPTED");
         
         org.mockito.Mockito.verify(logisticsDispatchService).dispatchNearestDriver(
             org.mockito.ArgumentMatchers.eq(12.0), org.mockito.ArgumentMatchers.eq(13.0),
@@ -51,12 +51,12 @@ class OrderAcceptedStrategyTest {
         org.mockito.Mockito.when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         org.mockito.Mockito.when(valueOperations.setIfAbsent(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any())).thenReturn(false);
 
-        ObjectNode node = objectMapper.createObjectNode();
-        node.put("orderId", UUID.randomUUID().toString());
-        node.put("restaurantLat", 12.0);
-        node.put("restaurantLng", 13.0);
+        com.fooddelivery.common.event.OrderAcceptedEvent event = new com.fooddelivery.common.event.OrderAcceptedEvent();
+        event.setOrderId(UUID.randomUUID().toString());
+        event.setRestaurantLat(12.0);
+        event.setRestaurantLng(13.0);
         
-        strategy.process(node, "ORDER_ACCEPTED");
+        strategy.handle(event, "ORDER_ACCEPTED");
         
         org.mockito.Mockito.verify(logisticsDispatchService, org.mockito.Mockito.never()).dispatchNearestDriver(
             org.mockito.ArgumentMatchers.anyDouble(), org.mockito.ArgumentMatchers.anyDouble(),

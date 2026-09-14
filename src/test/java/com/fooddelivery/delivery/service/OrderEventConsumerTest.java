@@ -31,12 +31,15 @@ class OrderEventConsumerTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        objectMapper = new ObjectMapper();
+        objectMapper = new ObjectMapper().configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         
         when(mockAcceptedStrategy.getEventTypes()).thenReturn(java.util.Collections.singletonList(com.fooddelivery.common.constants.EventType.ORDER_ACCEPTED.name()));
 
+        jakarta.validation.Validator validator = jakarta.validation.Validation.buildDefaultValidatorFactory().getValidator();
+        com.fooddelivery.common.event.EventBinder eventBinder = new com.fooddelivery.common.event.EventBinder(objectMapper, validator);
         orderEventConsumer = new OrderEventConsumer(
-            objectMapper, 
+            objectMapper,
+            eventBinder,
             new DeliveryEventStrategy[]{mockAcceptedStrategy},
             idempotencyKeyRepository,
             transactionTemplate,
@@ -58,7 +61,7 @@ class OrderEventConsumerTest {
         
         orderEventConsumer.consumeOrderEvent(payload, headersWithEventId());
         
-        verify(mockAcceptedStrategy).process(any(), eq(com.fooddelivery.common.constants.EventType.ORDER_ACCEPTED.name()));
+        verify(mockAcceptedStrategy).dispatch(any(), eq(com.fooddelivery.common.constants.EventType.ORDER_ACCEPTED.name()));
     }
 
     @Test
@@ -69,7 +72,7 @@ class OrderEventConsumerTest {
 
         orderEventConsumer.consumeOrderEvent(message, headersWithEventId());
 
-        verify(mockAcceptedStrategy, never()).process(any(), anyString());
+        verify(mockAcceptedStrategy, never()).dispatch(any(), anyString());
     }
 
     /** The consumer requires an eventId header (I-5); OutboxProcessor always sets one. */

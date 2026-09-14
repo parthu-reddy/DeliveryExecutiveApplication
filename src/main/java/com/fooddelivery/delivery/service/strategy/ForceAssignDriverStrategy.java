@@ -11,18 +11,22 @@ import java.util.UUID;
 @Component
 @lombok.extern.slf4j.Slf4j
 @lombok.RequiredArgsConstructor
-public class ForceAssignDriverStrategy implements DeliveryEventStrategy {
+public class ForceAssignDriverStrategy implements DeliveryEventStrategy<com.fooddelivery.common.event.ForceAssignDriverEvent> {
 private final OrderAssignmentService orderAssignmentService;
 
     @Override
-    public void process(JsonNode root, String eventType) throws Exception {
-        UUID orderId = UUID.fromString(root.path("orderId").asText());
-        String driverIdStr = root.path("driverId").asText(null);
-        if (driverIdStr == null || driverIdStr.isEmpty()) {
+    public Class<com.fooddelivery.common.event.ForceAssignDriverEvent> eventClass() {
+        return com.fooddelivery.common.event.ForceAssignDriverEvent.class;
+    }
+
+    @Override
+    public void handle(com.fooddelivery.common.event.ForceAssignDriverEvent event, String eventType) throws Exception {
+        UUID orderId = event.orderUuid();
+        UUID driverId = event.getDriverId() != null ? java.util.UUID.fromString(event.getDriverId()) : null;
+        if (driverId == null) {
             log.error("Received FORCE_ASSIGN_DRIVER for order {}, but no driverId was provided in payload", orderId);
             return;
         }
-        UUID driverId = UUID.fromString(driverIdStr);
         log.info("Received FORCE_ASSIGN_DRIVER event. Forcing assignment of order {} to driver {}", orderId, driverId);
         try {
             orderAssignmentService.forceAssignOrder(orderId, driverId);

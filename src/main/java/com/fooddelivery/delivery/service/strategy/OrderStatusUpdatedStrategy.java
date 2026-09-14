@@ -1,6 +1,6 @@
 package com.fooddelivery.delivery.service.strategy;
 
-import com.fasterxml.jackson.databind.JsonNode;
+
 import com.fooddelivery.common.constants.EventType;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -12,17 +12,28 @@ import java.util.List;
 @Component
 @lombok.extern.slf4j.Slf4j
 @lombok.RequiredArgsConstructor
-public class OrderStatusUpdatedStrategy implements DeliveryEventStrategy {
+public class OrderStatusUpdatedStrategy implements DeliveryEventStrategy<com.fooddelivery.common.event.OrderScopedEvent> {
 private final StringRedisTemplate redisTemplate;
     private final LogisticsDispatchService logisticsDispatchService;
     private final ObjectMapper objectMapper;
 
     @Override
-    public void process(JsonNode root, String eventType) throws Exception {
-        String orderId = root.path("orderId").asText(null);
+    public Class<com.fooddelivery.common.event.OrderScopedEvent> eventClass() {
+        return com.fooddelivery.common.event.OrderScopedEvent.class;
+    }
+
+    @Override
+    public void handle(com.fooddelivery.common.event.OrderScopedEvent event, String eventType) throws Exception {
+        // The order id is on the interface, so the four instanceof branches that existed only to
+        // read it are gone. What remains is genuinely type-specific: three of these event types
+        // IMPLY their status, and only ORDER_STATUS_UPDATED carries one on the wire.
+        java.util.UUID orderUuid = event.orderUuid();
+        String orderId = orderUuid != null ? orderUuid.toString() : null;
         String status = null;
         if (EventType.ORDER_STATUS_UPDATED.name().equals(eventType)) {
-            status = root.path("status").asText(null);
+            status = event instanceof com.fooddelivery.common.event.OrderStatusUpdatedEvent updated
+                    ? updated.getStatus()
+                    : null;
         } else if (EventType.ORDER_READY.name().equals(eventType)) {
             status = com.fooddelivery.common.enums.OrderStatus.READY_FOR_PICKUP.name();
         } else if (EventType.ORDER_PREPARING.name().equals(eventType)) {
@@ -30,6 +41,7 @@ private final StringRedisTemplate redisTemplate;
         } else if (EventType.ORDER_ACCEPTED.name().equals(eventType)) {
             status = com.fooddelivery.common.enums.OrderStatus.ACCEPTED.name();
         }
+
         if (orderId != null && status != null) {
             String currentStatusStr = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_RESTAURANT_STATUS + orderId);
             try {
@@ -62,12 +74,12 @@ private final StringRedisTemplate redisTemplate;
                             log.info("Order {} is ready early! Acquired lock, triggering immediate dispatch.", orderId);
                             String payload = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId);
                             if (payload != null) {
-                                JsonNode payloadRoot = objectMapper.readTree(payload);
-                                double lat = payloadRoot.path("restaurantLat").asDouble(0.0);
-                                double lng = payloadRoot.path("restaurantLng").asDouble(0.0);
-                                double deliveryLat = payloadRoot.path("deliveryLat").asDouble(0.0);
-                                double deliveryLng = payloadRoot.path("deliveryLng").asDouble(0.0);
-                                String deliveryAddress = payloadRoot.path("deliveryAddress").asText("");
+                                com.fooddelivery.common.event.OrderAcceptedEvent cachedEvent = objectMapper.readValue(payload, com.fooddelivery.common.event.OrderAcceptedEvent.class);
+                                double lat = cachedEvent.getRestaurantLat() != null ? cachedEvent.getRestaurantLat() : 0.0;
+                                double lng = cachedEvent.getRestaurantLng() != null ? cachedEvent.getRestaurantLng() : 0.0;
+                                double deliveryLat = cachedEvent.getDeliveryLat() != null ? cachedEvent.getDeliveryLat() : 0.0;
+                                double deliveryLng = cachedEvent.getDeliveryLng() != null ? cachedEvent.getDeliveryLng() : 0.0;
+                                String deliveryAddress = cachedEvent.getDeliveryAddress() != null ? cachedEvent.getDeliveryAddress() : "";
                                 java.util.Set<String> rejectedDrivers = redisTemplate.opsForSet().members(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderId);
                                 java.util.List<String> excludedDriverIds = rejectedDrivers != null ? new java.util.ArrayList<>(rejectedDrivers) : null;
                                 logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, java.util.UUID.fromString(orderId), excludedDriverIds);
@@ -82,7 +94,7 @@ private final StringRedisTemplate redisTemplate;
                 }
             }
         } else {
-            log.warn("Invalid event received: {}", root);
+            log.warn("Ignoring {} for order {}: no usable status on the event.", eventType, orderId);
         }
     }
 

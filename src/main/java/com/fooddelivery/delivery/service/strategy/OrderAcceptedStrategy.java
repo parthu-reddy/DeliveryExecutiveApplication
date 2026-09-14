@@ -12,19 +12,28 @@ import java.util.UUID;
 @Component
 @lombok.extern.slf4j.Slf4j
 @lombok.RequiredArgsConstructor
-public class OrderAcceptedStrategy implements DeliveryEventStrategy {
+public class OrderAcceptedStrategy implements DeliveryEventStrategy<com.fooddelivery.common.event.OrderAcceptedEvent> {
 private final LogisticsDispatchService logisticsDispatchService;
     private final StringRedisTemplate redisTemplate;
 
     @Override
-    public void process(JsonNode root, String eventType) throws Exception {
-        UUID orderId = UUID.fromString(root.path("orderId").asText());
-        double lat = root.path("restaurantLat").asDouble(0.0);
-        double lng = root.path("restaurantLng").asDouble(0.0);
-        double deliveryLat = root.path("deliveryLat").asDouble(0.0);
-        double deliveryLng = root.path("deliveryLng").asDouble(0.0);
-        String deliveryAddress = root.path("deliveryAddress").asText("");
-        long estimatedCompletionTime = root.path("estimatedCompletionTime").asLong(0L);
+    public Class<com.fooddelivery.common.event.OrderAcceptedEvent> eventClass() {
+        return com.fooddelivery.common.event.OrderAcceptedEvent.class;
+    }
+
+    @Override
+    public void handle(com.fooddelivery.common.event.OrderAcceptedEvent event, String eventType) throws Exception {
+        UUID orderId = event.orderUuid();
+        if (orderId == null) {
+            log.warn("Missing orderId in ORDER_ACCEPTED event");
+            return;
+        }
+        double lat = event.getRestaurantLat() != null ? event.getRestaurantLat() : 0.0;
+        double lng = event.getRestaurantLng() != null ? event.getRestaurantLng() : 0.0;
+        double deliveryLat = event.getDeliveryLat() != null ? event.getDeliveryLat() : 0.0;
+        double deliveryLng = event.getDeliveryLng() != null ? event.getDeliveryLng() : 0.0;
+        String deliveryAddress = event.getDeliveryAddress() != null ? event.getDeliveryAddress() : "";
+        long estimatedCompletionTime = event.getEstimatedCompletionTime() != null ? event.getEstimatedCompletionTime() : 0L;
         long dispatchTime = estimatedCompletionTime > 0 ? estimatedCompletionTime - (15 * 60 * 1000L) : System.currentTimeMillis();
         if (lat == 0.0 || lng == 0.0) {
             log.warn("Missing restaurant location in ORDER_ACCEPTED event for order {}. Cannot dispatch driver.", orderId);
@@ -38,7 +47,7 @@ private final LogisticsDispatchService logisticsDispatchService;
         // was never dispatched, silently. Redis does not participate in the transaction, so the only
         // safe moment to take a lock that outlives it is once the transaction is known to have
         // committed.
-        Runnable dispatch = () -> dispatchOnce(root, orderId, lat, lng, deliveryLat, deliveryLng,
+        Runnable dispatch = () -> dispatchOnce(event, orderId, lat, lng, deliveryLat, deliveryLng,
                 deliveryAddress, dispatchTime);
         if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
             org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
@@ -54,7 +63,7 @@ private final LogisticsDispatchService logisticsDispatchService;
     }
 
     /** The lock, the cached payload and the dispatch itself. Runs at most once per order. */
-    private void dispatchOnce(JsonNode root, UUID orderId, double lat, double lng, double deliveryLat,
+    private void dispatchOnce(com.fooddelivery.common.event.OrderAcceptedEvent event, UUID orderId, double lat, double lng, double deliveryLat,
                               double deliveryLng, String deliveryAddress, long dispatchTime) {
         Boolean isNewDispatch = redisTemplate.opsForValue().setIfAbsent(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId, "locked", java.time.Duration.ofHours(24));
         if (!Boolean.TRUE.equals(isNewDispatch)) {
@@ -63,8 +72,12 @@ private final LogisticsDispatchService logisticsDispatchService;
         }
         try {
             // ALWAYS store the payload with a TTL so retries can work if drivers reject/timeout
-            redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId, root.toString(), java.time.Duration.ofHours(24));
-            log.info("Cached ORDER_ACCEPTED payload in Redis for orderId: {} with pickupOtp: '{}', deliveryOtp: '{}'", orderId, root.path("pickupOtp").asText(""), root.path("deliveryOtp").asText(""));
+            try { 
+                redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId, new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(event), java.time.Duration.ofHours(24)); 
+            } catch(Exception ex) {
+                log.warn("Failed to cache ORDER_ACCEPTED payload for orderId: {}", orderId, ex);
+            }
+            log.info("Cached ORDER_ACCEPTED payload in Redis for orderId: {}", orderId);
             if (System.currentTimeMillis() >= dispatchTime) {
                 log.info("Delivery Application received ORDER_ACCEPTED for order {}. Dispatching nearest driver immediately...", orderId);
                 logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, orderId, null);
