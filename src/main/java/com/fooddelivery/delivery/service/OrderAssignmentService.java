@@ -17,7 +17,7 @@ import java.util.UUID;
 @lombok.extern.slf4j.Slf4j
 @lombok.RequiredArgsConstructor
 public class OrderAssignmentService {
-private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+    private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
     private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxEventHelper outboxEventHelper;
@@ -25,6 +25,7 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
     private final LogisticsDispatchService logisticsDispatchService;
     private final com.fooddelivery.delivery.repository.OrderAssignmentRepository assignmentRepository;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final com.fooddelivery.delivery.client.CustomerServiceClient customerServiceClient;
 
     public String getPendingPing(UUID driverId) {
         return redisTemplate.opsForValue().get(RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + driverId);
@@ -299,8 +300,31 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
                 log.error("Could not read the OTPs out of the dispatch payload for order {}", orderId, e);
             }
         } else {
-            log.warn("No dispatch payload for order {} at assignment: the assignment is recorded "
-                    + "without OTPs and the handover will be refused until they are known.", orderId);
+            log.warn("No dispatch payload in Redis for order {} at assignment. "
+                    + "Falling back to customer-service to fetch OTPs.", orderId);
+            try {
+                java.util.Map<String, String> details = customerServiceClient.getOrderDispatchDetails(orderId);
+                if (details != null) {
+                    pickupOtp = emptyToNull(details.get("pickupOtp"));
+                    deliveryOtp = emptyToNull(details.get("deliveryOtp"));
+                    String method = emptyToNull(details.get("paymentMethod"));
+                    if (method != null) {
+                        try {
+                            paymentMethod = com.fooddelivery.common.enums.PaymentMethod.valueOf(method);
+                        } catch (IllegalArgumentException e) {
+                            log.error("Unknown payment method '{}' from customer-service for order {}", method, orderId);
+                        }
+                    }
+                    log.info("Successfully fetched OTPs from customer-service for order {}: pickupOtp={}, deliveryOtp={}",
+                            orderId, pickupOtp != null ? "[set]" : "[null]", deliveryOtp != null ? "[set]" : "[null]");
+                } else {
+                    log.error("Customer-service returned null dispatch details for order {}. "
+                            + "Assignment will be recorded without OTPs — handover will be refused.", orderId);
+                }
+            } catch (Exception e) {
+                log.error("Failed to fetch OTPs from customer-service for order {}. "
+                        + "Assignment will be recorded without OTPs — handover will be refused.", orderId, e);
+            }
         }
 
         com.fooddelivery.delivery.entity.OrderAssignment assignment = assignmentRepository

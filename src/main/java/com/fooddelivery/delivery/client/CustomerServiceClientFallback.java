@@ -32,4 +32,9 @@ public class CustomerServiceClientFallback implements CustomerServiceClient {
     public List<com.fooddelivery.common.dto.order.DriverOrderEarnings> getDriverOrderMoneyBatch(UUID driverId, List<String> orderIds) {
         throw new IllegalStateException("Customer service is currently unavailable.");
     }
+
+    @Override
+    public java.util.Map<String, String> getOrderDispatchDetails(UUID orderId) {
+        throw new IllegalStateException("Customer service is currently unavailable.");
+    }
 }

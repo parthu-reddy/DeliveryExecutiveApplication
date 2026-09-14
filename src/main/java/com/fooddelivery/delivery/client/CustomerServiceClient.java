@@ -25,4 +25,7 @@ public interface CustomerServiceClient {
 
     @org.springframework.web.bind.annotation.PostMapping("/api/v1/money/driver/{driverId}/orders:batch")
     List<com.fooddelivery.common.dto.order.DriverOrderEarnings> getDriverOrderMoneyBatch(@PathVariable("driverId") UUID driverId, @org.springframework.web.bind.annotation.RequestBody List<String> orderIds);
+
+    @GetMapping("/api/v1/internal/orders/{orderId}/dispatch-details")
+    java.util.Map<String, String> getOrderDispatchDetails(@PathVariable("orderId") UUID orderId);
 }
