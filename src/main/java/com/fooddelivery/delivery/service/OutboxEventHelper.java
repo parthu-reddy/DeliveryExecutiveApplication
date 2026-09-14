@@ -30,13 +30,10 @@ private final ObjectMapper objectMapper;
      * @param payloadMap    Key-value pairs to serialize as JSON payload
      * @return A ready-to-persist OutboxEventEntity
      */
-    public OutboxEventEntity createOutboxEvent(AggregateType aggregateType, String aggregateId, EventType eventType, Map<String, String> payloadMap) {
-        ObjectNode payloadNode = objectMapper.createObjectNode();
-        payloadNode.put("eventType", eventType.name());
-        payloadMap.forEach(payloadNode::put);
+    public OutboxEventEntity createOutboxEvent(AggregateType aggregateType, String aggregateId, EventType eventType, Object payloadObject) {
         String payload;
         try {
-            payload = objectMapper.writeValueAsString(payloadNode);
+            payload = objectMapper.writeValueAsString(payloadObject);
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize " + eventType + " payload", e);
         }

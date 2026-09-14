@@ -54,7 +54,7 @@ protected final StringRedisTemplate redisTemplate;
         }
         validate(assignment, pickupOtp, deliveryOtp, cashCollectedAmount);
         transactionTemplate.execute(txStatus -> {
-            saveOutboxEvent(orderId, status, pickupOtp, deliveryOtp, cashCollectedAmount);
+            saveOutboxEvent(driverId, orderId, status, pickupOtp, deliveryOtp, cashCollectedAmount);
             updateExecutiveState(driverId, goOfflineAfter);
             return null;
         });
@@ -85,23 +85,42 @@ protected final StringRedisTemplate redisTemplate;
         }
     }
 
-    protected void saveOutboxEvent(UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp, java.math.BigDecimal cashCollectedAmount) {
-        ObjectNode payloadNode = objectMapper.createObjectNode();
-        payloadNode.put("eventType", getEventType().name());
-        payloadNode.put("orderId", orderId.toString());
-        payloadNode.put("status", status.name());
-        if (pickupOtp != null && !pickupOtp.isEmpty()) {
-            payloadNode.put("pickupOtp", pickupOtp);
-        }
-        if (deliveryOtp != null && !deliveryOtp.isEmpty()) {
-            payloadNode.put("deliveryOtp", deliveryOtp);
-        }
-        if (cashCollectedAmount != null) {
-            payloadNode.put("cashCollectedAmount", cashCollectedAmount.toString());
+    protected void saveOutboxEvent(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp, java.math.BigDecimal cashCollectedAmount) {
+        Object event = null;
+        switch (getEventType()) {
+            case ORDER_AT_RESTAURANT:
+                event = com.fooddelivery.common.event.DriverAtRestaurantEvent.builder()
+                        .orderId(orderId.toString())
+                        .driverId(driverId.toString())
+                        .build();
+                break;
+            case ORDER_STATUS_UPDATED:
+                event = com.fooddelivery.common.event.OutForDeliveryEvent.builder()
+                        .orderId(orderId.toString())
+                        .status(status.name())
+                        .pickupOtp(pickupOtp)
+                        .build();
+                break;
+            case ORDER_DELIVERED:
+                event = com.fooddelivery.common.event.DeliveredEvent.builder()
+                        .orderId(orderId.toString())
+                        .status(status.name())
+                        .deliveryOtp(deliveryOtp)
+                        .cashCollectedAmount(cashCollectedAmount != null ? cashCollectedAmount.toString() : null)
+                        .build();
+                break;
+            case DELIVERY_FAILED:
+                event = com.fooddelivery.common.event.DeliveryFailedEvent.builder()
+                        .orderId(orderId.toString())
+                        .reason(status.name())
+                        .build();
+                break;
+            default:
+                throw new IllegalStateException("Unknown event type: " + getEventType());
         }
         String payload;
         try {
-            payload = objectMapper.writeValueAsString(payloadNode);
+            payload = objectMapper.writeValueAsString(event);
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize status update payload", e);
         }

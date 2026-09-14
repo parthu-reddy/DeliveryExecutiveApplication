@@ -63,7 +63,12 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
                     throw new IllegalStateException("Order lock was lost to cancellation. Aborting assignment.");
                 }
                 DeliveryExecutive executive = repository.findLockedById(driverId).orElseThrow();
-                com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = outboxEventHelper.createOutboxEvent(com.fooddelivery.common.constants.AggregateType.ORDER, orderId.toString(), com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED, java.util.Map.of("orderId", orderId.toString(), "driverId", driverId.toString(), "driverName", executive.getFullName()));
+                com.fooddelivery.common.event.DriverAssignedEvent event = com.fooddelivery.common.event.DriverAssignedEvent.builder()
+                        .orderId(orderId.toString())
+                        .driverId(driverId.toString())
+                        .driverName(executive.getFullName())
+                        .build();
+                com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = outboxEventHelper.createOutboxEvent(com.fooddelivery.common.constants.AggregateType.ORDER, orderId.toString(), com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED, event);
                 log.info("Triggering event: DRIVER_ASSIGNED for executive: {}", executive.getId());
                 outboxEventRepository.save(outboxEvent);
                 recordAssignment(orderId, driverId);
@@ -131,7 +136,11 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
         if (AssignmentResult.LAST_REJECT.name().equals(result)) {
             try {
                 transactionTemplate.executeWithoutResult(status -> {
-                    com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = outboxEventHelper.createOutboxEvent(com.fooddelivery.common.constants.AggregateType.ORDER, orderId.toString(), com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED, java.util.Map.of("orderId", orderId.toString(), "driverId", driverId.toString()));
+                    com.fooddelivery.common.event.OrderDriverRejectedEvent event = com.fooddelivery.common.event.OrderDriverRejectedEvent.builder()
+                            .orderId(orderId.toString())
+                            .driverId(driverId.toString())
+                            .build();
+                    com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = outboxEventHelper.createOutboxEvent(com.fooddelivery.common.constants.AggregateType.ORDER, orderId.toString(), com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED, event);
                     log.info("Triggering event: ORDER_DRIVER_REJECTED for aggregate: {}", orderId);
                     outboxEventRepository.save(outboxEvent);
                 });
@@ -175,7 +184,11 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
         }
         try {
             transactionTemplate.executeWithoutResult(status -> {
-                com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = outboxEventHelper.createOutboxEvent(com.fooddelivery.common.constants.AggregateType.ORDER, orderIdStr, com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED, java.util.Map.of("orderId", orderIdStr, "driverId", result.get(0)));
+                com.fooddelivery.common.event.OrderDriverRejectedEvent event = com.fooddelivery.common.event.OrderDriverRejectedEvent.builder()
+                        .orderId(orderIdStr)
+                        .driverId(result.get(0))
+                        .build();
+                com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = outboxEventHelper.createOutboxEvent(com.fooddelivery.common.constants.AggregateType.ORDER, orderIdStr, com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED, event);
                 log.info("Triggering event: ORDER_DRIVER_REJECTED for aggregate: {}", orderIdStr);
                 outboxEventRepository.save(outboxEvent);
             });
@@ -217,7 +230,12 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
         try {
             transactionTemplate.executeWithoutResult(status -> {
                 DeliveryExecutive executive = repository.findLockedById(driverId).orElseThrow(() -> new IllegalArgumentException("Driver not found"));
-                com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = outboxEventHelper.createOutboxEvent(com.fooddelivery.common.constants.AggregateType.ORDER, orderId.toString(), com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED, java.util.Map.of("orderId", orderId.toString(), "driverId", driverId.toString(), "driverName", executive.getFullName()));
+                com.fooddelivery.common.event.DriverAssignedEvent event = com.fooddelivery.common.event.DriverAssignedEvent.builder()
+                        .orderId(orderId.toString())
+                        .driverId(driverId.toString())
+                        .driverName(executive.getFullName())
+                        .build();
+                com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = outboxEventHelper.createOutboxEvent(com.fooddelivery.common.constants.AggregateType.ORDER, orderId.toString(), com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED, event);
                 log.info("Triggering event: DRIVER_ASSIGNED for executive: {}", driverId);
                 outboxEventRepository.save(outboxEvent);
                 recordAssignment(orderId, driverId);

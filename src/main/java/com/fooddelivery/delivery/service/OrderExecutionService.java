@@ -44,7 +44,11 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
                     executive.setStatus(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.ONLINE);
                     repository.save(executive);
                     redisTemplate.opsForHash().put("drivers:status", driverId.toString(), executive.getStatus().name());
-                    com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = outboxEventHelper.createOutboxEvent(com.fooddelivery.common.constants.AggregateType.ORDER, orderId.toString(), com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED, java.util.Map.of("orderId", orderId.toString(), "driverId", driverId.toString()));
+                    com.fooddelivery.common.event.OrderDriverRejectedEvent event = com.fooddelivery.common.event.OrderDriverRejectedEvent.builder()
+                            .orderId(orderId.toString())
+                            .driverId(driverId.toString())
+                            .build();
+                    com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = outboxEventHelper.createOutboxEvent(com.fooddelivery.common.constants.AggregateType.ORDER, orderId.toString(), com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED, event);
                     outboxEventRepository.save(outboxEvent);
                     assignment.setState(com.fooddelivery.delivery.entity.OrderAssignment.State.RELEASED);
                     assignment.setReleasedAt(java.time.OffsetDateTime.now());
