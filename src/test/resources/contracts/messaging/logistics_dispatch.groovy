@@ -20,6 +20,8 @@ org.springframework.cloud.contract.spec.Contract.make {
         }
         body([
             orderId: $(producer(regex('[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}'))),
+            dispatchCityId: "BLR",
+            fleetSearchRadiusKm: 5.0,
             restaurantLat: 12.971598,
             restaurantLng: 77.594562,
             deliveryLat: 12.935242,

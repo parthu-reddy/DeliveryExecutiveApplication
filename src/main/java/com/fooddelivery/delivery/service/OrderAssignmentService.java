@@ -36,12 +36,36 @@ public class OrderAssignmentService {
         return score != null ? score.longValue() : null;
     }
 
-    private static final String ACCEPT_SCRIPT = "local pendingKey = KEYS[1]\n" + "local lockKey = KEYS[2]\n" + "local driverId = ARGV[1]\n" + "if redis.call(\'EXISTS\', lockKey) == 1 then\n" + "    local lockVal = redis.call(\'GET\', lockKey)\n" + "    if lockVal == \'CANCELLED\' then return {\'CANCELLED\'} end\n" + "    return {\'ALREADY_ACCEPTED\'}\n" + "end\n" + "if redis.call(\'SISMEMBER\', pendingKey, driverId) == 0 then return {\'INVALID\'} end\n" + "redis.call(\'SET\', lockKey, driverId, \'EX\', 86400)\n" + "local allPinged = redis.call(\'SMEMBERS\', pendingKey)\n" + "redis.call(\'DEL\', pendingKey)\n" + "if #allPinged == 0 then return {\'SUCCESS_EMPTY\'} end\n" + "return allPinged";
+    private static final String ACCEPT_SCRIPT = "local pendingKey = KEYS[1]\n"
+            + "local lockKey = KEYS[2]\n"
+            + "local timeoutKey = KEYS[3]\n"
+            + "local driverId = ARGV[1]\n"
+            + "local orderId = ARGV[2]\n"
+            + "local nowMillis = tonumber(ARGV[3])\n"
+            + "if redis.call('EXISTS', lockKey) == 1 then\n"
+            + "    local lockVal = redis.call('GET', lockKey)\n"
+            + "    if lockVal == 'CANCELLED' then return {'CANCELLED'} end\n"
+            + "    return {'ALREADY_ACCEPTED'}\n"
+            + "end\n"
+            + "local expiresAt = redis.call('ZSCORE', timeoutKey, orderId)\n"
+            + "if not expiresAt or tonumber(expiresAt) <= nowMillis then return {'EXPIRED'} end\n"
+            + "if redis.call('SISMEMBER', pendingKey, driverId) == 0 then return {'INVALID'} end\n"
+            + "redis.call('SET', lockKey, driverId, 'EX', 86400)\n"
+            + "local allPinged = redis.call('SMEMBERS', pendingKey)\n"
+            + "redis.call('DEL', pendingKey)\n"
+            + "redis.call('ZREM', timeoutKey, orderId)\n"
+            + "local response = {'SUCCESS', expiresAt}\n"
+            + "for _, candidate in ipairs(allPinged) do table.insert(response, candidate) end\n"
+            + "return response";
 
     public void acceptOrderPing(UUID driverId, UUID orderId) {
         log.info("Driver {} attempting to accept order {}", driverId, orderId);
         RedisScript<List> script = new DefaultRedisScript<>(ACCEPT_SCRIPT, List.class);
-        List<String> result = redisTemplate.execute(script, Arrays.asList(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId, RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId), driverId.toString());
+        List<String> result = redisTemplate.execute(script,
+                Arrays.asList(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId,
+                        RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId,
+                        RedisKeyConstants.PREFIX_ORDER_PING_TIMEOUTS),
+                driverId.toString(), orderId.toString(), Long.toString(System.currentTimeMillis()));
         if (result == null) {
             throw new IllegalStateException("Order is no longer available.");
         }
@@ -57,6 +81,15 @@ public class OrderAssignmentService {
             log.warn("Ping for order {} and driver {} is invalid or expired.", orderId, driverId);
             throw new IllegalStateException("Ping expired or invalid.");
         }
+        if (result.size() == 1 && AssignmentResult.EXPIRED.name().equals(result.get(0))) {
+            log.info("Ping for order {} expired before driver {} accepted it", orderId, driverId);
+            throw new IllegalStateException("Ping expired or invalid.");
+        }
+        if (result.size() < 2 || !AssignmentResult.SUCCESS.name().equals(result.get(0))) {
+            throw new IllegalStateException("Order is no longer available.");
+        }
+        long originalTimeoutAt = (long) Double.parseDouble(result.get(1));
+        java.util.List<String> pingedDrivers = new java.util.ArrayList<>(result.subList(2, result.size()));
         try {
             transactionTemplate.executeWithoutResult(status -> {
                 String currentLock = redisTemplate.opsForValue().get(RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId);
@@ -78,44 +111,47 @@ public class OrderAssignmentService {
                 repository.save(executive);
                 redisTemplate.opsForHash().put("drivers:status", driverId.toString(), executive.getStatus().name());
             });
-            log.info("Driver {} accepted order {}. Emitted DRIVER_ASSIGNED event.", driverId, orderId);
-            if (result.size() > 0 && !AssignmentResult.SUCCESS_EMPTY.name().equals(result.get(0))) {
-                for (String pingedDriver : result) {
-                    redisTemplate.delete(RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + pingedDriver);
-                    // NEW: Release lock for OTHER drivers who didn't win the race
-                    if (!pingedDriver.equals(driverId.toString())) {
-                        try {
-                            logisticsDispatchService.releaseDriverLock(pingedDriver);
-                        } catch (Exception e) {
-                            log.error("Failed to release driver lock for driver {} on assignment, will be retried by availability poller", pingedDriver, e);
-                        }
-                    }
-                }
-            }
-            redisTemplate.opsForZSet().remove(RedisKeyConstants.PREFIX_ORDER_PING_TIMEOUTS, orderId.toString());
-            // Set active order tracking
-            redisTemplate.opsForValue().set(RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + driverId, orderId.toString(), java.time.Duration.ofHours(24));
-            try {
-                String cityId = repository.findById(driverId).map(DeliveryExecutive::getCityId).orElse(null);
-                if (cityId != null) {
-                    String key = "drivers:available:" + cityId;
-                    redisTemplate.opsForSet().remove(key, driverId.toString());
-                }
-            } catch (Exception e) {
-                log.error("Failed to remove driver {} from Redis pool", driverId, e);
-            }
         } catch (Exception e) {
             log.error("Failed to commit DRIVER_ASSIGNED transaction. Releasing Redis lock for order {}", orderId, e);
             String currentLock = redisTemplate.opsForValue().get(RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId);
             if (driverId.toString().equals(currentLock)) {
                 redisTemplate.delete(RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId);
             }
-            if (result != null && !result.isEmpty() && !AssignmentResult.SUCCESS_EMPTY.name().equals(result.get(0))) {
-                redisTemplate.opsForSet().add(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId, result.toArray(new String[0]));
-                // Edge case: Add TTL to pending ping if we revert
+            if (!pingedDrivers.isEmpty()) {
+                redisTemplate.opsForSet().add(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId, pingedDrivers.toArray(new String[0]));
                 redisTemplate.expire(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId, java.time.Duration.ofMinutes(5));
+                for (String pingedDriver : pingedDrivers) {
+                    redisTemplate.opsForValue().set(RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + pingedDriver,
+                            orderId.toString(), java.time.Duration.ofMinutes(5));
+                }
             }
+            redisTemplate.opsForZSet().add(RedisKeyConstants.PREFIX_ORDER_PING_TIMEOUTS,
+                    orderId.toString(), originalTimeoutAt);
             throw e;
+        }
+
+        // The database assignment is now durable. Cleanup is best-effort and must never reopen
+        // the first-writer-wins Redis lock if one of these calls is temporarily unavailable.
+        log.info("Driver {} accepted order {}. Emitted DRIVER_ASSIGNED event.", driverId, orderId);
+        for (String pingedDriver : pingedDrivers) {
+            try {
+                redisTemplate.delete(RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + pingedDriver);
+                if (!pingedDriver.equals(driverId.toString())) {
+                    logisticsDispatchService.releaseDriverLock(pingedDriver);
+                }
+            } catch (Exception cleanupError) {
+                log.error("Failed post-commit cleanup for candidate {} on order {}", pingedDriver, orderId, cleanupError);
+            }
+        }
+        try {
+            redisTemplate.opsForValue().set(RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + driverId,
+                    orderId.toString(), java.time.Duration.ofHours(24));
+            String cityId = repository.findById(driverId).map(DeliveryExecutive::getCityId).orElse(null);
+            if (cityId != null) {
+                redisTemplate.opsForSet().remove("drivers:available:" + cityId, driverId.toString());
+            }
+        } catch (Exception cleanupError) {
+            log.error("Failed post-commit active-order cleanup for driver {} on order {}", driverId, orderId, cleanupError);
         }
     }
 
@@ -125,6 +161,10 @@ public class OrderAssignmentService {
         log.info("Driver {} rejected order ping {}", driverId, orderId);
         RedisScript<String> script = new DefaultRedisScript<>(REJECT_SCRIPT, String.class);
         String result = redisTemplate.execute(script, Arrays.asList(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId, RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId), driverId.toString());
+        if (result == null || "NOT_FOUND".equals(result) || "ACCEPTED_ALREADY".equals(result)) {
+            log.info("Ignoring stale rejection by driver {} for order {} (status={})", driverId, orderId, result);
+            return;
+        }
         redisTemplate.delete(RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + driverId);
         redisTemplate.opsForHash().increment(RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderId, driverId.toString(), 1);
         redisTemplate.expire(RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderId, java.time.Duration.ofHours(2));
@@ -150,6 +190,8 @@ public class OrderAssignmentService {
                 log.error("Failed to save ORDER_DRIVER_REJECTED event to outbox. Reverting Redis state for order {}", orderId, e);
                 redisTemplate.opsForSet().add(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId, driverId.toString());
                 redisTemplate.expire(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId, java.time.Duration.ofMinutes(5));
+                redisTemplate.opsForValue().set(RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + driverId,
+                        orderId.toString(), java.time.Duration.ofMinutes(5));
                 throw e;
             }
         }
@@ -199,6 +241,10 @@ public class OrderAssignmentService {
             if (result != null && !result.isEmpty()) {
                 redisTemplate.opsForSet().add(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderIdStr, result.toArray(new String[0]));
                 redisTemplate.expire(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderIdStr, java.time.Duration.ofMinutes(5));
+                for (String driverIdStr : result) {
+                    redisTemplate.opsForValue().set(RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + driverIdStr,
+                            orderIdStr, java.time.Duration.ofMinutes(5));
+                }
             }
             throw e;
         }
@@ -315,8 +361,8 @@ public class OrderAssignmentService {
                             log.error("Unknown payment method '{}' from customer-service for order {}", method, orderId);
                         }
                     }
-                    log.info("Successfully fetched OTPs from customer-service for order {}: pickupOtp={}, deliveryOtp={}",
-                            orderId, pickupOtp != null ? "[set]" : "[null]", deliveryOtp != null ? "[set]" : "[null]");
+                    log.info("Successfully fetched OTP fallback from customer-service for order {}: pickupOtpPresent={}, deliveryOtpPresent={}",
+                            orderId, pickupOtp != null, deliveryOtp != null);
                 } else {
                     log.error("Customer-service returned null dispatch details for order {}. "
                             + "Assignment will be recorded without OTPs — handover will be refused.", orderId);

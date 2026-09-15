@@ -75,6 +75,10 @@ class DispatchLockAfterCommitTest {
         evt.setDeliveryLng(77.65);
         evt.setDeliveryAddress("1 Test Road");
         evt.setEstimatedCompletionTime(0L);
+        evt.setDispatchCityId("BLR");
+        evt.setFleetSearchRadiusKm(5.0);
+        evt.setPickupOtp("123456");
+        evt.setDeliveryOtp("654321");
         return evt;
     }
 
@@ -86,7 +90,7 @@ class DispatchLockAfterCommitTest {
         // idempotency claim, and the redelivery would be ignored as a duplicate.
         verify(valueOps, never()).setIfAbsent(anyString(), anyString(), any(Duration.class));
         verify(dispatchService, never())
-                .dispatchNearestDriver(anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyString(), any(), any());
+                .dispatchNearestDriver(anyString(), anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyString(), any(), any());
         assertTrue(TransactionSynchronizationManager.getSynchronizations().size() >= 1,
                 "the strategy must register a synchronization rather than acting inline");
     }
@@ -100,7 +104,7 @@ class DispatchLockAfterCommitTest {
         verify(valueOps).setIfAbsent(
                 eq(RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId), eq("locked"), any(Duration.class));
         verify(dispatchService).dispatchNearestDriver(
-                anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyString(), eq(orderId), any());
+                eq("BLR"), eq(5.0), anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyString(), eq(orderId), any());
     }
 
     @Test
@@ -112,7 +116,7 @@ class DispatchLockAfterCommitTest {
 
         verify(valueOps).setIfAbsent(anyString(), anyString(), any(Duration.class));
         verify(dispatchService, never())
-                .dispatchNearestDriver(anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyString(), any(), any());
+                .dispatchNearestDriver(anyString(), anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyString(), any(), any());
     }
 
     private static double anyDouble() {

@@ -6,7 +6,6 @@ import com.fooddelivery.common.constants.KafkaConstants;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,21 +22,21 @@ private final KafkaTemplate<String, String> kafkaTemplate;
     private final MapsServiceClient mapsClient;
     private final IDeliveryExecutiveRepository repository;
 
-    public void dispatchNearestDriver(double restaurantLat, double restaurantLng, double deliveryLat, double deliveryLng, String deliveryAddress, UUID orderId, java.util.List<String> excludedDriverIds) {
+    public void dispatchNearestDriver(String dispatchCityId, double fleetSearchRadiusKm, double restaurantLat, double restaurantLng, double deliveryLat, double deliveryLng, String deliveryAddress, UUID orderId, java.util.List<String> excludedDriverIds) {
         log.info("Requesting driver dispatch for order {} via MapsIntegration service", orderId);
         try {
-            Map<String, Object> dispatchRequest = new java.util.HashMap<>();
-            dispatchRequest.put("orderId", orderId.toString());
-            dispatchRequest.put("restaurantLat", restaurantLat);
-            dispatchRequest.put("restaurantLng", restaurantLng);
-            dispatchRequest.put("deliveryLat", deliveryLat);
-            dispatchRequest.put("deliveryLng", deliveryLng);
-            dispatchRequest.put("deliveryAddress", deliveryAddress);
-            if (excludedDriverIds != null && !excludedDriverIds.isEmpty()) {
-                dispatchRequest.put("excludedDriverIds", excludedDriverIds);
-            } else {
-                dispatchRequest.put("excludedDriverIds", java.util.Collections.emptyList());
-            }
+            com.fooddelivery.common.event.DispatchRequestedEvent dispatchRequest =
+                    com.fooddelivery.common.event.DispatchRequestedEvent.builder()
+                            .orderId(orderId.toString())
+                            .dispatchCityId(dispatchCityId)
+                            .fleetSearchRadiusKm(fleetSearchRadiusKm)
+                            .restaurantLat(restaurantLat)
+                            .restaurantLng(restaurantLng)
+                            .deliveryLat(deliveryLat)
+                            .deliveryLng(deliveryLng)
+                            .deliveryAddress(deliveryAddress)
+                            .excludedDriverIds(excludedDriverIds != null ? excludedDriverIds : java.util.Collections.emptyList())
+                            .build();
             String payload = objectMapper.writeValueAsString(dispatchRequest);
             log.info("Triggering event: LOGISTICS_DISPATCH_REQUEST for order: {}", orderId);
             // Deliberately synchronous (bypassing outbox) to minimize latency for driver dispatch

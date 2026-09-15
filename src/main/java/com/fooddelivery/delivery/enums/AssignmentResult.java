@@ -7,7 +7,8 @@ public enum AssignmentResult {
     LAST_REJECT(40),
     EMPTY(50),
     SUCCESS(60),
-    CANCELLED(70);
+    CANCELLED(70),
+    EXPIRED(80);
 
     private final int code;
 

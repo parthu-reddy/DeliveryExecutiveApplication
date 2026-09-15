@@ -72,13 +72,12 @@ private final ObjectMapper objectMapper;
     @RetryableTopic(attempts = "4", backoff = @Backoff(delay = 2000, multiplier = 2.0, maxDelay = 10000), exclude = {com.fooddelivery.common.event.EventBindingException.class}, traversingCauses = "true")
     @KafkaListener(topics = com.fooddelivery.common.constants.KafkaConstants.TOPIC_ORDER_EVENTS, groupId = com.fooddelivery.common.constants.KafkaConstants.GROUP_DELIVERY_SERVICE + "-ordereventconsumer")
     public void consumeOrderEvent(String message, @org.springframework.messaging.handler.annotation.Headers java.util.Map<String, Object> headers) {
-        log.info("Consumed event from {}: {}", com.fooddelivery.common.constants.KafkaConstants.TOPIC_ORDER_EVENTS, message);
-        
         // Idempotency check
         String eventId = com.fooddelivery.common.util.KafkaHeaderUtils.extractHeaderValue(headers, "eventId");
         if (eventId == null) {
             throw new IllegalArgumentException("Missing eventId header");
         }
+        log.info("Consumed order event with eventId={}", eventId);
         
         String idempotencyKeyStr = "processed_event:delivery:" + eventId;
         
@@ -150,7 +149,8 @@ private final ObjectMapper objectMapper;
 
     @DltHandler
     public void handleDltMessage(String message, @org.springframework.messaging.handler.annotation.Headers java.util.Map<String, Object> headers) {
-        log.error("Dead Letter Topic: Failed to process order event after retries. Message: {}", message);
+        log.error("Dead Letter Topic: order event failed after retries (eventId={})",
+                com.fooddelivery.common.util.KafkaHeaderUtils.extractHeaderValue(headers, "eventId"));
         meterRegistry.counter("kafka.dlt.messages", "service", "delivery-executive-application").increment();
         // Implementation for poison pill storage/alerting goes here
     }

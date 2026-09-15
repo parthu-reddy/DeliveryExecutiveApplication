@@ -80,9 +80,14 @@ private final StringRedisTemplate redisTemplate;
                                 double deliveryLat = cachedEvent.getDeliveryLat() != null ? cachedEvent.getDeliveryLat() : 0.0;
                                 double deliveryLng = cachedEvent.getDeliveryLng() != null ? cachedEvent.getDeliveryLng() : 0.0;
                                 String deliveryAddress = cachedEvent.getDeliveryAddress() != null ? cachedEvent.getDeliveryAddress() : "";
+                                String dispatchCityId = cachedEvent.getDispatchCityId();
+                                double fleetSearchRadiusKm = cachedEvent.getFleetSearchRadiusKm() != null ? cachedEvent.getFleetSearchRadiusKm() : 0.0;
+                                if (dispatchCityId == null || dispatchCityId.isBlank() || fleetSearchRadiusKm <= 0) {
+                                    throw new IllegalStateException("Cached dispatch payload has no valid city/radius for order " + orderId);
+                                }
                                 java.util.Set<String> rejectedDrivers = redisTemplate.opsForSet().members(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderId);
                                 java.util.List<String> excludedDriverIds = rejectedDrivers != null ? new java.util.ArrayList<>(rejectedDrivers) : null;
-                                logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, java.util.UUID.fromString(orderId), excludedDriverIds);
+                                logisticsDispatchService.dispatchNearestDriver(dispatchCityId, fleetSearchRadiusKm, lat, lng, deliveryLat, deliveryLng, deliveryAddress, java.util.UUID.fromString(orderId), excludedDriverIds);
                             }
                             // Remove from delayed queue ONLY after successful dispatch
                             redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderId);

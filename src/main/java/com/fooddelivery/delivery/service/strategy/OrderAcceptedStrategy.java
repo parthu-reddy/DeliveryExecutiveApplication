@@ -33,11 +33,12 @@ private final LogisticsDispatchService logisticsDispatchService;
         double deliveryLat = event.getDeliveryLat() != null ? event.getDeliveryLat() : 0.0;
         double deliveryLng = event.getDeliveryLng() != null ? event.getDeliveryLng() : 0.0;
         String deliveryAddress = event.getDeliveryAddress() != null ? event.getDeliveryAddress() : "";
+        String dispatchCityId = event.getDispatchCityId();
+        double fleetSearchRadiusKm = event.getFleetSearchRadiusKm() != null ? event.getFleetSearchRadiusKm() : 0.0;
         long estimatedCompletionTime = event.getEstimatedCompletionTime() != null ? event.getEstimatedCompletionTime() : 0L;
         long dispatchTime = estimatedCompletionTime > 0 ? estimatedCompletionTime - (15 * 60 * 1000L) : System.currentTimeMillis();
-        if (lat == 0.0 || lng == 0.0) {
-            log.warn("Missing restaurant location in ORDER_ACCEPTED event for order {}. Cannot dispatch driver.", orderId);
-            return;
+        if (lat == 0.0 || lng == 0.0 || dispatchCityId == null || dispatchCityId.isBlank() || fleetSearchRadiusKm <= 0) {
+            throw new IllegalArgumentException("ORDER_ACCEPTED is missing a valid restaurant location or dispatch scope for order " + orderId);
         }
 
         // After commit, not inside the transaction. OrderEventConsumer runs this strategy inside
@@ -47,7 +48,7 @@ private final LogisticsDispatchService logisticsDispatchService;
         // was never dispatched, silently. Redis does not participate in the transaction, so the only
         // safe moment to take a lock that outlives it is once the transaction is known to have
         // committed.
-        Runnable dispatch = () -> dispatchOnce(event, orderId, lat, lng, deliveryLat, deliveryLng,
+        Runnable dispatch = () -> dispatchOnce(event, orderId, dispatchCityId, fleetSearchRadiusKm, lat, lng, deliveryLat, deliveryLng,
                 deliveryAddress, dispatchTime);
         if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
             org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
@@ -63,7 +64,7 @@ private final LogisticsDispatchService logisticsDispatchService;
     }
 
     /** The lock, the cached payload and the dispatch itself. Runs at most once per order. */
-    private void dispatchOnce(com.fooddelivery.common.event.OrderAcceptedEvent event, UUID orderId, double lat, double lng, double deliveryLat,
+    private void dispatchOnce(com.fooddelivery.common.event.OrderAcceptedEvent event, UUID orderId, String dispatchCityId, double fleetSearchRadiusKm, double lat, double lng, double deliveryLat,
                               double deliveryLng, String deliveryAddress, long dispatchTime) {
         Boolean isNewDispatch = redisTemplate.opsForValue().setIfAbsent(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId, "locked", java.time.Duration.ofHours(24));
         if (!Boolean.TRUE.equals(isNewDispatch)) {
@@ -80,7 +81,7 @@ private final LogisticsDispatchService logisticsDispatchService;
             log.info("Cached ORDER_ACCEPTED payload in Redis for orderId: {}", orderId);
             if (System.currentTimeMillis() >= dispatchTime) {
                 log.info("Delivery Application received ORDER_ACCEPTED for order {}. Dispatching nearest driver immediately...", orderId);
-                logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, orderId, null);
+                logisticsDispatchService.dispatchNearestDriver(dispatchCityId, fleetSearchRadiusKm, lat, lng, deliveryLat, deliveryLng, deliveryAddress, orderId, null);
             } else {
                 log.info("Delivery Application received ORDER_ACCEPTED for order {}. Scheduling dispatch at {}.", orderId, dispatchTime);
                 redisTemplate.opsForZSet().add("delayed_dispatch_queue", orderId.toString(), dispatchTime);

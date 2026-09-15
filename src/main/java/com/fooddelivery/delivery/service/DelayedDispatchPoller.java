@@ -77,7 +77,9 @@ private final StringRedisTemplate redisTemplate;
                             double deliveryLat = root.path("deliveryLat").asDouble(0.0);
                             double deliveryLng = root.path("deliveryLng").asDouble(0.0);
                             String deliveryAddress = root.path("deliveryAddress").asText("");
-                            if (lat != 0.0 && lng != 0.0) {
+                            String dispatchCityId = root.path("dispatchCityId").asText("");
+                            double fleetSearchRadiusKm = root.path("fleetSearchRadiusKm").asDouble(0.0);
+                            if (lat != 0.0 && lng != 0.0 && !dispatchCityId.isBlank() && fleetSearchRadiusKm > 0) {
                                 java.util.List<String> excludedDriverIds = new java.util.ArrayList<>();
                                 java.util.Map<Object, Object> rejections = redisTemplate.opsForHash().entries(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderIdStr);
                                 if (rejections != null && !rejections.isEmpty()) {
@@ -96,7 +98,9 @@ private final StringRedisTemplate redisTemplate;
                                 // and TerminalStateStrategy incremented independently.
                                 redisTemplate.opsForValue().increment("order:dispatch_failed_cycles:" + orderIdStr);
                                 redisTemplate.expire("order:dispatch_failed_cycles:" + orderIdStr, java.time.Duration.ofHours(2));
-                                logisticsDispatchService.dispatchNearestDriver(lat, lng, deliveryLat, deliveryLng, deliveryAddress, UUID.fromString(orderIdStr), excludedDriverIds);
+                                logisticsDispatchService.dispatchNearestDriver(dispatchCityId, fleetSearchRadiusKm, lat, lng, deliveryLat, deliveryLng, deliveryAddress, UUID.fromString(orderIdStr), excludedDriverIds);
+                            } else {
+                                throw new IllegalStateException("Cached dispatch payload is missing location/city/radius for order " + orderIdStr);
                             }
                         } else {
                             log.warn("No dispatch payload found for order {} in delayed queue. Removing stale entry.", orderIdStr);

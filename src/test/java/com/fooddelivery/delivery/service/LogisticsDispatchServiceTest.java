@@ -46,7 +46,7 @@ class LogisticsDispatchServiceTest {
                 .thenReturn(CompletableFuture.completedFuture(null));
 
         // Act
-        logisticsDispatchService.dispatchNearestDriver(12.9716, 77.5946, 12.9352, 77.6245, "BLR", orderId, java.util.Collections.emptyList());
+        logisticsDispatchService.dispatchNearestDriver("BLR", 5.0, 12.9716, 77.5946, 12.9352, 77.6245, "Test address", orderId, java.util.Collections.emptyList());
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<org.springframework.messaging.Message<String>> msgCaptor =
@@ -61,5 +61,7 @@ class LogisticsDispatchServiceTest {
         assertThat(payload).contains(orderId.toString());
         assertThat(payload).contains("12.9716");
         assertThat(payload).contains("77.5946");
+        assertThat(payload).contains("\"dispatchCityId\":\"BLR\"");
+        assertThat(payload).contains("\"fleetSearchRadiusKm\":5.0");
     }
 }

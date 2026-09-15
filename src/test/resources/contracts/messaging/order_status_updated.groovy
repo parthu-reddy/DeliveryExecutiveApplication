@@ -20,8 +20,8 @@ org.springframework.cloud.contract.spec.Contract.make {
             eventType: "ORDER_STATUS_UPDATED",
             orderId: $(producer(regex('[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}'))),
             status: "OUT_FOR_DELIVERY",
-            pickupOtp: $(producer(regex('[0-9]{4}'))),
-            deliveryOtp: $(producer(regex('[0-9]{4}')))
+            pickupOtp: $(producer(regex('[0-9]{6}'))),
+            deliveryOtp: $(producer(regex('[0-9]{6}')))
         ])
     }
 }

@@ -53,6 +53,8 @@ public abstract class BaseMessagingClass {
         java.util.UUID orderId = java.util.UUID.fromString("3f2504e0-4f89-41d3-9a0c-0305e82c3301");
         java.util.Map<String, Object> dispatchRequest = new java.util.HashMap<>();
         dispatchRequest.put("orderId", orderId.toString());
+        dispatchRequest.put("dispatchCityId", "BLR");
+        dispatchRequest.put("fleetSearchRadiusKm", 5.0);
         dispatchRequest.put("restaurantLat", 12.971598);
         dispatchRequest.put("restaurantLng", 77.594562);
         dispatchRequest.put("deliveryLat", 12.935242);
@@ -94,8 +96,8 @@ public abstract class BaseMessagingClass {
         payloadNode.put("eventType", "ORDER_STATUS_UPDATED");
         payloadNode.put("orderId", "3f2504e0-4f89-41d3-9a0c-0305e82c3301");
         payloadNode.put("status", "OUT_FOR_DELIVERY");
-        payloadNode.put("pickupOtp", "1234");
-        payloadNode.put("deliveryOtp", "5678");
+        payloadNode.put("pickupOtp", "123456");
+        payloadNode.put("deliveryOtp", "567890");
 
         com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent =
                 com.fooddelivery.common.outbox.entity.OutboxEventEntity.builder()

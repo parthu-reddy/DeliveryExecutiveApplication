@@ -36,10 +36,15 @@ class OrderAcceptedStrategyTest {
         event.setOrderId(UUID.randomUUID().toString());
         event.setRestaurantLat(12.0);
         event.setRestaurantLng(13.0);
+        event.setDispatchCityId("BLR");
+        event.setFleetSearchRadiusKm(5.0);
+        event.setPickupOtp("123456");
+        event.setDeliveryOtp("654321");
         
         strategy.handle(event, "ORDER_ACCEPTED");
         
         org.mockito.Mockito.verify(logisticsDispatchService).dispatchNearestDriver(
+            org.mockito.ArgumentMatchers.eq("BLR"), org.mockito.ArgumentMatchers.eq(5.0),
             org.mockito.ArgumentMatchers.eq(12.0), org.mockito.ArgumentMatchers.eq(13.0),
             org.mockito.ArgumentMatchers.anyDouble(), org.mockito.ArgumentMatchers.anyDouble(),
             org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.isNull()
@@ -55,10 +60,15 @@ class OrderAcceptedStrategyTest {
         event.setOrderId(UUID.randomUUID().toString());
         event.setRestaurantLat(12.0);
         event.setRestaurantLng(13.0);
+        event.setDispatchCityId("BLR");
+        event.setFleetSearchRadiusKm(5.0);
+        event.setPickupOtp("123456");
+        event.setDeliveryOtp("654321");
         
         strategy.handle(event, "ORDER_ACCEPTED");
         
         org.mockito.Mockito.verify(logisticsDispatchService, org.mockito.Mockito.never()).dispatchNearestDriver(
+            org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyDouble(),
             org.mockito.ArgumentMatchers.anyDouble(), org.mockito.ArgumentMatchers.anyDouble(),
             org.mockito.ArgumentMatchers.anyDouble(), org.mockito.ArgumentMatchers.anyDouble(),
             org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()
