@@ -20,10 +20,10 @@ public interface CustomerServiceClient {
     @GetMapping("/api/v1/internal/orders/unassigned")
     List<JsonNode> getUnassignedOrders();
 
-    @GetMapping("/api/v1/money/driver/orders/{orderId}/earnings")
+    @GetMapping("/api/v1/internal/money/driver/orders/{orderId}/earnings")
     com.fooddelivery.common.dto.order.DriverOrderEarnings getOrderEarnings(@PathVariable("orderId") UUID orderId);
 
-    @org.springframework.web.bind.annotation.PostMapping("/api/v1/money/driver/{driverId}/orders:batch")
+    @org.springframework.web.bind.annotation.PostMapping("/api/v1/internal/money/driver/{driverId}/orders:batch")
     List<com.fooddelivery.common.dto.order.DriverOrderEarnings> getDriverOrderMoneyBatch(@PathVariable("driverId") UUID driverId, @org.springframework.web.bind.annotation.RequestBody List<String> orderIds);
 
     @GetMapping("/api/v1/internal/orders/{orderId}/dispatch-details")
