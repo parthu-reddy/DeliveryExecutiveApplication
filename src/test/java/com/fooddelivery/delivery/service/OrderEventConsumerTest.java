@@ -58,6 +58,7 @@ class OrderEventConsumerTest {
     @Test
     void testConsumeEvent_Success() throws Exception {
         String payload = "{\"eventType\":\"ORDER_ACCEPTED\",\"orderId\":\"123e4567-e89b-12d3-a456-426614174000\","
+                + "\"restaurantId\":\"223e4567-e89b-12d3-a456-426614174000\",\"paymentMethod\":\"CARD\","
                 + "\"restaurantLat\":12.9,\"restaurantLng\":77.6,\"deliveryLat\":12.95,\"deliveryLng\":77.65,"
                 + "\"pickupOtp\":\"123456\",\"deliveryOtp\":\"654321\","
                 + "\"dispatchCityId\":\"BLR\",\"fleetSearchRadiusKm\":5.0}";
