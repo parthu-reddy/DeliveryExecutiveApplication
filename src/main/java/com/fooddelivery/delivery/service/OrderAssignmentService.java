@@ -320,9 +320,7 @@ public class OrderAssignmentService {
      * an assignment with no OTP denies the handover, which is the safe direction, whereas the old
      * behaviour of reading a missing key at handover time denied it permanently and silently.
      */
-    // Package-private, not private: the wiring from the ORDER_ACCEPTED payload into this row is
-    // what makes a COD handover enforceable downstream, and nothing pinned it until a break-test
-    // removed the paymentMethod assignment and every test still passed.
+    // Package-private so the event-to-persisted-assignment mapping can be tested directly.
     void recordAssignment(UUID orderId, UUID driverId) {
         String pickupOtp = null;
         String deliveryOtp = null;

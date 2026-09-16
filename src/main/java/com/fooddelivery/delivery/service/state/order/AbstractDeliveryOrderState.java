@@ -44,25 +44,24 @@ protected final StringRedisTemplate redisTemplate;
      * could post any status for any order. An absent assignment now denies.
      */
     @Override
-    public void handleStatusUpdate(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp, Boolean goOfflineAfter, java.math.BigDecimal cashCollectedAmount) {
-        log.info("Driver {} updating order {} to {}", driverId, orderId, status);
+    public void handleStatusUpdate(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp, Boolean goOfflineAfter) {
+        log.info("DELIVERY_STATE_TRANSITION_STARTED driverId={} orderId={} targetStatus={}", driverId, orderId, status);
         OrderAssignment assignment = assignmentRepository.findByOrderId(orderId).orElse(null);
         if (assignment == null || !assignment.authorises(driverId)) {
             log.warn("Refusing status update: order {} is not assigned to driver {} ({})", orderId, driverId,
                     assignment == null ? "no assignment" : assignment.getState() + " to " + assignment.getDriverId());
             throw new AccessDeniedException("This order is not assigned to you.");
         }
-        validate(assignment, pickupOtp, deliveryOtp, cashCollectedAmount);
+        validate(assignment, pickupOtp, deliveryOtp);
         transactionTemplate.execute(txStatus -> {
-            saveOutboxEvent(driverId, orderId, status, pickupOtp, deliveryOtp, cashCollectedAmount);
+            saveOutboxEvent(driverId, orderId, status, pickupOtp, deliveryOtp);
             updateExecutiveState(driverId, goOfflineAfter);
             return null;
         });
         postProcess(driverId, orderId, goOfflineAfter);
     }
 
-    protected void validate(OrderAssignment assignment, String pickupOtp, String deliveryOtp,
-                            java.math.BigDecimal cashCollectedAmount) {
+    protected void validate(OrderAssignment assignment, String pickupOtp, String deliveryOtp) {
         // Default no-op. Override in subclasses if validation is needed.
     }
 
@@ -85,7 +84,7 @@ protected final StringRedisTemplate redisTemplate;
         }
     }
 
-    protected void saveOutboxEvent(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp, java.math.BigDecimal cashCollectedAmount) {
+    protected void saveOutboxEvent(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp) {
         Object event = null;
         switch (getEventType()) {
             case ORDER_AT_RESTAURANT:
@@ -106,7 +105,6 @@ protected final StringRedisTemplate redisTemplate;
                         .orderId(orderId.toString())
                         .status(status.name())
                         .deliveryOtp(deliveryOtp)
-                        .cashCollectedAmount(cashCollectedAmount != null ? cashCollectedAmount.toString() : null)
                         .build();
                 break;
             case DELIVERY_FAILED:
@@ -125,7 +123,8 @@ protected final StringRedisTemplate redisTemplate;
             throw new RuntimeException("Failed to serialize status update payload", e);
         }
         OutboxEventEntity outboxEvent = OutboxEventEntity.builder().id(UUID.randomUUID()).aggregateType(com.fooddelivery.common.constants.AggregateType.ORDER).aggregateId(orderId.toString()).eventType(getEventType()).payload(payload).createdAt(LocalDateTime.now()).status(OutboxStatus.UNPROCESSED).build();
-        log.info("Triggering event: {} for order: {}", getEventType().name(), orderId);
+        log.info("DELIVERY_EVENT_ENQUEUED orderId={} driverId={} eventType={} eventId={}",
+                orderId, driverId, getEventType().name(), outboxEvent.getId());
         outboxEventRepository.save(outboxEvent);
     }
 

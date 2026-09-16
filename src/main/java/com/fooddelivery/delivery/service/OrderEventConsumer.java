@@ -77,7 +77,8 @@ private final ObjectMapper objectMapper;
         if (eventId == null) {
             throw new IllegalArgumentException("Missing eventId header");
         }
-        log.info("Consumed order event with eventId={}", eventId);
+        log.info("DELIVERY_EVENT_RECEIVED eventId={} payloadBytes={}", eventId,
+                message == null ? 0 : message.getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
         
         String idempotencyKeyStr = "processed_event:delivery:" + eventId;
         
@@ -85,7 +86,7 @@ private final ObjectMapper objectMapper;
             transactionTemplate.execute(status -> {
                 int claimed = idempotencyKeyRepository.tryClaim(idempotencyKeyStr);
                 if (claimed == 0) {
-                    log.info("Duplicate event detected (key={}), ignoring.", idempotencyKeyStr);
+                    log.info("DELIVERY_EVENT_DUPLICATE eventId={}", eventId);
                     return null;
                 }
 
@@ -96,9 +97,10 @@ private final ObjectMapper objectMapper;
                         // EventType.valueOf(null) is a NullPointerException, which the catch below
                         // turns into a RuntimeException, four retries and a DLT entry. Before
                         // binding, a null type simply found no strategy and was ignored.
-                        log.warn("Missing eventType on order-events. Ignoring.");
+                        log.warn("DELIVERY_EVENT_IGNORED eventId={} reason=missing-event-type", eventId);
                         return null;
                     }
+                    log.info("DELIVERY_EVENT_CLASSIFIED eventId={} eventType={}", eventId, eventType);
                     final com.fooddelivery.common.constants.EventType type;
                     try {
                         type = com.fooddelivery.common.constants.EventType.valueOf(eventType);
@@ -122,16 +124,14 @@ private final ObjectMapper objectMapper;
                         com.fooddelivery.common.event.OrderScopedEvent typedEvent = eventBinder.bindIf(type, eventType, message, clazz)
                                 .orElseThrow(() -> new IllegalStateException(
                                         "bindIf returned empty for " + eventType
-                                                + " despite an exact event-type match"));
+                                            + " despite an exact event-type match"));
+                        log.info("DELIVERY_EVENT_HANDLING eventId={} eventType={} orderId={} strategyCount={}",
+                                eventId, eventType, typedEvent.orderUuid(), matchedStrategies.size());
                         for (com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy<?> strategy : matchedStrategies) {
                             strategy.dispatch(typedEvent, eventType);
                         }
                     } else {
-                        if (com.fooddelivery.common.constants.EventType.ORDER_PLACED_COD.name().equals(eventType)) {
-                            log.info("Ignoring ORDER_PLACED_COD in delivery app: no action needed until restaurant accepts");
-                        } else {
-                            log.info("No strategy mapped for event type: {}. Ignoring in DeliveryExecutiveApplication.", eventType);
-                        }
+                        log.info("DELIVERY_EVENT_IGNORED eventType={} reason=no-strategy", eventType);
                     }
                     return null;
                 } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {
@@ -142,15 +142,18 @@ private final ObjectMapper objectMapper;
                 }
             });
         } catch (Exception e) {
-            log.error("Failed to process order event in DeliveryExecutiveApplication", e);
+            log.error("DELIVERY_EVENT_FAILED eventId={} errorType={} error={}",
+                    eventId, e.getClass().getSimpleName(), e.getMessage(), e);
             throw e;
         }
     }
 
     @DltHandler
     public void handleDltMessage(String message, @org.springframework.messaging.handler.annotation.Headers java.util.Map<String, Object> headers) {
-        log.error("Dead Letter Topic: order event failed after retries (eventId={})",
-                com.fooddelivery.common.util.KafkaHeaderUtils.extractHeaderValue(headers, "eventId"));
+        log.error("DELIVERY_EVENT_DLT eventId={} eventType={} payloadBytes={}",
+                com.fooddelivery.common.util.KafkaHeaderUtils.extractHeaderValue(headers, "eventId"),
+                com.fooddelivery.common.util.KafkaHeaderUtils.extractHeaderValue(headers, "eventType"),
+                message == null ? 0 : message.getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
         meterRegistry.counter("kafka.dlt.messages", "service", "delivery-executive-application").increment();
         // Implementation for poison pill storage/alerting goes here
     }

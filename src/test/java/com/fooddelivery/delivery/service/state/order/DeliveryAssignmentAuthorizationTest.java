@@ -62,7 +62,7 @@ class DeliveryAssignmentAuthorizationTest {
     }
 
     private void update(UUID driverId) {
-        strategy.handleStatusUpdate(driverId, orderId, DeliveryStatus.AT_RESTAURANT, null, null, false, null);
+        strategy.handleStatusUpdate(driverId, orderId, DeliveryStatus.AT_RESTAURANT, null, null, false);
     }
 
     @Test

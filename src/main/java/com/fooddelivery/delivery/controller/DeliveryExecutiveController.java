@@ -140,7 +140,6 @@ public void setAvailable(final Boolean available) {
         @Pattern(regexp = "^\\d+$")
         private String deliveryOtp;
         private Boolean goOfflineAfter;
-        private java.math.BigDecimal cashCollectedAmount;
 
         public UpdateOrderStatusRequest() {
         }
@@ -161,10 +160,6 @@ public void setAvailable(final Boolean available) {
             return this.goOfflineAfter;
         }
 
-        public java.math.BigDecimal getCashCollectedAmount() {
-            return this.cashCollectedAmount;
-        }
-
         public void setStatus(final DeliveryStatus status) {
             this.status = status;
         }
@@ -181,10 +176,6 @@ public void setAvailable(final Boolean available) {
             this.goOfflineAfter = goOfflineAfter;
         }
         
-        public void setCashCollectedAmount(final java.math.BigDecimal cashCollectedAmount) {
-            this.cashCollectedAmount = cashCollectedAmount;
-        }
-
     }
 
     @PostMapping("/onboard")
@@ -271,10 +262,10 @@ public void setAvailable(final Boolean available) {
     @PostMapping("/drivers/{driverId}/orders/{orderId}/status")
     @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
     public ResponseEntity<ApiResponse<Void>> updateOrderStatus(@PathVariable UUID driverId, @PathVariable UUID orderId, @Valid @RequestBody UpdateOrderStatusRequest request) {
-        log.info("Received status update for driverId={}, orderId={}, status={}, pickupOtpProvided={}, deliveryOtpProvided={}, cashCollectedAmount={}",
+        log.info("DELIVERY_STATUS_UPDATE_REQUESTED driverId={} orderId={} status={} pickupOtpProvided={} deliveryOtpProvided={}",
                 driverId, orderId, request.getStatus(), request.getPickupOtp() != null,
-                request.getDeliveryOtp() != null, request.getCashCollectedAmount());
-        orderExecutionService.updateOrderStatus(driverId, orderId, request.getStatus(), request.getPickupOtp(), request.getDeliveryOtp(), request.getGoOfflineAfter(), request.getCashCollectedAmount());
+                request.getDeliveryOtp() != null);
+        orderExecutionService.updateOrderStatus(driverId, orderId, request.getStatus(), request.getPickupOtp(), request.getDeliveryOtp(), request.getGoOfflineAfter());
         return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order status updated").build());
     }
 

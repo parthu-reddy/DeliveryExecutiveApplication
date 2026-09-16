@@ -66,7 +66,7 @@ class AssignmentRecordsDispatchFactsTest {
 
     @Test
     void theOtpsAndThePaymentMethodAreAllRecorded() {
-        dispatchPayload("{\"pickupOtp\":\"111111\",\"deliveryOtp\":\"222222\",\"paymentMethod\":\"COD\"}");
+        dispatchPayload("{\"pickupOtp\":\"111111\",\"deliveryOtp\":\"222222\",\"paymentMethod\":\"UPI\"}");
 
         service.recordAssignment(orderId, driverId);
 
@@ -75,9 +75,7 @@ class AssignmentRecordsDispatchFactsTest {
         assertEquals(driverId, a.getDriverId());
         assertEquals("111111", a.getPickupOtp());
         assertEquals("222222", a.getDeliveryOtp());
-        assertEquals(PaymentMethod.COD, a.getPaymentMethod(),
-                "without this the delivery service cannot require a declared cash amount");
-        assertTrue(a.isCashOnDelivery());
+        assertEquals(PaymentMethod.UPI, a.getPaymentMethod());
         assertEquals(OrderAssignment.State.ASSIGNED, a.getState());
         assertNotNull(a.getAssignedAt());
         assertNull(a.getReleasedAt());
@@ -90,7 +88,6 @@ class AssignmentRecordsDispatchFactsTest {
         service.recordAssignment(orderId, driverId);
 
         assertEquals(PaymentMethod.CARD, recorded().getPaymentMethod());
-        assertFalse(recorded().isCashOnDelivery());
     }
 
     @Test
@@ -123,7 +120,7 @@ class AssignmentRecordsDispatchFactsTest {
                 .state(OrderAssignment.State.RELEASED)
                 .releasedAt(java.time.OffsetDateTime.now())
                 .pickupOtp("999999").deliveryOtp("888888")
-                .paymentMethod(PaymentMethod.COD)
+                .paymentMethod(PaymentMethod.CARD)
                 .build();
         when(assignments.findByOrderId(orderId)).thenReturn(Optional.of(existing));
         dispatchPayload(null);

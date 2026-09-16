@@ -43,8 +43,7 @@ public class OutForDeliveryStateStrategy extends AbstractDeliveryOrderState {
      * and a missing one already denies here.
      */
     @Override
-    protected void validate(OrderAssignment assignment, String pickupOtp, String deliveryOtp,
-                            java.math.BigDecimal cashCollectedAmount) {
+    protected void validate(OrderAssignment assignment, String pickupOtp, String deliveryOtp) {
         String restaurantStatus = redisTemplate.opsForValue()
                 .get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_RESTAURANT_STATUS + assignment.getOrderId());
         if (!com.fooddelivery.common.enums.OrderStatus.READY_FOR_PICKUP.name().equals(restaurantStatus)) {

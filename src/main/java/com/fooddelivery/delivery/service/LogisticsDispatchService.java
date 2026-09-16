@@ -23,7 +23,9 @@ private final KafkaTemplate<String, String> kafkaTemplate;
     private final IDeliveryExecutiveRepository repository;
 
     public void dispatchNearestDriver(String dispatchCityId, double fleetSearchRadiusKm, double restaurantLat, double restaurantLng, double deliveryLat, double deliveryLng, String deliveryAddress, UUID orderId, java.util.List<String> excludedDriverIds) {
-        log.info("Requesting driver dispatch for order {} via MapsIntegration service", orderId);
+        log.info("LOGISTICS_DISPATCH_STARTED orderId={} dispatchCityId={} fleetSearchRadiusKm={} excludedDriverCount={}",
+                orderId, dispatchCityId, fleetSearchRadiusKm,
+                excludedDriverIds == null ? 0 : excludedDriverIds.size());
         try {
             com.fooddelivery.common.event.DispatchRequestedEvent dispatchRequest =
                     com.fooddelivery.common.event.DispatchRequestedEvent.builder()
@@ -38,18 +40,20 @@ private final KafkaTemplate<String, String> kafkaTemplate;
                             .excludedDriverIds(excludedDriverIds != null ? excludedDriverIds : java.util.Collections.emptyList())
                             .build();
             String payload = objectMapper.writeValueAsString(dispatchRequest);
-            log.info("Triggering event: LOGISTICS_DISPATCH_REQUEST for order: {}", orderId);
+            UUID eventId = UUID.randomUUID();
             // Deliberately synchronous (bypassing outbox) to minimize latency for driver dispatch
             org.springframework.messaging.Message<String> message = org.springframework.messaging.support.MessageBuilder
                 .withPayload(payload)
                 .setHeader(org.springframework.kafka.support.KafkaHeaders.TOPIC, KafkaConstants.TOPIC_LOGISTICS_DISPATCH)
                 .setHeader(org.springframework.kafka.support.KafkaHeaders.KEY, orderId.toString())
-                .setHeader("eventId", UUID.randomUUID().toString())
+                .setHeader("eventId", eventId.toString())
                 .build();
             kafkaTemplate.send(message).get(3, java.util.concurrent.TimeUnit.SECONDS);
-            log.info("Successfully published dispatch request for order {}", orderId);
+            log.info("LOGISTICS_DISPATCH_PUBLISHED eventId={} orderId={} topic={} dispatchCityId={} fleetSearchRadiusKm={}",
+                    eventId, orderId, KafkaConstants.TOPIC_LOGISTICS_DISPATCH, dispatchCityId, fleetSearchRadiusKm);
         } catch (Exception e) {
-            log.error("Failed to serialize or publish dispatch request for order {}", orderId, e);
+            log.error("LOGISTICS_DISPATCH_FAILED orderId={} dispatchCityId={} errorType={} error={}",
+                    orderId, dispatchCityId, e.getClass().getSimpleName(), e.getMessage(), e);
             throw new RuntimeException("Failed to publish dispatch request", e);
         }
     }

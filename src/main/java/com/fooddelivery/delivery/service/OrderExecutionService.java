@@ -92,12 +92,13 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
         log.info("Driver {} aborted order {}. Re-triggering candidate search...", driverId, orderId);
     }
 
-    public void updateOrderStatus(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp, Boolean goOfflineAfter, java.math.BigDecimal cashCollectedAmount) {
+    public void updateOrderStatus(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp, Boolean goOfflineAfter) {
         int maxRetries = 3;
         for (int i = 0; i < maxRetries; i++) {
             try {
                 com.fooddelivery.delivery.service.state.order.DeliveryOrderStateStrategy strategy = deliveryOrderStateFactory.getStrategy(status);
-                strategy.handleStatusUpdate(driverId, orderId, status, pickupOtp, deliveryOtp, goOfflineAfter, cashCollectedAmount);
+                strategy.handleStatusUpdate(driverId, orderId, status, pickupOtp, deliveryOtp, goOfflineAfter);
+                log.info("DELIVERY_STATUS_UPDATE_COMPLETED driverId={} orderId={} status={}", driverId, orderId, status);
                 return;
             } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {
                 if (i == maxRetries - 1) {

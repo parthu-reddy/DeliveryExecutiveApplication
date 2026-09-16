@@ -49,17 +49,7 @@ public class DeliveredStateStrategy extends AbstractDeliveryOrderState {
      * Order payload not found." and the order could never be completed by anyone, by any route.
      */
     @Override
-    protected void validate(OrderAssignment assignment, String pickupOtp, String deliveryOtp,
-                            java.math.BigDecimal cashCollectedAmount) {
-        // A cash delivery ends with the rider handing over money. Accepting the status update
-        // without the amount leaves the customer service booking a collection for a number nobody
-        // declared -- which is exactly what it used to do, using the order total as a stand-in.
-        if (assignment.isCashOnDelivery() && cashCollectedAmount == null) {
-            throw new IllegalArgumentException("Declare the cash you collected for this order.");
-        }
-        if (cashCollectedAmount != null && cashCollectedAmount.signum() < 0) {
-            throw new IllegalArgumentException("Cash collected cannot be negative.");
-        }
+    protected void validate(OrderAssignment assignment, String pickupOtp, String deliveryOtp) {
         requireOtp(assignment.getDeliveryOtp(), deliveryOtp, "delivery");
     }
 

@@ -87,7 +87,7 @@ class DeliveryOtpSourceTest {
         // also an IllegalArgumentException, and catching the type alone reported a passing OTP
         // check as a failing one.
         try {
-            strategy.handleStatusUpdate(driverId, orderId, DeliveryStatus.DELIVERED, null, "654321", false, null);
+            strategy.handleStatusUpdate(driverId, orderId, DeliveryStatus.DELIVERED, null, "654321", false);
         } catch (RuntimeException e) {
             assertFalse(String.valueOf(e.getMessage()).contains("OTP"),
                     "the correct delivery OTP was refused because the Redis payload was missing: "
@@ -102,7 +102,7 @@ class DeliveryOtpSourceTest {
     void aWrongDeliveryOtpIsStillRefused() {
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
                 () -> delivered().handleStatusUpdate(driverId, orderId, DeliveryStatus.DELIVERED,
-                        null, "000000", false, null));
+                        null, "000000", false));
         assertTrue(e.getMessage().contains("delivery"), e.getMessage());
         verifyNoInteractions(outbox);
     }
@@ -117,7 +117,7 @@ class DeliveryOtpSourceTest {
 
         assertThrows(IllegalArgumentException.class,
                 () -> delivered().handleStatusUpdate(driverId, orderId, DeliveryStatus.DELIVERED,
-                        null, "654321", false, null));
+                        null, "654321", false));
         verifyNoInteractions(outbox);
     }
 
@@ -127,7 +127,7 @@ class DeliveryOtpSourceTest {
 
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
                 () -> outForDelivery().handleStatusUpdate(driverId, orderId,
-                        DeliveryStatus.OUT_FOR_DELIVERY, "123456", null, false, null));
+                        DeliveryStatus.OUT_FOR_DELIVERY, "123456", null, false));
         assertTrue(e.getMessage().contains("ready"), e.getMessage());
     }
 
@@ -136,7 +136,7 @@ class DeliveryOtpSourceTest {
         when(values.get(contains(orderId.toString()))).thenReturn("READY_FOR_PICKUP");
 
         assertDoesNotThrow(() -> outForDelivery().handleStatusUpdate(driverId, orderId,
-                DeliveryStatus.OUT_FOR_DELIVERY, "123456", null, false, null));
+                DeliveryStatus.OUT_FOR_DELIVERY, "123456", null, false));
         verify(outbox).save(any());
     }
 
@@ -145,7 +145,7 @@ class DeliveryOtpSourceTest {
         when(values.get(contains(orderId.toString()))).thenReturn("READY_FOR_PICKUP");
 
         assertThrows(IllegalArgumentException.class, () -> outForDelivery().handleStatusUpdate(
-                driverId, orderId, DeliveryStatus.OUT_FOR_DELIVERY, "999999", null, false, null));
+                driverId, orderId, DeliveryStatus.OUT_FOR_DELIVERY, "999999", null, false));
         verifyNoInteractions(outbox);
     }
 }

@@ -38,8 +38,12 @@ private final LogisticsDispatchService logisticsDispatchService;
         long estimatedCompletionTime = event.getEstimatedCompletionTime() != null ? event.getEstimatedCompletionTime() : 0L;
         long dispatchTime = estimatedCompletionTime > 0 ? estimatedCompletionTime - (15 * 60 * 1000L) : System.currentTimeMillis();
         if (lat == 0.0 || lng == 0.0 || dispatchCityId == null || dispatchCityId.isBlank() || fleetSearchRadiusKm <= 0) {
+            log.error("DISPATCH_INPUT_REJECTED orderId={} dispatchCityId={} fleetSearchRadiusKm={} restaurantLocationPresent={}",
+                    orderId, dispatchCityId, fleetSearchRadiusKm, lat != 0.0 && lng != 0.0);
             throw new IllegalArgumentException("ORDER_ACCEPTED is missing a valid restaurant location or dispatch scope for order " + orderId);
         }
+        log.info("DISPATCH_INPUT_VALIDATED orderId={} dispatchCityId={} fleetSearchRadiusKm={} dispatchAt={}",
+                orderId, dispatchCityId, fleetSearchRadiusKm, dispatchTime);
 
         // After commit, not inside the transaction. OrderEventConsumer runs this strategy inside
         // transactionTemplate.execute, in the same transaction as the idempotency claim. Taking the
@@ -68,7 +72,7 @@ private final LogisticsDispatchService logisticsDispatchService;
                               double deliveryLng, String deliveryAddress, long dispatchTime) {
         Boolean isNewDispatch = redisTemplate.opsForValue().setIfAbsent(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId, "locked", java.time.Duration.ofHours(24));
         if (!Boolean.TRUE.equals(isNewDispatch)) {
-            log.info("Duplicate ORDER_ACCEPTED dispatch event ignored for order {}", orderId);
+            log.info("DISPATCH_REQUEST_DUPLICATE orderId={}", orderId);
             return;
         }
         try {
@@ -76,20 +80,25 @@ private final LogisticsDispatchService logisticsDispatchService;
             try { 
                 redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId, new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(event), java.time.Duration.ofHours(24)); 
             } catch(Exception ex) {
-                log.warn("Failed to cache ORDER_ACCEPTED payload for orderId: {}", orderId, ex);
+                log.warn("DISPATCH_PAYLOAD_CACHE_FAILED orderId={} errorType={} error={}",
+                        orderId, ex.getClass().getSimpleName(), ex.getMessage(), ex);
             }
-            log.info("Cached ORDER_ACCEPTED payload in Redis for orderId: {}", orderId);
+            log.info("DISPATCH_PAYLOAD_CACHED orderId={} ttlHours=24", orderId);
             if (System.currentTimeMillis() >= dispatchTime) {
-                log.info("Delivery Application received ORDER_ACCEPTED for order {}. Dispatching nearest driver immediately...", orderId);
+                log.info("DISPATCH_REQUEST_READY orderId={} mode=immediate dispatchCityId={} fleetSearchRadiusKm={}",
+                        orderId, dispatchCityId, fleetSearchRadiusKm);
                 logisticsDispatchService.dispatchNearestDriver(dispatchCityId, fleetSearchRadiusKm, lat, lng, deliveryLat, deliveryLng, deliveryAddress, orderId, null);
             } else {
-                log.info("Delivery Application received ORDER_ACCEPTED for order {}. Scheduling dispatch at {}.", orderId, dispatchTime);
+                log.info("DISPATCH_REQUEST_READY orderId={} mode=scheduled dispatchAt={} dispatchCityId={} fleetSearchRadiusKm={}",
+                        orderId, dispatchTime, dispatchCityId, fleetSearchRadiusKm);
                 redisTemplate.opsForZSet().add("delayed_dispatch_queue", orderId.toString(), dispatchTime);
             }
         } catch (RuntimeException e) {
             // The lock must not outlive a dispatch that did not happen, or the order can never be
             // dispatched by anyone.
             redisTemplate.delete(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId);
+            log.error("DISPATCH_REQUEST_FAILED orderId={} errorType={} error={} lockReleased=true",
+                    orderId, e.getClass().getSimpleName(), e.getMessage(), e);
             throw e;
         }
     }

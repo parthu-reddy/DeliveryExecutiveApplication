@@ -47,15 +47,10 @@ public class OrderAssignment {
     @Column(name = "delivery_otp")
     private String deliveryOtp;
 
-    /** How the customer paid. COD means the rider must declare what they collected. */
+    /** The completed prepaid method attached to this delivery. */
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_method")
     private com.fooddelivery.common.enums.PaymentMethod paymentMethod;
-
-    /** Whether this delivery ends with the rider handing over cash. */
-    public boolean isCashOnDelivery() {
-        return paymentMethod == com.fooddelivery.common.enums.PaymentMethod.COD;
-    }
 
     @Enumerated(EnumType.STRING)
     @Column(name = "state", nullable = false)

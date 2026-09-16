@@ -112,7 +112,9 @@ private final ObjectMapper objectMapper;
             // Emit to the sink (reactive)
             telemetrySink.tryEmitNext(new TelemetryEvent(driverId, orderId, lat, lng, cityId));
         } catch (Exception e) {
-            log.error("Failed to parse telemetry payload: {}", payload, e);
+            log.error("TELEMETRY_PAYLOAD_REJECTED sessionId={} payloadBytes={} errorType={} error={}",
+                    session.getId(), payload == null ? 0 : payload.length(),
+                    e.getClass().getSimpleName(), e.getMessage());
         }
     }
 
