@@ -9,7 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 @RestController
 @RequestMapping("/api/v1/internal/delivery")
 @lombok.extern.slf4j.Slf4j
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'SERVICE')")
 @lombok.RequiredArgsConstructor
 public class InternalDeliveryController {
 private final DeliveryExecutiveProfileService profileService;
