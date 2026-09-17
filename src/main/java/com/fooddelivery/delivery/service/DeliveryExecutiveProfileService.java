@@ -83,7 +83,7 @@ private final org.springframework.transaction.support.TransactionTemplate transa
             log.warn("Driver {} has no cityId, skipping Redis availability sync", driverId);
         } else {
             // Sync with Redis AFTER the transaction has successfully committed
-            String key = "drivers:available:" + cityId;
+            String key = com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVERS_AVAILABLE + cityId;
             try {
                 if (isOnline) {
                     redisTemplate.opsForSet().add(key, driverId.toString());
@@ -191,7 +191,7 @@ private final org.springframework.transaction.support.TransactionTemplate transa
             try {
                 String cityId = executive.getCityId();
                 if (cityId != null) {
-                    String key = "drivers:available:" + cityId;
+                    String key = com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVERS_AVAILABLE + cityId;
                     redisTemplate.opsForSet().remove(key, driverId.toString());
                 }
                 redisTemplate.opsForZSet().remove("driver_last_ping", driverId.toString());

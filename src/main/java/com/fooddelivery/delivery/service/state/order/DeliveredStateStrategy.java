@@ -85,7 +85,7 @@ public class DeliveredStateStrategy extends AbstractDeliveryOrderState {
             try {
                 String cityId = repository.findById(driverId).map(DeliveryExecutive::getCityId).orElse(null);
                 if (cityId != null) {
-                    String key = "drivers:available:" + cityId;
+                    String key = com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVERS_AVAILABLE + cityId;
                     redisTemplate.opsForSet().add(key, driverId.toString());
                 }
             } catch (Exception e) {

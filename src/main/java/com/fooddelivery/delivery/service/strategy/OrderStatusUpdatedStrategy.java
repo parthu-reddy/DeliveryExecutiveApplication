@@ -64,7 +64,7 @@ private final StringRedisTemplate redisTemplate;
             log.info("Published restaurant status {} to channel {}", status, channel);
             if (com.fooddelivery.common.enums.OrderStatus.READY_FOR_PICKUP.name().equals(status)) {
                 // We check if it is in the queue by looking up its score. If it has a score, it's in the queue.
-                Double score = redisTemplate.opsForZSet().score("delayed_dispatch_queue", orderId);
+                Double score = redisTemplate.opsForZSet().score(com.fooddelivery.common.constants.RedisKeyConstants.QUEUE_DELAYED_DISPATCH, orderId);
                 if (score != null) {
                     // Try to acquire the processing lock for this order
                     String lockKey = "dispatch_processing_lock:" + orderId;
@@ -90,7 +90,7 @@ private final StringRedisTemplate redisTemplate;
                                 logisticsDispatchService.dispatchNearestDriver(dispatchCityId, fleetSearchRadiusKm, lat, lng, deliveryLat, deliveryLng, deliveryAddress, java.util.UUID.fromString(orderId), excludedDriverIds);
                             }
                             // Remove from delayed queue ONLY after successful dispatch
-                            redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderId);
+                            redisTemplate.opsForZSet().remove(com.fooddelivery.common.constants.RedisKeyConstants.QUEUE_DELAYED_DISPATCH, orderId);
                         } catch (Exception e) {
                             redisTemplate.delete(lockKey);
                             throw e;

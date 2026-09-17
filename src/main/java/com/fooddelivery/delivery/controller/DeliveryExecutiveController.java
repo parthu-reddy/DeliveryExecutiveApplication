@@ -213,7 +213,7 @@ public void setAvailable(final Boolean available) {
             return ResponseEntity.ok(ApiResponse.success(java.util.Collections.emptyList(), "No pending pings"));
         }
         Long expiresAt = orderAssignmentService.getPingExpiration(UUID.fromString(pendingOrderId));
-        if (expiresAt == null) {
+        if (expiresAt == null || expiresAt <= System.currentTimeMillis()) {
             return ResponseEntity.ok(ApiResponse.success(java.util.Collections.emptyList(), "No pending pings"));
         }
         return ResponseEntity.ok(ApiResponse.success(java.util.Collections.singletonList(new PendingPingResponse(pendingOrderId, expiresAt)), "Pending ping retrieved"));
@@ -240,16 +240,30 @@ public void setAvailable(final Boolean available) {
         try {
             orderAssignmentService.acceptOrderPing(driverId, orderId);
             return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order accepted by driver").build());
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(400).body(ApiResponse.<Void>builder().success(false).message(ex.getMessage()).build());
         } catch (IllegalStateException ex) {
-            return ResponseEntity.badRequest().body(ApiResponse.<Void>builder().success(false).message(ex.getMessage()).build());
+            int status = 409;
+            if (ex.getMessage().contains("expired")) status = 410;
+            return ResponseEntity.status(status).body(ApiResponse.<Void>builder().success(false).message(ex.getMessage()).build());
+        } catch (java.util.NoSuchElementException ex) {
+            return ResponseEntity.status(404).body(ApiResponse.<Void>builder().success(false).message("Driver not found").build());
+        } catch (Exception ex) {
+            log.error("Unexpected error during acceptOrder", ex);
+            return ResponseEntity.status(500).body(ApiResponse.<Void>builder().success(false).message("Internal server error").build());
         }
     }
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/reject")
     @PreAuthorize("hasRole(\'DELIVERY\') and #driverId.toString() == authentication.principal")
     public ResponseEntity<ApiResponse<Void>> rejectOrder(@PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
-        orderAssignmentService.rejectOrderPing(driverId, orderId);
-        return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order rejected").build());
+        try {
+            orderAssignmentService.rejectOrderPing(driverId, orderId);
+            return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order rejected").build());
+        } catch (Exception ex) {
+            log.error("Failed to reject order", ex);
+            return ResponseEntity.status(503).body(ApiResponse.<Void>builder().success(false).message("Decline could not be recorded and will reappear.").build());
+        }
     }
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/abort")

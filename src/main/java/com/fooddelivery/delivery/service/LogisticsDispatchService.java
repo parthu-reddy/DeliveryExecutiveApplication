@@ -60,34 +60,53 @@ private final KafkaTemplate<String, String> kafkaTemplate;
 
     public void releaseDriverLock(String driverId) {
         log.info("Requesting driver lock release for driver {} via MapsIntegration service", driverId);
-        int maxRetries = 3;
-        for (int attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                String cityId = repository.findById(UUID.fromString(driverId)).map(DeliveryExecutive::getCityId).orElse(null);
-                if (cityId == null) {
-                    log.warn("Cannot release driver lock for driver {}: cityId is null", driverId);
-                    return;
-                }
-                com.fooddelivery.common.dto.maps.SetAvailabilityRequest request = new com.fooddelivery.common.dto.maps.SetAvailabilityRequest();
-                request.setCityId(cityId);
-                request.setDriverId(driverId);
-                request.setAvailable(true);
-                log.info("Sending request to MapsIntegration /api/fleet/release: {}", request);
-                java.util.Map<String, Object> response = mapsClient.releaseDriver(request);
-                log.info("Successfully requested driver lock release for driver {}. Response: {}", driverId, response);
-                return; // Success
-            } catch (Exception e) {
-                log.error("Failed to release driver lock for driver {} via FeignClient (Attempt {}/{}). Error: {}", driverId, attempt, maxRetries, e.getMessage(), e);
-                if (attempt == maxRetries) {
-                    throw new RuntimeException("Failed to release driver lock after " + maxRetries + " attempts", e);
-                }
-                try {
-                    Thread.sleep(1000 * attempt); // Exponential backoff
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException("Interrupted during lock release retry", ie);
-                }
-            }
+        String cityId = repository.findById(UUID.fromString(driverId)).map(DeliveryExecutive::getCityId).orElse(null);
+        if (cityId == null) {
+            log.warn("Cannot release driver lock for driver {}: cityId is null", driverId);
+            return;
+        }
+        try {
+            com.fooddelivery.common.dto.maps.SetAvailabilityRequest request = new com.fooddelivery.common.dto.maps.SetAvailabilityRequest();
+            request.setCityId(cityId);
+            request.setDriverId(driverId);
+            request.setAvailable(true);
+            log.info("Sending request to MapsIntegration /api/fleet/release: {}", request);
+            java.util.Map<String, Object> response = mapsClient.releaseDriver(request);
+            log.info("Successfully requested driver lock release for driver {}. Response: {}", driverId, response);
+        } catch (Exception e) {
+            log.error("Failed to release driver lock for driver {} via FeignClient. Error: {}", driverId, e.getMessage(), e);
+            throw new RuntimeException("Failed to release driver lock", e);
+        }
+    }
+
+    /**
+     * The inverse of {@link #releaseDriverLock(String)}: takes the driver back out of the pool.
+     *
+     * <p>Used when a decline could not be recorded. {@code rejectOrderPing} releases the driver
+     * before writing the outbox event, so if that write fails it restores the pending ping -- but
+     * the release had already advertised the driver as free. Without this the two halves disagree:
+     * the driver holds a ping for an order they are also available to be re-offered.
+     *
+     * <p>Goes through {@code /api/fleet/availability}, not {@code /api/fleet/release}, because the
+     * latter ignores the {@code available} flag and always releases.
+     */
+    public void reserveDriverLock(String driverId) {
+        log.info("Re-reserving driver {} via MapsIntegration after a failed decline", driverId);
+        String cityId = repository.findById(UUID.fromString(driverId)).map(DeliveryExecutive::getCityId).orElse(null);
+        if (cityId == null) {
+            log.warn("Cannot re-reserve driver {}: cityId is null", driverId);
+            return;
+        }
+        try {
+            com.fooddelivery.common.dto.maps.SetAvailabilityRequest request = new com.fooddelivery.common.dto.maps.SetAvailabilityRequest();
+            request.setCityId(cityId);
+            request.setDriverId(driverId);
+            request.setAvailable(false);
+            mapsClient.setDriverAvailability(request);
+            log.info("Driver {} re-reserved in city {}", driverId, cityId);
+        } catch (Exception e) {
+            log.error("Failed to re-reserve driver {} via FeignClient. Error: {}", driverId, e.getMessage(), e);
+            throw new RuntimeException("Failed to re-reserve driver", e);
         }
     }
 

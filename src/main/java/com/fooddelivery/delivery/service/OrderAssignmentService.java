@@ -78,25 +78,26 @@ public class OrderAssignmentService {
             throw new IllegalStateException("Order is no longer available.");
         }
         if (result.size() == 1 && AssignmentResult.INVALID.name().equals(result.get(0))) {
-            log.warn("Ping for order {} and driver {} is invalid or expired.", orderId, driverId);
-            throw new IllegalStateException("Ping expired or invalid.");
+            log.warn("Ping for order {} and driver {} is invalid.", orderId, driverId);
+            throw new IllegalArgumentException("Ping invalid.");
         }
         if (result.size() == 1 && AssignmentResult.EXPIRED.name().equals(result.get(0))) {
             log.info("Ping for order {} expired before driver {} accepted it", orderId, driverId);
-            throw new IllegalStateException("Ping expired or invalid.");
+            throw new IllegalStateException("Ping expired.");
         }
         if (result.size() < 2 || !AssignmentResult.SUCCESS.name().equals(result.get(0))) {
             throw new IllegalStateException("Order is no longer available.");
         }
         long originalTimeoutAt = (long) Double.parseDouble(result.get(1));
         java.util.List<String> pingedDrivers = new java.util.ArrayList<>(result.subList(2, result.size()));
+        java.util.Map<String, String> dispatchDetails = resolveDispatchDetails(orderId);
         try {
             transactionTemplate.executeWithoutResult(status -> {
                 String currentLock = redisTemplate.opsForValue().get(RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId);
                 if (!driverId.toString().equals(currentLock)) {
                     throw new IllegalStateException("Order lock was lost to cancellation. Aborting assignment.");
                 }
-                DeliveryExecutive executive = repository.findLockedById(driverId).orElseThrow();
+                DeliveryExecutive executive = repository.findLockedById(driverId).orElseThrow(() -> new IllegalArgumentException("Driver not found: " + driverId));
                 com.fooddelivery.common.event.DriverAssignedEvent event = com.fooddelivery.common.event.DriverAssignedEvent.builder()
                         .orderId(orderId.toString())
                         .driverId(driverId.toString())
@@ -105,7 +106,7 @@ public class OrderAssignmentService {
                 com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = outboxEventHelper.createOutboxEvent(com.fooddelivery.common.constants.AggregateType.ORDER, orderId.toString(), com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED, event);
                 log.info("Triggering event: DRIVER_ASSIGNED for executive: {}", executive.getId());
                 outboxEventRepository.save(outboxEvent);
-                recordAssignment(orderId, driverId);
+                recordAssignment(orderId, driverId, dispatchDetails);
                 com.fooddelivery.delivery.service.state.DeliveryExecutiveState state = com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory.getState(executive.getStatus());
                 state.acceptOrder(executive);
                 repository.save(executive);
@@ -119,10 +120,10 @@ public class OrderAssignmentService {
             }
             if (!pingedDrivers.isEmpty()) {
                 redisTemplate.opsForSet().add(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId, pingedDrivers.toArray(new String[0]));
-                redisTemplate.expire(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId, java.time.Duration.ofMinutes(5));
+                redisTemplate.expire(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId, com.fooddelivery.delivery.service.strategy.CandidateFoundStrategy.PING_KEY_TTL);
                 for (String pingedDriver : pingedDrivers) {
                     redisTemplate.opsForValue().set(RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + pingedDriver,
-                            orderId.toString(), java.time.Duration.ofMinutes(5));
+                            orderId.toString(), com.fooddelivery.delivery.service.strategy.CandidateFoundStrategy.PING_KEY_TTL);
                 }
             }
             redisTemplate.opsForZSet().add(RedisKeyConstants.PREFIX_ORDER_PING_TIMEOUTS,
@@ -148,7 +149,7 @@ public class OrderAssignmentService {
                     orderId.toString(), java.time.Duration.ofHours(24));
             String cityId = repository.findById(driverId).map(DeliveryExecutive::getCityId).orElse(null);
             if (cityId != null) {
-                redisTemplate.opsForSet().remove("drivers:available:" + cityId, driverId.toString());
+                redisTemplate.opsForSet().remove(RedisKeyConstants.PREFIX_DRIVERS_AVAILABLE + cityId, driverId.toString());
             }
         } catch (Exception cleanupError) {
             log.error("Failed post-commit active-order cleanup for driver {} on order {}", driverId, orderId, cleanupError);
@@ -189,9 +190,21 @@ public class OrderAssignmentService {
             } catch (Exception e) {
                 log.error("Failed to save ORDER_DRIVER_REJECTED event to outbox. Reverting Redis state for order {}", orderId, e);
                 redisTemplate.opsForSet().add(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId, driverId.toString());
-                redisTemplate.expire(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId, java.time.Duration.ofMinutes(5));
+                redisTemplate.expire(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId, com.fooddelivery.delivery.service.strategy.CandidateFoundStrategy.PING_KEY_TTL);
                 redisTemplate.opsForValue().set(RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + driverId,
-                        orderId.toString(), java.time.Duration.ofMinutes(5));
+                        orderId.toString(), com.fooddelivery.delivery.service.strategy.CandidateFoundStrategy.PING_KEY_TTL);
+                // The Maps release above is part of what has to be undone. Restoring the ping while
+                // leaving the driver advertised as free left the two halves disagreeing: a driver
+                // holding a pending ping who could also be selected as a candidate for another
+                // order, overwriting that ping. Best-effort -- a re-reserve that fails must not mask
+                // the outbox failure that is the real error, and the rethrow below is what the
+                // caller acts on.
+                try {
+                    logisticsDispatchService.reserveDriverLock(driverId.toString());
+                } catch (Exception reserveError) {
+                    log.error("Failed to re-reserve driver {} while reverting a failed decline for "
+                            + "order {}; they remain advertised as available", driverId, orderId, reserveError);
+                }
                 throw e;
             }
         }
@@ -214,10 +227,24 @@ public class OrderAssignmentService {
             return;
         }
         log.info("Order {} ping timed out for {} drivers: {}", orderId, result.size(), result);
+        // Who actually saw the offer. CandidateFoundStrategy records a driver here only when the
+        // ping reached a live socket.
+        String reachedKey = RedisKeyConstants.PREFIX_ORDER_PING_REACHED + orderIdStr;
         for (String driverIdStr : result) {
             redisTemplate.delete(RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + driverIdStr);
-            redisTemplate.opsForHash().increment(RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderIdStr, driverIdStr, 1);
-            redisTemplate.expire(RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderIdStr, java.time.Duration.ofHours(2));
+            // A lapsed ping is only a rejection if the driver was shown the order. Counting an
+            // undelivered ping against them accumulated toward the 5-strike exclusion in
+            // DelayedDispatchPoller, so a driver with a dropped socket was quietly removed from
+            // orders they never had the chance to take.
+            boolean wasReached = Boolean.TRUE.equals(
+                    redisTemplate.opsForSet().isMember(reachedKey, driverIdStr));
+            if (wasReached) {
+                redisTemplate.opsForHash().increment(RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderIdStr, driverIdStr, 1);
+                redisTemplate.expire(RedisKeyConstants.PREFIX_ORDER_REJECTED_DRIVERS + orderIdStr, java.time.Duration.ofHours(2));
+            } else {
+                log.info("PING_NEVER_DELIVERED orderId={} driverId={} -- not counting a rejection",
+                        orderIdStr, driverIdStr);
+            }
             try {
                 log.info("Releasing driver lock for driver {} after timeout so they can receive future dispatches...", driverIdStr);
                 logisticsDispatchService.releaseDriverLock(driverIdStr);
@@ -229,7 +256,7 @@ public class OrderAssignmentService {
             transactionTemplate.executeWithoutResult(status -> {
                 com.fooddelivery.common.event.OrderDriverRejectedEvent event = com.fooddelivery.common.event.OrderDriverRejectedEvent.builder()
                         .orderId(orderIdStr)
-                        .driverId(result.get(0))
+                        .driverId(null)
                         .build();
                 com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = outboxEventHelper.createOutboxEvent(com.fooddelivery.common.constants.AggregateType.ORDER, orderIdStr, com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED, event);
                 log.info("Triggering event: ORDER_DRIVER_REJECTED for aggregate: {}", orderIdStr);
@@ -240,10 +267,10 @@ public class OrderAssignmentService {
             log.error("Failed to save ORDER_DRIVER_REJECTED event to outbox. Reverting Redis state for order {}", orderIdStr, e);
             if (result != null && !result.isEmpty()) {
                 redisTemplate.opsForSet().add(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderIdStr, result.toArray(new String[0]));
-                redisTemplate.expire(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderIdStr, java.time.Duration.ofMinutes(5));
+                redisTemplate.expire(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderIdStr, com.fooddelivery.delivery.service.strategy.CandidateFoundStrategy.PING_KEY_TTL);
                 for (String driverIdStr : result) {
                     redisTemplate.opsForValue().set(RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + driverIdStr,
-                            orderIdStr, java.time.Duration.ofMinutes(5));
+                            orderIdStr, com.fooddelivery.delivery.service.strategy.CandidateFoundStrategy.PING_KEY_TTL);
                 }
             }
             throw e;
@@ -268,15 +295,13 @@ public class OrderAssignmentService {
             }
         }
         redisTemplate.opsForZSet().remove(RedisKeyConstants.PREFIX_ORDER_PING_TIMEOUTS, orderId.toString());
-        redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderId.toString());
+        redisTemplate.opsForZSet().remove(com.fooddelivery.common.constants.RedisKeyConstants.QUEUE_DELAYED_DISPATCH, orderId.toString());
         // Force set the order driver lock
         redisTemplate.opsForValue().set(RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId, driverId.toString(), java.time.Duration.ofHours(24));
-        redisTemplate.opsForValue().set(RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + driverId, orderId.toString(), java.time.Duration.ofHours(24));
-        // Prevent stale ORDER_DRIVER_REJECTED events from re-dispatching after force-assign
-        redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId, "CANCELLED", java.time.Duration.ofHours(24));
+        java.util.Map<String, String> dispatchDetails = resolveDispatchDetails(orderId);
         try {
             transactionTemplate.executeWithoutResult(status -> {
-                DeliveryExecutive executive = repository.findLockedById(driverId).orElseThrow(() -> new IllegalArgumentException("Driver not found"));
+                DeliveryExecutive executive = repository.findLockedById(driverId).orElseThrow(() -> new IllegalArgumentException("Driver not found: " + driverId));
                 com.fooddelivery.common.event.DriverAssignedEvent event = com.fooddelivery.common.event.DriverAssignedEvent.builder()
                         .orderId(orderId.toString())
                         .driverId(driverId.toString())
@@ -285,12 +310,11 @@ public class OrderAssignmentService {
                 com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = outboxEventHelper.createOutboxEvent(com.fooddelivery.common.constants.AggregateType.ORDER, orderId.toString(), com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED, event);
                 log.info("Triggering event: DRIVER_ASSIGNED for executive: {}", driverId);
                 outboxEventRepository.save(outboxEvent);
-                recordAssignment(orderId, driverId);
-                com.fooddelivery.delivery.service.state.DeliveryExecutiveState state = com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory.getState(executive.getStatus());
+                recordAssignment(orderId, driverId, dispatchDetails);
                 if (executive.getStatus() == com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.OFFLINE) {
                     executive.setStatus(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.ONLINE);
                 }
-                state = com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory.getState(executive.getStatus());
+                com.fooddelivery.delivery.service.state.DeliveryExecutiveState state = com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory.getState(executive.getStatus());
                 state.acceptOrder(executive);
                 repository.save(executive);
                 redisTemplate.opsForHash().put("drivers:status", driverId.toString(), executive.getStatus().name());
@@ -301,73 +325,73 @@ public class OrderAssignmentService {
             throw e;
         }
         try {
+            redisTemplate.opsForValue().set(RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + driverId, orderId.toString(), java.time.Duration.ofHours(24));
+            redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId, "CANCELLED", java.time.Duration.ofHours(24));
             String cityId = repository.findById(driverId).map(DeliveryExecutive::getCityId).orElse(null);
             if (cityId != null) {
-                String key = "drivers:available:" + cityId;
+                String key = RedisKeyConstants.PREFIX_DRIVERS_AVAILABLE + cityId;
                 redisTemplate.opsForSet().remove(key, driverId.toString());
             }
         } catch (Exception e) {
-            log.error("Failed to remove driver {} from Redis pool", driverId, e);
+            log.error("Failed post-commit active-order setup for driver {} on order {}", driverId, orderId, e);
         }
+    }
+
+    // Package-private alongside recordAssignment: together they are the payload-to-row
+    // mapping, and AssignmentRecordsDispatchFactsTest drives both to pin it.
+    java.util.Map<String, String> resolveDispatchDetails(UUID orderId) {
+        java.util.Map<String, String> result = new java.util.HashMap<>();
+        String payload = redisTemplate.opsForValue().get(RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId);
+        if (payload != null) {
+            try {
+                com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(payload);
+                result.put("pickupOtp", emptyToNull(root.path("pickupOtp").asText(null)));
+                result.put("deliveryOtp", emptyToNull(root.path("deliveryOtp").asText(null)));
+                result.put("paymentMethod", emptyToNull(root.path("paymentMethod").asText(null)));
+                return result;
+            } catch (Exception e) {
+                log.error("Could not read the OTPs out of the dispatch payload for order {}", orderId, e);
+            }
+        }
+        log.warn("No dispatch payload in Redis for order {} at assignment. "
+                + "Falling back to customer-service to fetch OTPs.", orderId);
+        try {
+            java.util.Map<String, String> details = customerServiceClient.getOrderDispatchDetails(orderId);
+            if (details != null) {
+                result.put("pickupOtp", emptyToNull(details.get("pickupOtp")));
+                result.put("deliveryOtp", emptyToNull(details.get("deliveryOtp")));
+                result.put("paymentMethod", emptyToNull(details.get("paymentMethod")));
+                log.info("Successfully fetched OTP fallback from customer-service for order {}: pickupOtpPresent={}, deliveryOtpPresent={}",
+                        orderId, result.get("pickupOtp") != null, result.get("deliveryOtp") != null);
+                return result;
+            } else {
+                log.error("Customer-service returned null dispatch details for order {}. "
+                        + "Assignment will be recorded without OTPs — handover will be refused.", orderId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to fetch OTPs from customer-service for order {}. "
+                    + "Assignment will be recorded without OTPs — handover will be refused.", orderId, e);
+        }
+        return result;
     }
 
     /**
      * Records who holds the order, in the same transaction as the DRIVER_ASSIGNED event.
      *
-     * <p>The OTPs are lifted out of the cached ORDER_ACCEPTED payload here and persisted, so that
-     * from this point on neither the assignment nor the handover proof depends on a Redis key with
-     * a 24-hour TTL. If the payload is already gone at assignment time the row is still written --
-     * an assignment with no OTP denies the handover, which is the safe direction, whereas the old
-     * behaviour of reading a missing key at handover time denied it permanently and silently.
+     * <p>The OTPs are passed in from resolveDispatchDetails, which executes outside the
+     * transaction boundary to avoid holding a DB lock during a network call.
      */
     // Package-private so the event-to-persisted-assignment mapping can be tested directly.
-    void recordAssignment(UUID orderId, UUID driverId) {
-        String pickupOtp = null;
-        String deliveryOtp = null;
+    void recordAssignment(UUID orderId, UUID driverId, java.util.Map<String, String> dispatchDetails) {
+        String pickupOtp = dispatchDetails.get("pickupOtp");
+        String deliveryOtp = dispatchDetails.get("deliveryOtp");
         com.fooddelivery.common.enums.PaymentMethod paymentMethod = null;
-        String payload = redisTemplate.opsForValue()
-                .get(RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId);
-        if (payload != null) {
+        String method = dispatchDetails.get("paymentMethod");
+        if (method != null) {
             try {
-                com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(payload);
-                pickupOtp = emptyToNull(root.path("pickupOtp").asText(null));
-                deliveryOtp = emptyToNull(root.path("deliveryOtp").asText(null));
-                String method = emptyToNull(root.path("paymentMethod").asText(null));
-                if (method != null) {
-                    try {
-                        paymentMethod = com.fooddelivery.common.enums.PaymentMethod.valueOf(method);
-                    } catch (IllegalArgumentException e) {
-                        log.error("Unknown payment method '{}' on order {}", method, orderId);
-                    }
-                }
-            } catch (Exception e) {
-                log.error("Could not read the OTPs out of the dispatch payload for order {}", orderId, e);
-            }
-        } else {
-            log.warn("No dispatch payload in Redis for order {} at assignment. "
-                    + "Falling back to customer-service to fetch OTPs.", orderId);
-            try {
-                java.util.Map<String, String> details = customerServiceClient.getOrderDispatchDetails(orderId);
-                if (details != null) {
-                    pickupOtp = emptyToNull(details.get("pickupOtp"));
-                    deliveryOtp = emptyToNull(details.get("deliveryOtp"));
-                    String method = emptyToNull(details.get("paymentMethod"));
-                    if (method != null) {
-                        try {
-                            paymentMethod = com.fooddelivery.common.enums.PaymentMethod.valueOf(method);
-                        } catch (IllegalArgumentException e) {
-                            log.error("Unknown payment method '{}' from customer-service for order {}", method, orderId);
-                        }
-                    }
-                    log.info("Successfully fetched OTP fallback from customer-service for order {}: pickupOtpPresent={}, deliveryOtpPresent={}",
-                            orderId, pickupOtp != null, deliveryOtp != null);
-                } else {
-                    log.error("Customer-service returned null dispatch details for order {}. "
-                            + "Assignment will be recorded without OTPs — handover will be refused.", orderId);
-                }
-            } catch (Exception e) {
-                log.error("Failed to fetch OTPs from customer-service for order {}. "
-                        + "Assignment will be recorded without OTPs — handover will be refused.", orderId, e);
+                paymentMethod = com.fooddelivery.common.enums.PaymentMethod.valueOf(method);
+            } catch (IllegalArgumentException e) {
+                log.error("Unknown payment method '{}' on order {}", method, orderId);
             }
         }
 

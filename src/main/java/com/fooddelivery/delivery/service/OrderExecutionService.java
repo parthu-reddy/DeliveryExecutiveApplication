@@ -77,7 +77,7 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
         try {
             String cityId = repository.findById(driverId).map(com.fooddelivery.delivery.entity.DeliveryExecutive::getCityId).orElse(null);
             if (cityId != null) {
-                String key = "drivers:available:" + cityId;
+                String key = com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVERS_AVAILABLE + cityId;
                 redisTemplate.opsForSet().add(key, driverId.toString());
             }
         } catch (Exception e) {

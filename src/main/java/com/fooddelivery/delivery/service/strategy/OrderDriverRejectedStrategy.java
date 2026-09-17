@@ -49,7 +49,7 @@ private final LogisticsDispatchService logisticsDispatchService;
                 long delayMs = 15000; // 15-second cooldown to allow releaseDriverLock() Feign call to complete
                 long dispatchAt = System.currentTimeMillis() + delayMs;
                 log.info("Queueing order {} for delayed dispatch retry via poller. Will dispatch at {} ({}ms delay).", orderId, dispatchAt, delayMs);
-                redisTemplate.opsForZSet().add("delayed_dispatch_queue", orderId.toString(), dispatchAt);
+                redisTemplate.opsForZSet().add(com.fooddelivery.common.constants.RedisKeyConstants.QUEUE_DELAYED_DISPATCH, orderId.toString(), dispatchAt);
             } else {
                 log.warn("Cached payload for order {} has missing coordinates. Cannot redispatch.", orderId);
             }

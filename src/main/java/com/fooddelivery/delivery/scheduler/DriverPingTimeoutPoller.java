@@ -25,11 +25,11 @@ private final StringRedisTemplate redisTemplate;
     public void pollPingTimeouts() {
         com.fooddelivery.common.lock.RedisLock _redisLock = new com.fooddelivery.common.lock.RedisLock(redisTemplate);
         String _lockToken = java.util.UUID.randomUUID().toString();
-        boolean locked = _redisLock.tryAcquire(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_POLL_PING_TIMEOUTS, _lockToken, java.time.Duration.ofSeconds(4));
+        boolean locked = _redisLock.tryAcquire(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_POLL_PING_TIMEOUTS, _lockToken, java.time.Duration.ofSeconds(60));
         if (!locked) { return; }
         try {    
             long currentTime = System.currentTimeMillis();
-            Set<String> timedOutOrders = redisTemplate.opsForZSet().rangeByScore(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_PING_TIMEOUTS, 0, currentTime);
+            Set<String> timedOutOrders = redisTemplate.opsForZSet().rangeByScore(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_PING_TIMEOUTS, 0, currentTime, 0, 50);
             if (timedOutOrders != null && !timedOutOrders.isEmpty()) {
                 for (String orderIdStr : timedOutOrders) {
                     try {

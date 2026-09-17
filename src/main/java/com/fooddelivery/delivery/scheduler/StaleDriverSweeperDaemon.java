@@ -115,7 +115,7 @@ private final StringRedisTemplate redisTemplate;
                 
                 if (driver != null && driver.getCityId() != null) {
                     redisTemplate.opsForGeo().remove("drivers:geo:" + driver.getCityId(), driverIdStr);
-                    redisTemplate.opsForSet().remove("drivers:available:" + driver.getCityId(), driverIdStr);
+                    redisTemplate.opsForSet().remove(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVERS_AVAILABLE + driver.getCityId(), driverIdStr);
                 }
                 
                 redisTemplate.opsForZSet().remove(DRIVER_LAST_PING_KEY, driverIdStr);

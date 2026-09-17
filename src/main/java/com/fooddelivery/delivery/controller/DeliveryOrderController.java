@@ -33,20 +33,31 @@ private final CustomerServiceClient customerServiceClient;
         if (pendingOrderId == null) {
             return ResponseEntity.ok(java.util.Collections.emptyList());
         }
+        // Never offer a ping whose window has closed. This is the endpoint the rider app actually
+        // polls, so it decides what prompt appears; ACCEPT_SCRIPT will refuse anything past the
+        // deadline, and a prompt the rider cannot act on reads as the app ignoring them.
+        //
+        // Both branches matter. A missing ZSET entry means the timeout poller already cleaned the
+        // ping up, and returning the order anyway sent no remainingPingSeconds at all -- so the app
+        // fell back to a fresh 60-second countdown for an order that could never be accepted. The
+        // driver:pending_ping key outlives the window deliberately (see CandidateFoundStrategy),
+        // so its presence alone proves nothing about whether the ping is still live.
+        Long timeoutAt = orderAssignmentService.getPingExpiration(UUID.fromString(pendingOrderId));
+        if (timeoutAt == null || timeoutAt <= System.currentTimeMillis()) {
+            log.info("PING_WINDOW_CLOSED driverId={} orderId={} timeoutAt={} -- not offering it",
+                    driverId, pendingOrderId, timeoutAt);
+            return ResponseEntity.ok(java.util.Collections.emptyList());
+        }
         List<JsonNode> orders = customerServiceClient.getUnassignedOrders();
         List<JsonNode> matchingOrders = orders.stream().filter(order -> {
             JsonNode idNode = order.get("id");
             return idNode != null && pendingOrderId.equals(idNode.asText());
         }).collect(java.util.stream.Collectors.toList());
-        // Add remainingPingSeconds
-        Long timeoutAt = orderAssignmentService.getPingExpiration(UUID.fromString(pendingOrderId));
-        if (timeoutAt != null) {
-            long remaining = (timeoutAt - System.currentTimeMillis()) / 1000;
-            if (remaining < 0) remaining = 0;
-            for (JsonNode node : matchingOrders) {
-                if (node instanceof com.fasterxml.jackson.databind.node.ObjectNode) {
-                    ((com.fasterxml.jackson.databind.node.ObjectNode) node).put("remainingPingSeconds", remaining);
-                }
+        long remaining = (timeoutAt - System.currentTimeMillis()) / 1000;
+        if (remaining < 0) remaining = 0;
+        for (JsonNode node : matchingOrders) {
+            if (node instanceof com.fasterxml.jackson.databind.node.ObjectNode) {
+                ((com.fasterxml.jackson.databind.node.ObjectNode) node).put("remainingPingSeconds", remaining);
             }
         }
         return ResponseEntity.ok(mapToUiOrders(matchingOrders, driverId));

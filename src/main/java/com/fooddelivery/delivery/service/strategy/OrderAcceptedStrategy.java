@@ -91,7 +91,7 @@ private final LogisticsDispatchService logisticsDispatchService;
             } else {
                 log.info("DISPATCH_REQUEST_READY orderId={} mode=scheduled dispatchAt={} dispatchCityId={} fleetSearchRadiusKm={}",
                         orderId, dispatchTime, dispatchCityId, fleetSearchRadiusKm);
-                redisTemplate.opsForZSet().add("delayed_dispatch_queue", orderId.toString(), dispatchTime);
+                redisTemplate.opsForZSet().add(com.fooddelivery.common.constants.RedisKeyConstants.QUEUE_DELAYED_DISPATCH, orderId.toString(), dispatchTime);
             }
         } catch (RuntimeException e) {
             // The lock must not outlive a dispatch that did not happen, or the order can never be

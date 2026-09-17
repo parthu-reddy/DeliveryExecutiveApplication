@@ -58,7 +58,7 @@ private final StringRedisTemplate redisTemplate;
         if (!EventType.DISPATCH_FAILED.name().equals(eventType)) {
             redisTemplate.delete("order:dispatch_failed_cycles:" + orderId);
         }
-        redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderId.toString());
+        redisTemplate.opsForZSet().remove(com.fooddelivery.common.constants.RedisKeyConstants.QUEUE_DELAYED_DISPATCH, orderId.toString());
         if (EventType.ORDER_CANCELLED.name().equals(eventType) || EventType.DELIVERY_FAILED.name().equals(eventType) || EventType.ORDER_CANCELLED_BY_RESTAURANT.name().equals(eventType) || EventType.ORDER_CANCELLED_BY_CUSTOMER.name().equals(eventType) || EventType.ORDER_CANCELLED_BY_ADMIN.name().equals(eventType) || EventType.ORDER_REJECTED.name().equals(eventType) || EventType.ORDER_DELAY_REJECTED.name().equals(eventType) || EventType.MANUAL_INTERVENTION_REQUIRED.name().equals(eventType)) {
             if (driverId == null || driverId.isEmpty()) {
                 driverId = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId);
@@ -107,7 +107,7 @@ private final StringRedisTemplate redisTemplate;
                         try {
                             String cityId = executive.getCityId();
                             if (cityId != null) {
-                                String key = "drivers:available:" + cityId;
+                                String key = com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVERS_AVAILABLE + cityId;
                                 redisTemplate.opsForSet().add(key, finalDriverId);
                             }
                         } catch (Exception e) {
@@ -128,7 +128,7 @@ private final StringRedisTemplate redisTemplate;
             String failedCyclesStr = redisTemplate.opsForValue().get("order:dispatch_failed_cycles:" + orderId);
             int failedCycles = failedCyclesStr != null ? Integer.parseInt(failedCyclesStr) : 0;
             log.info("Dispatch failed for order {} (Consecutive Failures: {}). Retrying in 15 seconds...", orderId, failedCycles);
-            redisTemplate.opsForZSet().add("delayed_dispatch_queue", orderId.toString(), System.currentTimeMillis() + 15000);
+            redisTemplate.opsForZSet().add(com.fooddelivery.common.constants.RedisKeyConstants.QUEUE_DELAYED_DISPATCH, orderId.toString(), System.currentTimeMillis() + 15000);
         } else {
             // For ALL terminal events (excluding DISPATCH_FAILED), mark dispatch as complete
             // This prevents stale Kafka retries of ORDER_DRIVER_REJECTED from re-dispatching

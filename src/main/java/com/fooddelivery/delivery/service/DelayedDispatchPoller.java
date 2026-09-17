@@ -28,11 +28,11 @@ private final StringRedisTemplate redisTemplate;
     public void pollDelayedDispatches() {
         com.fooddelivery.common.lock.RedisLock _redisLock = new com.fooddelivery.common.lock.RedisLock(redisTemplate);
         String _lockToken = java.util.UUID.randomUUID().toString();
-        boolean locked = _redisLock.tryAcquire(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_POLL_DELAYED_DISPATCHES, _lockToken, java.time.Duration.ofSeconds(4));
+        boolean locked = _redisLock.tryAcquire(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_POLL_DELAYED_DISPATCHES, _lockToken, java.time.Duration.ofSeconds(60));
         if (!locked) { return; }
         try {    
             long currentTime = System.currentTimeMillis();
-            Set<String> orderIds = redisTemplate.opsForZSet().rangeByScore("delayed_dispatch_queue", 0, currentTime);
+            Set<String> orderIds = redisTemplate.opsForZSet().rangeByScore(com.fooddelivery.common.constants.RedisKeyConstants.QUEUE_DELAYED_DISPATCH, 0, currentTime, 0, 50);
             if (orderIds != null && !orderIds.isEmpty()) {
                 log.info("DelayedDispatchPoller found {} orders due for dispatch.", orderIds.size());
                 for (String orderIdStr : orderIds) {
@@ -47,7 +47,7 @@ private final StringRedisTemplate redisTemplate;
                         String dispatchLock = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderIdStr);
                         if ("CANCELLED".equals(dispatchLock)) {
                             log.info("Order {} was cancelled while in delayed dispatch queue. Skipping.", orderIdStr);
-                            redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderIdStr);
+                            redisTemplate.opsForZSet().remove(com.fooddelivery.common.constants.RedisKeyConstants.QUEUE_DELAYED_DISPATCH, orderIdStr);
                             continue;
                         }
                         String failedCyclesStr = redisTemplate.opsForValue().get("order:dispatch_failed_cycles:" + orderIdStr);
@@ -55,7 +55,7 @@ private final StringRedisTemplate redisTemplate;
                         log.info("Processing delayed dispatch for order {}. dispatch_failed_cycles={}, dispatch_lock={}", orderIdStr, failedCycles, dispatchLock);
                         if (failedCycles >= 5) {
                             log.error("Order {} failed to find any drivers 5 consecutive times. Emitting MANUAL_INTERVENTION_REQUIRED", orderIdStr);
-                            redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderIdStr);
+                            redisTemplate.opsForZSet().remove(com.fooddelivery.common.constants.RedisKeyConstants.QUEUE_DELAYED_DISPATCH, orderIdStr);
                             redisTemplate.delete("order:dispatch_failed_cycles:" + orderIdStr);
                             java.util.Map<String, Object> eventPayload = java.util.Map.of("orderId", orderIdStr, "eventType", com.fooddelivery.common.constants.EventType.MANUAL_INTERVENTION_REQUIRED.name());
                             // Deliberately synchronous (bypassing outbox) to immediately emit MANUAL_INTERVENTION_REQUIRED
@@ -104,10 +104,9 @@ private final StringRedisTemplate redisTemplate;
                             }
                         } else {
                             log.warn("No dispatch payload found for order {} in delayed queue. Removing stale entry.", orderIdStr);
-                            redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderIdStr);
                         }
                         // Remove from queue ONLY after successful processing
-                        redisTemplate.opsForZSet().remove("delayed_dispatch_queue", orderIdStr);
+                        redisTemplate.opsForZSet().remove(com.fooddelivery.common.constants.RedisKeyConstants.QUEUE_DELAYED_DISPATCH, orderIdStr);
                     } catch (Exception e) {
                         log.error("Failed to process delayed dispatch for order {}", orderIdStr, e);
                     } finally {

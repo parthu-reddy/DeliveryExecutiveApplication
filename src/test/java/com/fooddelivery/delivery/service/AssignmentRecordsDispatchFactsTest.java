@@ -68,7 +68,7 @@ class AssignmentRecordsDispatchFactsTest {
     void theOtpsAndThePaymentMethodAreAllRecorded() {
         dispatchPayload("{\"pickupOtp\":\"111111\",\"deliveryOtp\":\"222222\",\"paymentMethod\":\"UPI\"}");
 
-        service.recordAssignment(orderId, driverId);
+        service.recordAssignment(orderId, driverId, service.resolveDispatchDetails(orderId));
 
         OrderAssignment a = recorded();
         assertEquals(orderId, a.getOrderId());
@@ -85,7 +85,7 @@ class AssignmentRecordsDispatchFactsTest {
     void aPrepaidOrderIsRecordedAsSuch() {
         dispatchPayload("{\"pickupOtp\":\"111111\",\"deliveryOtp\":\"222222\",\"paymentMethod\":\"CARD\"}");
 
-        service.recordAssignment(orderId, driverId);
+        service.recordAssignment(orderId, driverId, service.resolveDispatchDetails(orderId));
 
         assertEquals(PaymentMethod.CARD, recorded().getPaymentMethod());
     }
@@ -94,7 +94,7 @@ class AssignmentRecordsDispatchFactsTest {
     void aMissingPayloadStillRecordsTheAssignment() {
         dispatchPayload(null);
 
-        service.recordAssignment(orderId, driverId);
+        service.recordAssignment(orderId, driverId, service.resolveDispatchDetails(orderId));
 
         OrderAssignment a = recorded();
         assertEquals(driverId, a.getDriverId(),
@@ -108,7 +108,7 @@ class AssignmentRecordsDispatchFactsTest {
     void anUnknownPaymentMethodIsLeftNullRatherThanGuessed() {
         dispatchPayload("{\"pickupOtp\":\"111111\",\"deliveryOtp\":\"222222\",\"paymentMethod\":\"BARTER\"}");
 
-        service.recordAssignment(orderId, driverId);
+        service.recordAssignment(orderId, driverId, service.resolveDispatchDetails(orderId));
 
         assertNull(recorded().getPaymentMethod());
     }
@@ -125,7 +125,7 @@ class AssignmentRecordsDispatchFactsTest {
         when(assignments.findByOrderId(orderId)).thenReturn(Optional.of(existing));
         dispatchPayload(null);
 
-        service.recordAssignment(orderId, driverId);
+        service.recordAssignment(orderId, driverId, service.resolveDispatchDetails(orderId));
 
         OrderAssignment a = recorded();
         assertEquals(driverId, a.getDriverId());

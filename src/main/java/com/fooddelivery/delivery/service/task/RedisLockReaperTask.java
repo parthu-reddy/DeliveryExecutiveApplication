@@ -31,7 +31,12 @@ private final StringRedisTemplate redisTemplate;
     public void reapOrphanedLocks() {
         com.fooddelivery.common.lock.RedisLock _redisLock = new com.fooddelivery.common.lock.RedisLock(redisTemplate);
         String _lockToken = java.util.UUID.randomUUID().toString();
-        boolean lockAcquired = _redisLock.tryAcquire("lock:reaper_task_execution", _lockToken, java.time.Duration.ofMinutes(1));
+        // 5 minutes, not 1. This job does two full keyspace SCANs plus a batched DB fetch, so its
+        // runtime grows with the keyspace and a 1-minute TTL was a guess that overruns on a busy
+        // instance. A lock TTL is a crash-recovery bound -- how long a dead holder blocks others --
+        // not a scheduling interval; the happy path releases in the finally below. Overrunning is
+        // now merely wasteful rather than destructive, because that release is token-checked.
+        boolean lockAcquired = _redisLock.tryAcquire(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_REAPER_TASK, _lockToken, java.time.Duration.ofMinutes(5));
         if (!Boolean.TRUE.equals(lockAcquired)) {
             log.debug("Another instance is already running the Reaper Task. Skipping.");
             return;
@@ -127,7 +132,7 @@ private final StringRedisTemplate redisTemplate;
         } catch (Exception e) {
             log.error("Error during Redis Lock Reaper Task", e);
         } finally {
-            redisTemplate.delete("lock:reaper_task_execution");
+            _redisLock.release(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_REAPER_TASK, _lockToken);
         }
     }
 

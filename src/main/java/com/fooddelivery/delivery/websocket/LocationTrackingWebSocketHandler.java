@@ -9,6 +9,7 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
+import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 import reactor.core.publisher.Sinks;
 import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
@@ -63,6 +64,9 @@ private final ObjectMapper objectMapper;
         }
     }
 
+    private static final int SEND_TIME_LIMIT_MS = 5000;
+    private static final int BUFFER_SIZE_BYTES = 512 * 1024;
+
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         String userId = (String) session.getAttributes().get("userId");
@@ -75,9 +79,10 @@ private final ObjectMapper objectMapper;
             }
             return;
         }
-        String sessionId = session.getId();
-        activeSessions.put(sessionId, session);
-        userSessions.put(userId, session);
+        WebSocketSession guarded = new ConcurrentWebSocketSessionDecorator(session, SEND_TIME_LIMIT_MS, BUFFER_SIZE_BYTES);
+        String sessionId = guarded.getId();
+        activeSessions.put(sessionId, guarded);
+        userSessions.put(userId, guarded);
         log.info("WebSocket connected: {} for user: {}", sessionId, userId);
     }
 
@@ -123,12 +128,33 @@ private final ObjectMapper objectMapper;
         activeSessions.remove(session.getId());
         String userId = (String) session.getAttributes().get("userId");
         if (userId != null) {
-            userSessions.remove(userId, session);
+            // Compare by session id, not by reference. The map holds the
+            // ConcurrentWebSocketSessionDecorator created in afterConnectionEstablished, while the
+            // container hands this callback the RAW session; the decorator does not override
+            // equals, so remove(userId, session) never matches and the entry leaked on every close.
+            // Still conditional: a driver who reconnects before this callback fires must keep their
+            // NEW session, which a plain remove(userId) would drop.
+            userSessions.computeIfPresent(userId,
+                    (key, stored) -> stored.getId().equals(session.getId()) ? null : stored);
         }
         log.info("WebSocket closed: {} for user: {} with code: {} reason: {}", session.getId(), userId, status.getCode(), status.getReason());
     }
 
-    public void sendPingToDriver(String driverId, String orderId) {
+    /** Live driver sessions. Exposed for SessionRegistryLifecycleTest, which pins that a
+     *  closed socket is actually removed -- the decorator broke reference equality once already. */
+    int sessionCountForTest() {
+        return userSessions.size();
+    }
+
+    /**
+     * Publishes a dispatch ping to whichever instance holds this driver's socket.
+     *
+     * @return true only when the ping reached a live socket. The caller records this: a driver who
+     *         was never shown the order must not be counted as having rejected it when the ping
+     *         window lapses. A push notification is also sent by the caller, but the notification
+     *         router reports acceptance, not delivery, so it cannot answer this question.
+     */
+    public boolean sendPingToDriver(String driverId, String orderId) {
         try {
             java.util.Map<String, String> payload = java.util.Map.of("type", "NEW_ORDER_DISPATCH", "orderId", orderId);
             String message = objectMapper.writeValueAsString(payload);
@@ -138,6 +164,7 @@ private final ObjectMapper objectMapper;
             
             if (subscribers != null && subscribers > 0) {
                 log.info("Published ping to driver {} to {} instances", driverId, subscribers);
+                return true;
             } else {
                 Double lastPing = redisTemplate.opsForZSet().score("driver_last_ping", driverId);
                 boolean isOffline = lastPing == null || (System.currentTimeMillis() - lastPing > 30000);
@@ -152,6 +179,7 @@ private final ObjectMapper objectMapper;
         } catch (Exception e) {
             log.error("Failed to publish ping for driver {}", driverId, e);
         }
+        return false;
     }
 
     public void handleRedisPing(String message, String channel) {
@@ -163,6 +191,7 @@ private final ObjectMapper objectMapper;
                 log.info("Successfully sent ping to driver {} via WebSocket", driverId);
             } catch (Exception e) {
                 log.error("Failed to send ping to driver {} via WebSocket", driverId, e);
+                meterRegistry.counter("ws.dispatch.send_failed").increment();
             }
         }
     }
