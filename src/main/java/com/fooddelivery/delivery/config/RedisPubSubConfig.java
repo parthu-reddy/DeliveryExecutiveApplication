@@ -12,16 +12,17 @@ public class RedisPubSubConfig {
     @Bean
     public RedisMessageListenerContainer redisMessageListenerContainer(
             RedisConnectionFactory connectionFactory,
-            org.springframework.data.redis.listener.adapter.MessageListenerAdapter pingListenerAdapter) {
+            com.fooddelivery.delivery.websocket.LocationTrackingWebSocketHandler handler) {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
-        container.addMessageListener(pingListenerAdapter, new org.springframework.data.redis.listener.PatternTopic("ws:driver:*"));
+        
+        org.springframework.data.redis.connection.MessageListener listener = (message, pattern) -> {
+            String channel = new String(message.getChannel(), java.nio.charset.StandardCharsets.UTF_8);
+            String body = new String(message.getBody(), java.nio.charset.StandardCharsets.UTF_8);
+            handler.handleRedisPing(body, channel);
+        };
+        
+        container.addMessageListener(listener, new org.springframework.data.redis.listener.PatternTopic("ws:driver:*"));
         return container;
-    }
-
-    @Bean
-    public org.springframework.data.redis.listener.adapter.MessageListenerAdapter pingListenerAdapter(
-            com.fooddelivery.delivery.websocket.LocationTrackingWebSocketHandler handler) {
-        return new org.springframework.data.redis.listener.adapter.MessageListenerAdapter(handler, "handleRedisPing");
     }
 }
