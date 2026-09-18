@@ -69,7 +69,7 @@ class CappedBatchDrainsTest {
             return null;
         }).when(assignments).timeoutOrderPing(any(UUID.class));
 
-        DriverPingTimeoutPoller poller = new DriverPingTimeoutPoller(redis, assignments);
+        DriverPingTimeoutPoller poller = new DriverPingTimeoutPoller(redis, new io.micrometer.core.instrument.simple.SimpleMeterRegistry(), assignments);
 
         // Enough ticks to clear it, and no more. ceil(157/50) = 4.
         int ticks = (initial + CAP - 1) / CAP;
@@ -105,7 +105,7 @@ class CappedBatchDrainsTest {
         org.mockito.Mockito.doAnswer(inv -> { processed.incrementAndGet(); return null; })
                 .when(assignments).timeoutOrderPing(any(UUID.class));
 
-        new DriverPingTimeoutPoller(redis, assignments).pollPingTimeouts();
+        new DriverPingTimeoutPoller(redis, new io.micrometer.core.instrument.simple.SimpleMeterRegistry(), assignments).pollPingTimeouts();
 
         assertThat(processed.get())
                 .describedAs("the cap is what lets the lock TTL cover the work")

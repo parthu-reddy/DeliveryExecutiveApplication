@@ -73,7 +73,8 @@ class SchedulerLockOwnershipTest {
         when(values.setIfAbsent(eq(RedisKeyConstants.LOCK_REAPER_TASK), any(), any(Duration.class)))
                 .thenReturn(false);
 
-        new RedisLockReaperTask(redis, mock(com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository.class))
+        new RedisLockReaperTask(redis, new io.micrometer.core.instrument.simple.SimpleMeterRegistry(),
+                mock(com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository.class))
                 .reapOrphanedLocks();
 
         verify(redis, never()).delete(RedisKeyConstants.LOCK_REAPER_TASK);

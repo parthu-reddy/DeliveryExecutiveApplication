@@ -21,6 +21,7 @@ import java.util.UUID;
  */
 public class RedisLockReaperTask {
 private final StringRedisTemplate redisTemplate;
+    private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
     private final IDeliveryExecutiveRepository repository;
 
     /**
@@ -43,6 +44,8 @@ private final StringRedisTemplate redisTemplate;
         }
         log.info("Starting Redis Lock Reaper Task to clean up orphaned locks...");
         try {
+          com.fooddelivery.common.lock.LockedWorkTimer.timed(meterRegistry, "redisLockReaperTask",
+                  java.time.Duration.ofMinutes(5), () -> {
             // Find all active order keys using SCAN (non-blocking) instead of KEYS
             Set<String> keys = new java.util.HashSet<>();
             try (var cursor = redisTemplate.getConnectionFactory().getConnection().scan(org.springframework.data.redis.core.ScanOptions.scanOptions().match(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + "*").count(100).build())) {
@@ -129,6 +132,7 @@ private final StringRedisTemplate redisTemplate;
                     log.error("Reaper Task: Error processing lockKey {}", lockKey, e);
                 }
             }
+          });
         } catch (Exception e) {
             log.error("Error during Redis Lock Reaper Task", e);
         } finally {

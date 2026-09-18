@@ -20,6 +20,7 @@ import java.util.UUID;
  */
 public class DelayedDispatchPoller {
 private final StringRedisTemplate redisTemplate;
+    private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
     private final LogisticsDispatchService logisticsDispatchService;
     private final ObjectMapper objectMapper;
     private final org.springframework.kafka.core.KafkaTemplate<String, String> kafkaTemplate;
@@ -30,7 +31,9 @@ private final StringRedisTemplate redisTemplate;
         String _lockToken = java.util.UUID.randomUUID().toString();
         boolean locked = _redisLock.tryAcquire(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_POLL_DELAYED_DISPATCHES, _lockToken, java.time.Duration.ofSeconds(60));
         if (!locked) { return; }
-        try {    
+        try {
+          com.fooddelivery.common.lock.LockedWorkTimer.timed(meterRegistry, "delayedDispatchPoller",
+                  java.time.Duration.ofSeconds(60), () -> {
             long currentTime = System.currentTimeMillis();
             Set<String> orderIds = redisTemplate.opsForZSet().rangeByScore(com.fooddelivery.common.constants.RedisKeyConstants.QUEUE_DELAYED_DISPATCH, 0, currentTime, 0, 50);
             if (orderIds != null && !orderIds.isEmpty()) {
@@ -116,6 +119,7 @@ private final StringRedisTemplate redisTemplate;
                 }
             }
         
+          });
         } finally {
             _redisLock.release(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_POLL_DELAYED_DISPATCHES, _lockToken);
         }}

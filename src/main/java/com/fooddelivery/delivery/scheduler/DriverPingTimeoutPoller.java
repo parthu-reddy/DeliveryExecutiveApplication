@@ -19,6 +19,7 @@ import java.util.UUID;
  */
 public class DriverPingTimeoutPoller {
 private final StringRedisTemplate redisTemplate;
+    private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
     private final OrderAssignmentService orderAssignmentService;
 
     @Scheduled(fixedDelay = 5000)
@@ -27,7 +28,9 @@ private final StringRedisTemplate redisTemplate;
         String _lockToken = java.util.UUID.randomUUID().toString();
         boolean locked = _redisLock.tryAcquire(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_POLL_PING_TIMEOUTS, _lockToken, java.time.Duration.ofSeconds(60));
         if (!locked) { return; }
-        try {    
+        try {
+          com.fooddelivery.common.lock.LockedWorkTimer.timed(meterRegistry, "driverPingTimeoutPoller",
+                  java.time.Duration.ofSeconds(60), () -> {
             long currentTime = System.currentTimeMillis();
             Set<String> timedOutOrders = redisTemplate.opsForZSet().rangeByScore(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_PING_TIMEOUTS, 0, currentTime, 0, 50);
             if (timedOutOrders != null && !timedOutOrders.isEmpty()) {
@@ -40,6 +43,7 @@ private final StringRedisTemplate redisTemplate;
                 }
             }
         
+          });
         } finally {
             _redisLock.release(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_POLL_PING_TIMEOUTS, _lockToken);
         }}

@@ -24,7 +24,7 @@ import org.springframework.test.context.ActiveProfiles;
 @org.springframework.test.context.ActiveProfiles("contract-test")
 @AutoConfigureMessageVerifier
 @org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.BEFORE_CLASS)
-@EmbeddedKafka(partitions = 1, topics = {"platform.logistics.dispatch", "order-events"})
+@EmbeddedKafka(adminTimeout = 60, partitions = 1, topics = {"platform.logistics.dispatch", "order-events"})
 public abstract class BaseMessagingClass {
 
     @MockBean

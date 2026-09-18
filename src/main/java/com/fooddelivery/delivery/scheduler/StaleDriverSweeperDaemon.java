@@ -26,6 +26,7 @@ import java.util.stream.Collectors;
  */
 public class StaleDriverSweeperDaemon {
 private final StringRedisTemplate redisTemplate;
+    private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
     private final IDeliveryExecutiveRepository deliveryExecutiveRepository;
     private static final String DRIVER_LAST_PING_KEY = "driver_last_ping";
     private static final long STALE_THRESHOLD_MS = 60000; // 60 seconds
@@ -36,7 +37,9 @@ private final StringRedisTemplate redisTemplate;
         String _lockToken = java.util.UUID.randomUUID().toString();
         boolean locked = _redisLock.tryAcquire(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_SWEEP_STALE_DRIVERS, _lockToken, java.time.Duration.ofSeconds(50));
         if (!locked) { return; }
-        try {    
+        try {
+          com.fooddelivery.common.lock.LockedWorkTimer.timed(meterRegistry, "staleDriverSweeperDaemon",
+                  java.time.Duration.ofSeconds(50), () -> {
             log.info("Starting StaleDriverSweeperDaemon sweep...");
             long thresholdTimestamp = System.currentTimeMillis() - STALE_THRESHOLD_MS;
             try {
@@ -52,6 +55,7 @@ private final StringRedisTemplate redisTemplate;
                 log.error("Error during StaleDriverSweeperDaemon execution", e);
             }
         
+          });
         } finally {
             _redisLock.release(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_SWEEP_STALE_DRIVERS, _lockToken);
         }}
