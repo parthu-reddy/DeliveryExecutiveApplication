@@ -12,3 +12,4 @@ The DeliveryExecutiveApplication handles the onboarding, availability, and activ
 - **Availability Management**: Tracks if a driver is online and available for orders.
 - **Order Dispatch**: Connects with `MapsIntegration` to find the nearest driver to a restaurant for a new order.
 - **Live Location**: Streams driver GPS coordinates via Kafka for the `CustomerApplication` to consume.
+
