@@ -16,6 +16,9 @@ private final org.springframework.transaction.support.TransactionTemplate transa
     private final IDeliveryExecutiveRepository repository;
     private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
 
+    @org.springframework.beans.factory.annotation.Value("${app.rider.biometric-verification.enabled:true}")
+    private boolean biometricVerificationEnabled;
+
     @Transactional
     public DeliveryExecutive onboard(UUID driverId, String fullName, String phoneNumber, String vehicleNumber, String photoUrl, com.fooddelivery.common.enums.VehicleClass vehicleType) {
         DeliveryExecutive executive = repository.findById(driverId).orElseGet(DeliveryExecutive::new);
@@ -59,7 +62,7 @@ private final org.springframework.transaction.support.TransactionTemplate transa
             if (isOnline && !executive.isActive()) {
                 throw new IllegalArgumentException("Account inactive: Driver account is currently deactivated or suspended.");
             }
-            if (isOnline) {
+            if (isOnline && biometricVerificationEnabled) {
                 if (executive.getLastBiometricVerificationAt() == null || executive.getLastBiometricVerificationAt().isBefore(java.time.OffsetDateTime.now().minusHours(24))) {
                     throw new IllegalArgumentException("Biometric verification required: Please complete your daily selfie verification to go online.");
                 }
