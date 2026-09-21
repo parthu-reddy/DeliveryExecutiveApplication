@@ -235,7 +235,7 @@ public void setAvailable(final Boolean available) {
     }
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/accept")
-    @PreAuthorize("hasRole(\'DELIVERY\') and #driverId.toString() == authentication.principal")
+    @PreAuthorize("hasRole(\'DELIVERY\') and #driverId.toString() == authentication.name")
     public ResponseEntity<ApiResponse<Void>> acceptOrder(@PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
         try {
             orderAssignmentService.acceptOrderPing(driverId, orderId);
@@ -255,7 +255,7 @@ public void setAvailable(final Boolean available) {
     }
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/reject")
-    @PreAuthorize("hasRole(\'DELIVERY\') and #driverId.toString() == authentication.principal")
+    @PreAuthorize("hasRole(\'DELIVERY\') and #driverId.toString() == authentication.name")
     public ResponseEntity<ApiResponse<Void>> rejectOrder(@PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
         try {
             orderAssignmentService.rejectOrderPing(driverId, orderId);
@@ -267,14 +267,14 @@ public void setAvailable(final Boolean available) {
     }
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/abort")
-    @PreAuthorize("hasRole(\'DELIVERY\') and #driverId.toString() == authentication.principal")
+    @PreAuthorize("hasRole(\'DELIVERY\') and #driverId.toString() == authentication.name")
     public ResponseEntity<ApiResponse<Void>> abortOrder(@PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
         orderExecutionService.abortOrder(driverId, orderId);
         return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order assignment aborted. Looking for a new driver.").build());
     }
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/status")
-    @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
+    @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.name")
     public ResponseEntity<ApiResponse<Void>> updateOrderStatus(@PathVariable UUID driverId, @PathVariable UUID orderId, @Valid @RequestBody UpdateOrderStatusRequest request) {
         log.info("DELIVERY_STATUS_UPDATE_REQUESTED driverId={} orderId={} status={} pickupOtpProvided={} deliveryOtpProvided={}",
                 driverId, orderId, request.getStatus(), request.getPickupOtp() != null,
@@ -284,7 +284,7 @@ public void setAvailable(final Boolean available) {
     }
 
     @GetMapping(value = "/drivers/{driverId}/orders/{orderId}/restaurant-status-stream", produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
-    @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.principal")
+    @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.name")
     public org.springframework.web.servlet.mvc.method.annotation.SseEmitter streamRestaurantStatus(@PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
         // @PreAuthorize proves the caller is this driver; it says nothing about the order. Without
         // this, any authenticated driver could subscribe to any order's restaurant-status channel.
