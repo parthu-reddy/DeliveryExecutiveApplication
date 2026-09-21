@@ -156,7 +156,7 @@ public class OrderAssignmentService {
         }
     }
 
-    private static final String REJECT_SCRIPT = "local pendingKey = KEYS[1]\n" + "local lockKey = KEYS[2]\n" + "local driverId = ARGV[1]\n" + "if redis.call(\'EXISTS\', lockKey) == 1 then\n" + "    redis.call(\'SREM\', pendingKey, driverId)\n" + "    return \'ACCEPTED_ALREADY\'\n" + "end\n" + "local removed = redis.call(\'SREM\', pendingKey, driverId)\n" + "if removed == 0 then return \'NOT_FOUND\' end\n" + "local remaining = redis.call(\'SCARD\', pendingKey)\n" + "if remaining == 0 then return \'LAST_REJECT\' end\n" + "return \'REJECTED\'";
+    private static final String REJECT_SCRIPT = "local pendingKey = KEYS[1]\n" + "local lockKey = KEYS[2]\n" + "local driverId = ARGV[1]\n" + "if redis.call('EXISTS', lockKey) == 1 then\n" + "    redis.call('SREM', pendingKey, driverId)\n" + "    return 'ACCEPTED_ALREADY'\n" + "end\n" + "local removed = redis.call('SREM', pendingKey, driverId)\n" + "if removed == 0 then return 'NOT_FOUND' end\n" + "local remaining = redis.call('SCARD', pendingKey)\n" + "if remaining == 0 then return 'LAST_REJECT' end\n" + "return 'REJECTED'";
 
     public void rejectOrderPing(UUID driverId, UUID orderId) {
         log.info("Driver {} rejected order ping {}", driverId, orderId);
@@ -210,7 +210,7 @@ public class OrderAssignmentService {
         }
     }
 
-    private static final String TIMEOUT_SCRIPT = "local pendingKey = KEYS[1]\n" + "local lockKey = KEYS[2]\n" + "if redis.call(\'EXISTS\', lockKey) == 1 then\n" + "    redis.call(\'DEL\', pendingKey)\n" + "    return {\'ALREADY_ACCEPTED\'}\n" + "end\n" + "local pendingDrivers = redis.call(\'SMEMBERS\', pendingKey)\n" + "if #pendingDrivers == 0 then return {\'EMPTY\'} end\n" + "redis.call(\'DEL\', pendingKey)\n" + "return pendingDrivers";
+    private static final String TIMEOUT_SCRIPT = "local pendingKey = KEYS[1]\n" + "local lockKey = KEYS[2]\n" + "if redis.call('EXISTS', lockKey) == 1 then\n" + "    redis.call('DEL', pendingKey)\n" + "    return {'ALREADY_ACCEPTED'}\n" + "end\n" + "local pendingDrivers = redis.call('SMEMBERS', pendingKey)\n" + "if #pendingDrivers == 0 then return {'EMPTY'} end\n" + "redis.call('DEL', pendingKey)\n" + "return pendingDrivers";
 
     public void timeoutOrderPing(UUID orderId) {
         log.info("Order ping timed out for order {}", orderId);

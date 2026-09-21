@@ -21,7 +21,7 @@ import jakarta.validation.constraints.Size;
 
 @RestController
 @RequestMapping("/api/delivery")
-@PreAuthorize("hasRole(\'DELIVERY\')")
+@PreAuthorize("hasRole('DELIVERY')")
 @lombok.extern.slf4j.Slf4j
 @lombok.RequiredArgsConstructor
 public class DeliveryExecutiveController {
@@ -235,7 +235,7 @@ public void setAvailable(final Boolean available) {
     }
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/accept")
-    @PreAuthorize("hasRole(\'DELIVERY\') and #driverId.toString() == authentication.name")
+    @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.name")
     public ResponseEntity<ApiResponse<Void>> acceptOrder(@PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
         try {
             orderAssignmentService.acceptOrderPing(driverId, orderId);
@@ -255,7 +255,7 @@ public void setAvailable(final Boolean available) {
     }
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/reject")
-    @PreAuthorize("hasRole(\'DELIVERY\') and #driverId.toString() == authentication.name")
+    @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.name")
     public ResponseEntity<ApiResponse<Void>> rejectOrder(@PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
         try {
             orderAssignmentService.rejectOrderPing(driverId, orderId);
@@ -267,7 +267,7 @@ public void setAvailable(final Boolean available) {
     }
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/abort")
-    @PreAuthorize("hasRole(\'DELIVERY\') and #driverId.toString() == authentication.name")
+    @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.name")
     public ResponseEntity<ApiResponse<Void>> abortOrder(@PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
         orderExecutionService.abortOrder(driverId, orderId);
         return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order assignment aborted. Looking for a new driver.").build());

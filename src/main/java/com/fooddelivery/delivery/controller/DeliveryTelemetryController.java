@@ -21,7 +21,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/v1/delivery/telemetry")
-@PreAuthorize("hasRole(\'DELIVERY\')")
+@PreAuthorize("hasRole('DELIVERY')")
 @lombok.extern.slf4j.Slf4j
 @lombok.RequiredArgsConstructor
 public class DeliveryTelemetryController {

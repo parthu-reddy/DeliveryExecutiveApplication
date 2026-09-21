@@ -11,7 +11,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/delivery/verification")
-@PreAuthorize("hasRole(\'DELIVERY\')")
+@PreAuthorize("hasRole('DELIVERY')")
 @lombok.extern.slf4j.Slf4j
 @lombok.RequiredArgsConstructor
 public class DeliveryVerificationController {

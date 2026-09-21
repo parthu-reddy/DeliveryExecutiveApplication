@@ -29,7 +29,7 @@ private final IDeliveryExecutiveRepository repository;
     }
 
     @GetMapping("/drivers/available-with-location")
-    @PreAuthorize("hasRole(\'ADMIN\')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<com.fooddelivery.delivery.dto.DriverLocationDTO>> getAvailableDriversWithLocation(@RequestParam String cityId, @RequestParam(required = false, defaultValue = "0") double lat, @RequestParam(required = false, defaultValue = "0") double lng, @RequestParam(required = false, defaultValue = "50") double radiusKm) {
         return ResponseEntity.ok(profileService.getAvailableDriversWithLocation(cityId, lat, lng, radiusKm));
     }
@@ -43,20 +43,20 @@ private final IDeliveryExecutiveRepository repository;
     }
 
     @PostMapping("/orders/{orderId}/assign")
-    @PreAuthorize("hasRole(\'ADMIN\')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> forceAssignOrder(@PathVariable UUID orderId, @RequestParam UUID driverId) {
         orderAssignmentService.forceAssignOrder(orderId, driverId);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/drivers/{driverId}")
-    @PreAuthorize("hasAnyRole(\'ADMIN\', \'RESTAURANT\')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RESTAURANT')")
     public ResponseEntity<DeliveryExecutive> getDriverById(@PathVariable UUID driverId) {
         return repository.findById(driverId).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping("/drivers/batch")
-    @PreAuthorize("hasAnyRole(\'ADMIN\', \'RESTAURANT\')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RESTAURANT')")
     public ResponseEntity<List<DeliveryExecutive>> getDriversByIds(@RequestBody List<UUID> driverIds) {
         List<DeliveryExecutive> drivers = repository.findAllById(driverIds);
         return ResponseEntity.ok(drivers);
