@@ -20,7 +20,7 @@ private final org.springframework.transaction.support.TransactionTemplate transa
     private boolean biometricVerificationEnabled;
 
     @Transactional
-    public DeliveryExecutive onboard(UUID driverId, String fullName, String phoneNumber, String vehicleNumber, String photoUrl, com.fooddelivery.common.enums.VehicleClass vehicleType) {
+    public DeliveryExecutive onboard(UUID driverId, String fullName, String phoneNumber, String vehicleNumber, String photoUrl, com.fooddelivery.common.enums.VehicleClass vehicleType, String cityId) {
         DeliveryExecutive executive = repository.findById(driverId).orElseGet(DeliveryExecutive::new);
         if (executive.getId() == null) {
             executive.setId(driverId);
@@ -30,6 +30,7 @@ private final org.springframework.transaction.support.TransactionTemplate transa
         executive.setPhoneNumber(phoneNumber);
         executive.setVehicleNumber(vehicleNumber);
         executive.setPhotoUrl(photoUrl);
+        executive.setCityId(cityId);
         if (vehicleType != null) {
             executive.setVehicleType(vehicleType);
         }

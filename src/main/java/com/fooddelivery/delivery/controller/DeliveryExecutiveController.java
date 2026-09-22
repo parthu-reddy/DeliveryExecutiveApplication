@@ -35,6 +35,9 @@ private final DeliveryExecutiveProfileService profileService;
 
     public static class DeliveryOnboardRequest {
         @NotBlank
+        @Size(max = 50)
+        private String cityId;
+        @NotBlank
         @Size(max = 100)
         private String fullName;
         @NotBlank
@@ -49,6 +52,10 @@ private final DeliveryExecutiveProfileService profileService;
         private com.fooddelivery.common.enums.VehicleClass vehicleType;
 
 public DeliveryOnboardRequest() {
+        }
+
+public String getCityId() {
+            return this.cityId;
         }
 
 public String getFullName() {
@@ -69,6 +76,10 @@ public String getPhotoUrl() {
 
 public com.fooddelivery.common.enums.VehicleClass getVehicleType() {
             return this.vehicleType;
+        }
+
+public void setCityId(final String cityId) {
+            this.cityId = cityId;
         }
 
 public void setFullName(final String fullName) {
@@ -180,12 +191,13 @@ public void setAvailable(final Boolean available) {
 
     @PostMapping("/onboard")
     public ResponseEntity<ApiResponse<com.fooddelivery.delivery.entity.DeliveryExecutive>> onboardDriver(java.security.Principal principal, @Valid @RequestBody DeliveryOnboardRequest request) {
+        String cityId = request.getCityId();
         String fullName = request.getFullName();
         String phoneNumber = request.getPhoneNumber();
         String vehicleNumber = request.getVehicleNumber();
         String photoUrl = request.getPhotoUrl();
         com.fooddelivery.common.enums.VehicleClass vehicleType = request.getVehicleType();
-        com.fooddelivery.delivery.entity.DeliveryExecutive executive = profileService.onboard(UUID.fromString(principal.getName()), fullName, phoneNumber, vehicleNumber, photoUrl, vehicleType);
+        com.fooddelivery.delivery.entity.DeliveryExecutive executive = profileService.onboard(UUID.fromString(principal.getName()), fullName, phoneNumber, vehicleNumber, photoUrl, vehicleType, cityId);
         return ResponseEntity.ok(ApiResponse.success(executive, "Delivery Executive onboarded successfully"));
     }
 
