@@ -107,7 +107,7 @@ private final StringRedisTemplate redisTemplate;
                 try {
                     UUID driverId = UUID.fromString(driverIdStr);
                     DeliveryExecutive executive = driverMap.get(driverId);
-                    if (executive != null && (executive.getStatus() == DeliveryExecutiveStatus.ONLINE || executive.getStatus() == DeliveryExecutiveStatus.OFFLINE)) {
+                    if (isSafeToReap(executive)) {
                         log.warn("Reaper Task: Found orphaned lock for driver {} (status: {}) on order {}. Removing locks.", driverId, executive.getStatus(), orderIdStr);
                         redisTemplate.delete(key);
                         redisTemplate.delete(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderIdStr);
@@ -124,7 +124,7 @@ private final StringRedisTemplate redisTemplate;
                 try {
                     UUID driverId = UUID.fromString(driverIdStr);
                     DeliveryExecutive executive = driverMap.get(driverId);
-                    if (executive != null && (executive.getStatus() == DeliveryExecutiveStatus.ONLINE || executive.getStatus() == DeliveryExecutiveStatus.OFFLINE)) {
+                    if (isSafeToReap(executive)) {
                         log.warn("Reaper Task: Found orphaned order lock for driver {} (status: {}) on order {}. Removing lock.", driverId, executive.getStatus(), orderIdStr);
                         redisTemplate.delete(lockKey);
                     }
@@ -138,6 +138,19 @@ private final StringRedisTemplate redisTemplate;
         } finally {
             _redisLock.release(com.fooddelivery.common.constants.RedisKeyConstants.LOCK_REAPER_TASK, _lockToken);
         }
+    }
+
+    /**
+     * OFFLINE does not mean that the assignment ended. A rider can lose their location heartbeat
+     * or WebSocket connection while carrying an order, and the stale-driver sweeper deliberately
+     * records that connection state as OFFLINE. The active-order lock must survive that transient
+     * state so the rider cannot accept a second order after reconnecting.
+     *
+     * <p>A completed delivery moves the rider back to ONLINE and the normal completion path removes
+     * both locks. ONLINE is retained here only as crash recovery for that cleanup path.
+     */
+    static boolean isSafeToReap(DeliveryExecutive executive) {
+        return executive != null && executive.getStatus() == DeliveryExecutiveStatus.ONLINE;
     }
 
 }
