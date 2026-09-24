@@ -23,8 +23,22 @@ private final MapsServiceClient mapsClient;
         try {
             String origin = sourceLat + "," + sourceLng;
             String destination = destLat + "," + destLng;
-            com.fooddelivery.common.dto.maps.RouteResponseDto response = mapsClient.getRoute(origin, destination);
-            return ResponseEntity.ok(response);
+            // The maps service wraps the route in ApiResponse; this passed the client's all-null
+            // decode straight through, so no order map ever received a polyline. The body stays
+            // flat ({polyline, distance, duration, ...}) because that is what the UI reads, plus
+            // travelSeconds -- driving time as a number, for arrival estimates.
+            com.fooddelivery.common.dto.ApiResponse<com.fooddelivery.common.dto.maps.RouteResponseDto> wrapped = mapsClient.getRoute(origin, destination);
+            com.fooddelivery.common.dto.maps.RouteResponseDto route = wrapped == null ? null : wrapped.getData();
+            if (route == null || route.getPolyline() == null) {
+                return ResponseEntity.status(org.springframework.http.HttpStatus.BAD_GATEWAY)
+                        .body(ApiResponse.error("No route returned by the maps service"));
+            }
+            Map<String, Object> body = new java.util.LinkedHashMap<>();
+            body.put("polyline", route.getPolyline());
+            body.put("distance", route.getDistance());
+            body.put("duration", route.getDuration());
+            body.put("travelSeconds", route.travelSeconds());
+            return ResponseEntity.ok(body);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(ApiResponse.error("Failed to calculate route: " + e.getMessage()));
         }
