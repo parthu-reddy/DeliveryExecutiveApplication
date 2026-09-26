@@ -20,8 +20,6 @@ import org.springframework.data.redis.core.ValueOperations;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -77,7 +75,7 @@ class TelemetryIngestionServiceTest {
         TelemetryLog lastLog = new TelemetryLog();
         Point point = geometryFactory.createPoint(new Coordinate(77.5946, 12.9716)); // Bangalore
         lastLog.setLocation(point);
-        lastLog.setRecordedAt(OffsetDateTime.ofInstant(Instant.ofEpochMilli(baseTimeMs), ZoneOffset.UTC));
+        lastLog.setRecordedAt(Instant.ofEpochMilli(baseTimeMs));
 
         when(telemetryLogRepository.findLatestLogByExecutiveId(executiveId)).thenReturn(Optional.of(lastLog));
 
@@ -94,7 +92,7 @@ class TelemetryIngestionServiceTest {
         TelemetryLog lastLog = new TelemetryLog();
         Point point = geometryFactory.createPoint(new Coordinate(77.5946, 12.9716));
         lastLog.setLocation(point);
-        lastLog.setRecordedAt(OffsetDateTime.ofInstant(Instant.ofEpochMilli(baseTimeMs), ZoneOffset.UTC));
+        lastLog.setRecordedAt(Instant.ofEpochMilli(baseTimeMs));
 
         when(telemetryLogRepository.findLatestLogByExecutiveId(executiveId)).thenReturn(Optional.of(lastLog));
 

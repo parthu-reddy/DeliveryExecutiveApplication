@@ -7,7 +7,7 @@ import com.fooddelivery.common.constants.EventType;
 import com.fooddelivery.common.enums.OutboxStatus;
 import com.fooddelivery.common.outbox.entity.OutboxEventEntity;
 import org.springframework.stereotype.Component;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
@@ -37,7 +37,7 @@ private final ObjectMapper objectMapper;
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize " + eventType + " payload", e);
         }
-        return OutboxEventEntity.builder().id(UUID.randomUUID()).aggregateType(aggregateType).aggregateId(aggregateId).eventType(eventType).payload(payload).createdAt(LocalDateTime.now()).status(OutboxStatus.UNPROCESSED).build();
+        return OutboxEventEntity.builder().id(UUID.randomUUID()).aggregateType(aggregateType).aggregateId(aggregateId).eventType(eventType).payload(payload).createdAt(Instant.now()).status(OutboxStatus.UNPROCESSED).build();
     }
 
 }

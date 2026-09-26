@@ -118,7 +118,7 @@ class AssignmentRecordsDispatchFactsTest {
         OrderAssignment existing = OrderAssignment.builder()
                 .orderId(orderId).driverId(UUID.randomUUID())
                 .state(OrderAssignment.State.RELEASED)
-                .releasedAt(java.time.OffsetDateTime.now())
+                .releasedAt(java.time.Instant.now())
                 .pickupOtp("999999").deliveryOtp("888888")
                 .paymentMethod(PaymentMethod.CARD)
                 .build();

@@ -17,7 +17,7 @@ import com.fooddelivery.delivery.service.LogisticsDispatchService;
 import com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 @lombok.extern.slf4j.Slf4j
 @lombok.RequiredArgsConstructor
@@ -122,7 +122,7 @@ protected final StringRedisTemplate redisTemplate;
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize status update payload", e);
         }
-        OutboxEventEntity outboxEvent = OutboxEventEntity.builder().id(UUID.randomUUID()).aggregateType(com.fooddelivery.common.constants.AggregateType.ORDER).aggregateId(orderId.toString()).eventType(getEventType()).payload(payload).createdAt(LocalDateTime.now()).status(OutboxStatus.UNPROCESSED).build();
+        OutboxEventEntity outboxEvent = OutboxEventEntity.builder().id(UUID.randomUUID()).aggregateType(com.fooddelivery.common.constants.AggregateType.ORDER).aggregateId(orderId.toString()).eventType(getEventType()).payload(payload).createdAt(Instant.now()).status(OutboxStatus.UNPROCESSED).build();
         log.info("DELIVERY_EVENT_ENQUEUED orderId={} driverId={} eventType={} eventId={}",
                 orderId, driverId, getEventType().name(), outboxEvent.getId());
         outboxEventRepository.save(outboxEvent);
@@ -143,7 +143,7 @@ protected final StringRedisTemplate redisTemplate;
     protected void releaseAssignment(UUID orderId) {
         assignmentRepository.findByOrderId(orderId).ifPresent(assignment -> {
             assignment.setState(OrderAssignment.State.RELEASED);
-            assignment.setReleasedAt(java.time.OffsetDateTime.now());
+            assignment.setReleasedAt(java.time.Instant.now());
             assignmentRepository.save(assignment);
         });
     }

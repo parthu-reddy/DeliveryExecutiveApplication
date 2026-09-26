@@ -64,9 +64,13 @@ private final CustomerServiceClient customerServiceClient;
     }
 
     @GetMapping("/history")
-    public ResponseEntity<JsonNode> getOrderHistory(Principal principal, @RequestParam(value = "date", required = false) String date, @RequestParam(value = "page", defaultValue = "0") int page, @RequestParam(value = "size", defaultValue = "20") int size) {
+    public ResponseEntity<JsonNode> getOrderHistory(Principal principal,
+            // The rider's day as [from, to) instants, computed in the rider's browser: whose "today" it
+            // is gets decided where the rider is, not on a server. TimezoneCorrectness_2026-09-25.
+            @RequestParam("from") java.time.Instant from, @RequestParam("to") java.time.Instant to,
+            @RequestParam(value = "page", defaultValue = "0") int page, @RequestParam(value = "size", defaultValue = "20") int size) {
         UUID driverId = UUID.fromString(principal.getName());
-        JsonNode pageNode = customerServiceClient.getOrderHistoryForDriver(driverId, date, page, size);
+        JsonNode pageNode = customerServiceClient.getOrderHistoryForDriver(driverId, from, to, page, size);
         mapToUiOrdersInPage(pageNode, driverId);
         return ResponseEntity.ok(pageNode);
     }

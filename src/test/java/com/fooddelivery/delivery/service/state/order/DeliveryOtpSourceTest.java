@@ -13,7 +13,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -54,7 +54,7 @@ class DeliveryOtpSourceTest {
         when(assignments.findByOrderId(orderId)).thenReturn(Optional.of(OrderAssignment.builder()
                 .orderId(orderId).driverId(driverId)
                 .state(OrderAssignment.State.ASSIGNED)
-                .assignedAt(OffsetDateTime.now())
+                .assignedAt(Instant.now())
                 .pickupOtp("123456").deliveryOtp("654321")
                 .build()));
     }
@@ -112,7 +112,7 @@ class DeliveryOtpSourceTest {
         when(assignments.findByOrderId(orderId)).thenReturn(Optional.of(OrderAssignment.builder()
                 .orderId(orderId).driverId(driverId)
                 .state(OrderAssignment.State.ASSIGNED)
-                .assignedAt(OffsetDateTime.now())
+                .assignedAt(Instant.now())
                 .build()));
 
         assertThrows(IllegalArgumentException.class,

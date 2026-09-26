@@ -402,7 +402,7 @@ public class OrderAssignmentService {
                         .build());
         assignment.setDriverId(driverId);
         assignment.setState(com.fooddelivery.delivery.entity.OrderAssignment.State.ASSIGNED);
-        assignment.setAssignedAt(java.time.OffsetDateTime.now());
+        assignment.setAssignedAt(java.time.Instant.now());
         assignment.setReleasedAt(null);
         if (pickupOtp != null) {
             assignment.setPickupOtp(pickupOtp);

@@ -29,7 +29,7 @@ private final IDeliveryExecutiveRepository executiveRepository;
         try {
             var summary = preloadedSummary != null ? preloadedSummary : governmentIdClient.getVerificationSummary(executiveId);
             if (summary.lastBiometricVerificationAt() != null) {
-                executive.setLastBiometricVerificationAt(java.time.OffsetDateTime.parse(summary.lastBiometricVerificationAt()));
+                executive.setLastBiometricVerificationAt(summary.lastBiometricVerificationAt());
             }
             if (summary.allDocsApproved() && summary.bankApproved()) {
                 VehicleClass vehicleType = executive.getVehicleType();

@@ -106,7 +106,7 @@ public abstract class BaseMessagingClass {
                         .aggregateId("3f2504e0-4f89-41d3-9a0c-0305e82c3301")
                         .eventType(com.fooddelivery.common.constants.EventType.ORDER_STATUS_UPDATED)
                         .payload(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(payloadNode))
-                        .createdAt(java.time.LocalDateTime.now())
+                        .createdAt(java.time.Instant.now())
                         .build();
 
         com.fooddelivery.common.outbox.repository.OutboxEventRepository repo =

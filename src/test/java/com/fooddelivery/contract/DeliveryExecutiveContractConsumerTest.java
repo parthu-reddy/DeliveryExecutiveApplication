@@ -58,7 +58,8 @@ public class DeliveryExecutiveContractConsumerTest {
     @Test
     public void testGetOrderHistoryForDriver() {
         com.fasterxml.jackson.databind.JsonNode response = customerServiceClient.getOrderHistoryForDriver(
-                java.util.UUID.fromString("123e4567-e89b-12d3-a456-426614174000"), "2023-01-01", 0, 10);
+                java.util.UUID.fromString("123e4567-e89b-12d3-a456-426614174000"),
+                java.time.Instant.parse("2023-01-01T00:00:00Z"), java.time.Instant.parse("2023-01-02T00:00:00Z"), 0, 10);
 
         assertNotNull(response);
         assertNotNull(response.get("content"));

@@ -173,10 +173,10 @@ private final DeliveryExecutiveController deliveryController;
         }
     }
 
-    @Tool(description = "Driver: Get order history. Provide driverId and date (optional).")
-    public String getDriverOrderHistory(String driverId, String date) {
+    @Tool(description = "Driver: Get order history. Provide driverId and the window as ISO-8601 instants with a zone, from (inclusive) and to (exclusive), e.g. 2026-09-24T18:30:00Z.")
+    public String getDriverOrderHistory(String driverId, String from, String to) {
         try {
-            return objectMapper.writeValueAsString(deliveryOrderController.getOrderHistory(createMockPrincipal(driverId), date, 0, 100).getBody());
+            return objectMapper.writeValueAsString(deliveryOrderController.getOrderHistory(createMockPrincipal(driverId), java.time.Instant.parse(from), java.time.Instant.parse(to), 0, 100).getBody());
         } catch (Exception e) {
             return "Error: " + e.getMessage();
         }

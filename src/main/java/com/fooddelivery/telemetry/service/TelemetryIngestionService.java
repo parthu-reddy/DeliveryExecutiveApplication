@@ -14,8 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
@@ -69,7 +67,7 @@ private final TelemetryLogRepository telemetryLogRepository;
             return true; // First ping, no velocity to check against
         }
         TelemetryLog lastLog = lastLogOpt.get();
-        OffsetDateTime currentTime = OffsetDateTime.ofInstant(Instant.ofEpochMilli(payload.timestampMs()), ZoneOffset.UTC);
+        Instant currentTime = Instant.ofEpochMilli(payload.timestampMs());
         long secondsElapsed = ChronoUnit.SECONDS.between(lastLog.getRecordedAt(), currentTime);
         if (secondsElapsed <= 0) {
             return false; // Time anomaly
@@ -112,7 +110,7 @@ private final TelemetryLogRepository telemetryLogRepository;
         logEntry.setLocation(point);
         logEntry.setSpeedKmh(BigDecimal.valueOf(payload.speedKmh()));
         logEntry.setMockLocation(payload.isMockLocation());
-        logEntry.setRecordedAt(OffsetDateTime.ofInstant(Instant.ofEpochMilli(payload.timestampMs()), ZoneOffset.UTC));
+        logEntry.setRecordedAt(Instant.ofEpochMilli(payload.timestampMs()));
         telemetryLogRepository.save(logEntry);
     }
 
@@ -135,7 +133,7 @@ private final TelemetryLogRepository telemetryLogRepository;
         for (LocationPayload payload : payloads) {
             // Validate velocity against previous log (either from DB or from previous batch entry)
             if (previousLog != null) {
-                OffsetDateTime currentTime = OffsetDateTime.ofInstant(Instant.ofEpochMilli(payload.timestampMs()), ZoneOffset.UTC);
+                Instant currentTime = Instant.ofEpochMilli(payload.timestampMs());
                 long secondsElapsed = ChronoUnit.SECONDS.between(previousLog.getRecordedAt(), currentTime);
                 if (secondsElapsed > 0) {
                     double distanceMeters = calculateHaversineDistance(previousLog.getLocation().getY(), previousLog.getLocation().getX(), payload.latitude(), payload.longitude());
@@ -154,7 +152,7 @@ private final TelemetryLogRepository telemetryLogRepository;
             logEntry.setLocation(point);
             logEntry.setSpeedKmh(BigDecimal.valueOf(payload.speedKmh()));
             logEntry.setMockLocation(payload.isMockLocation());
-            logEntry.setRecordedAt(OffsetDateTime.ofInstant(Instant.ofEpochMilli(payload.timestampMs()), ZoneOffset.UTC));
+            logEntry.setRecordedAt(Instant.ofEpochMilli(payload.timestampMs()));
             previousLog = telemetryLogRepository.save(logEntry);
         }
     }

@@ -52,6 +52,7 @@ public abstract class ContractTestBase {
         AdminDeliveryController adminDeliveryController =
                 new AdminDeliveryController(repository, profileService, orderAssignmentService);
 
-        RestAssuredMockMvc.standaloneSetup(internalDeliveryController, adminDeliveryController);
+        // Serialize as production does: see PlatformJson (contract-harness Jackson drift).
+        com.fooddelivery.common.contract.PlatformJson.standaloneSetup(internalDeliveryController, adminDeliveryController);
     }
 }

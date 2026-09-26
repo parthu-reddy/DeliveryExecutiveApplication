@@ -13,7 +13,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -56,7 +56,7 @@ class DeliveryAssignmentAuthorizationTest {
     private OrderAssignment assignment(UUID driverId, OrderAssignment.State state) {
         return OrderAssignment.builder()
                 .orderId(orderId).driverId(driverId).state(state)
-                .assignedAt(OffsetDateTime.now())
+                .assignedAt(Instant.now())
                 .pickupOtp("111111").deliveryOtp("222222")
                 .build();
     }

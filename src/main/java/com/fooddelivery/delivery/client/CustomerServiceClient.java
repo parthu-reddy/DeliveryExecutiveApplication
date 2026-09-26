@@ -15,7 +15,7 @@ public interface CustomerServiceClient {
     JsonNode getActiveOrdersForDriver(@PathVariable("driverId") UUID driverId, @RequestParam("page") int page, @RequestParam("size") int size);
 
     @GetMapping("/api/v1/internal/orders/driver/{driverId}/history")
-    JsonNode getOrderHistoryForDriver(@PathVariable("driverId") UUID driverId, @RequestParam(value = "date", required = false) String date, @RequestParam("page") int page, @RequestParam("size") int size);
+    JsonNode getOrderHistoryForDriver(@PathVariable("driverId") UUID driverId, @RequestParam("from") java.time.Instant from, @RequestParam("to") java.time.Instant to, @RequestParam("page") int page, @RequestParam("size") int size);
 
     @GetMapping("/api/v1/internal/orders/unassigned")
     List<JsonNode> getUnassignedOrders();

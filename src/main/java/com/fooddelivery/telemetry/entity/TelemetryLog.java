@@ -4,7 +4,7 @@ import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import jakarta.persistence.*;
 import org.locationtech.jts.geom.Point;
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -30,7 +30,7 @@ public class TelemetryLog {
     @Column(name = "is_mock_location", nullable = false)
     private boolean isMockLocation = false;
     @Column(name = "recorded_at", nullable = false)
-    private OffsetDateTime recordedAt;
+    private Instant recordedAt;
 
 public void setMockLocation(final boolean isMockLocation) {
         this.isMockLocation = isMockLocation;

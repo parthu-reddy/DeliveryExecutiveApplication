@@ -7,7 +7,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -57,10 +57,10 @@ public class OrderAssignment {
     private State state;
 
     @Column(name = "assigned_at", nullable = false)
-    private OffsetDateTime assignedAt;
+    private Instant assignedAt;
 
     @Column(name = "released_at")
-    private OffsetDateTime releasedAt;
+    private Instant releasedAt;
 
     /** An assignment only authorises while it is live. */
     public boolean authorises(UUID candidateDriverId) {

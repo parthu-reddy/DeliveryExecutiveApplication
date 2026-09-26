@@ -14,7 +14,7 @@ public class CustomerServiceClientFallback implements CustomerServiceClient {
     }
 
     @Override
-    public JsonNode getOrderHistoryForDriver(UUID driverId, String date, int page, int size) {
+    public JsonNode getOrderHistoryForDriver(UUID driverId, java.time.Instant from, java.time.Instant to, int page, int size) {
         throw new IllegalStateException("Customer service is currently unavailable.");
     }
 

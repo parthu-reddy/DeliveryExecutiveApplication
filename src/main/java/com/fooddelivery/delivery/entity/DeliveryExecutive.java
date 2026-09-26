@@ -8,7 +8,7 @@ import org.locationtech.jts.geom.Point;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.dialect.PostgreSQLEnumJdbcType;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import java.util.UUID;
@@ -51,7 +51,7 @@ public class DeliveryExecutive {
     @Column(name = "is_active")
     private boolean active = false;
     @Column(name = "last_biometric_verification_at")
-    private OffsetDateTime lastBiometricVerificationAt;
+    private Instant lastBiometricVerificationAt;
     @Column(name = "city_id")
     private String cityId;
 
@@ -71,9 +71,9 @@ public class DeliveryExecutive {
     @CreationTimestamp
     @Column(name = "created_at")
     @io.swagger.v3.oas.annotations.media.Schema(requiredMode = io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED)
-    private OffsetDateTime createdAt;
+    private Instant createdAt;
     @UpdateTimestamp
     @Column(name = "updated_at")
     @io.swagger.v3.oas.annotations.media.Schema(requiredMode = io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED)
-    private OffsetDateTime updatedAt;
+    private Instant updatedAt;
 }

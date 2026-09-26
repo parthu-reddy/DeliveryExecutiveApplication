@@ -9,7 +9,7 @@ import com.fooddelivery.common.enums.DeliveryStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -243,7 +243,7 @@ public void setAvailable(final Boolean available) {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(ApiResponse.<Void>builder().success(false).message(e.getMessage()).build());
         }
-        return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Status updated successfully").timestamp(LocalDateTime.now()).build());
+        return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Status updated successfully").timestamp(Instant.now()).build());
     }
 
     @PostMapping("/drivers/{driverId}/orders/{orderId}/accept")

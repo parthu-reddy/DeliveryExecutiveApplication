@@ -270,7 +270,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>-XX:+EnableDynamicAgentLoading -Xshare:off -Dnet.bytebuddy.experimental=true -Dspring.cloud.config.fail-fast=false</argLine>
+                    <argLine>-XX:+EnableDynamicAgentLoading -Xshare:off -Dnet.bytebuddy.experimental=true -Dspring.cloud.config.fail-fast=false -Duser.timezone=Pacific/Chatham</argLine>
                 <systemPropertyVariables>
                         <!-- Config Server is mandatory in production (I-34) but must not be
                              contacted from tests. This has to be a system property: the

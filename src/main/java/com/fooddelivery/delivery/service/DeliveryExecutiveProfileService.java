@@ -64,7 +64,7 @@ private final org.springframework.transaction.support.TransactionTemplate transa
                 throw new IllegalArgumentException("Account inactive: Driver account is currently deactivated or suspended.");
             }
             if (isOnline && biometricVerificationEnabled) {
-                if (executive.getLastBiometricVerificationAt() == null || executive.getLastBiometricVerificationAt().isBefore(java.time.OffsetDateTime.now().minusHours(24))) {
+                if (executive.getLastBiometricVerificationAt() == null || executive.getLastBiometricVerificationAt().isBefore(java.time.Instant.now().minus(java.time.Duration.ofHours(24)))) {
                     throw new IllegalArgumentException("Biometric verification required: Please complete your daily selfie verification to go online.");
                 }
             }
