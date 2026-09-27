@@ -62,6 +62,19 @@ public class OrderAssignment {
     @Column(name = "released_at")
     private Instant releasedAt;
 
+    /** The furthest step the rider has confirmed. Only moves forward. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "delivery_status")
+    private com.fooddelivery.common.enums.DeliveryStatus deliveryStatus;
+
+    /** Records a confirmed step; a step behind the one already recorded is ignored. */
+    public void recordDeliveryStatus(com.fooddelivery.common.enums.DeliveryStatus confirmed) {
+        if (confirmed == null) return;
+        if (deliveryStatus == null || confirmed.getSequence() > deliveryStatus.getSequence()) {
+            deliveryStatus = confirmed;
+        }
+    }
+
     /** An assignment only authorises while it is live. */
     public boolean authorises(UUID candidateDriverId) {
         return state == State.ASSIGNED && driverId != null && driverId.equals(candidateDriverId);

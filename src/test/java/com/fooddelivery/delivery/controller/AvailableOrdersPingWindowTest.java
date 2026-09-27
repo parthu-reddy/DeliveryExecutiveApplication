@@ -35,7 +35,8 @@ class AvailableOrdersPingWindowTest {
     private final CustomerServiceClient customerServiceClient = mock(CustomerServiceClient.class);
     private final OrderAssignmentService assignments = mock(OrderAssignmentService.class);
     private final DeliveryOrderController controller =
-            new DeliveryOrderController(customerServiceClient, assignments);
+            new DeliveryOrderController(customerServiceClient, assignments,
+                    org.mockito.Mockito.mock(com.fooddelivery.delivery.service.ConfirmedDeliveryProgress.class));
 
     private final Principal principal = DRIVER::toString;
 

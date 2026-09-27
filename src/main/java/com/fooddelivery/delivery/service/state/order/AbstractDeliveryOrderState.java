@@ -54,6 +54,10 @@ protected final StringRedisTemplate redisTemplate;
         }
         validate(assignment, pickupOtp, deliveryOtp);
         transactionTemplate.execute(txStatus -> {
+            // Same transaction as the event: /orders/active overlays this, so the rider never sees
+            // a step behind one the delivery service has already accepted.
+            assignment.recordDeliveryStatus(status);
+            assignmentRepository.save(assignment);
             saveOutboxEvent(driverId, orderId, status, pickupOtp, deliveryOtp);
             updateExecutiveState(driverId, goOfflineAfter);
             return null;

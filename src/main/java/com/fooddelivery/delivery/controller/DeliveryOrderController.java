@@ -17,11 +17,13 @@ import java.util.UUID;
 public class DeliveryOrderController {
 private final CustomerServiceClient customerServiceClient;
     private final com.fooddelivery.delivery.service.OrderAssignmentService orderAssignmentService;
+    private final com.fooddelivery.delivery.service.ConfirmedDeliveryProgress confirmedDeliveryProgress;
 
     @GetMapping("/active")
     public ResponseEntity<JsonNode> getActiveOrders(Principal principal, @RequestParam(value = "page", defaultValue = "0") int page, @RequestParam(value = "size", defaultValue = "20") int size) {
         UUID driverId = UUID.fromString(principal.getName());
         JsonNode pageNode = customerServiceClient.getActiveOrdersForDriver(driverId, page, size);
+        confirmedDeliveryProgress.apply(pageNode, driverId);
         mapToUiOrdersInPage(pageNode, driverId);
         return ResponseEntity.ok(pageNode);
     }

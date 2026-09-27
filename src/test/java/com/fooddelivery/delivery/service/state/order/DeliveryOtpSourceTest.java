@@ -148,4 +148,27 @@ class DeliveryOtpSourceTest {
                 driverId, orderId, DeliveryStatus.OUT_FOR_DELIVERY, "999999", null, false));
         verifyNoInteractions(outbox);
     }
+
+    /**
+     * The step is recorded on the assignment in the same transaction as the outbox event, so the
+     * rider's active list (which overlays it) never trails an accepted OTP.
+     */
+    @Test
+    void anAcceptedPickupIsRecordedOnTheAssignmentWithTheEvent() {
+        when(values.get(contains(orderId.toString()))).thenReturn("READY_FOR_PICKUP");
+
+        outForDelivery().handleStatusUpdate(driverId, orderId, DeliveryStatus.OUT_FOR_DELIVERY, "123456", null, false);
+
+        org.mockito.ArgumentCaptor<OrderAssignment> saved = org.mockito.ArgumentCaptor.forClass(OrderAssignment.class);
+        verify(assignments, org.mockito.Mockito.atLeastOnce()).save(saved.capture());
+        assertEquals(DeliveryStatus.OUT_FOR_DELIVERY, saved.getAllValues().get(0).getDeliveryStatus());
+        verify(outbox).save(any());
+    }
+
+    @Test
+    void aRefusedOtpRecordsNothing() {
+        assertThrows(IllegalArgumentException.class,
+                () -> delivered().handleStatusUpdate(driverId, orderId, DeliveryStatus.DELIVERED, null, "000000", false));
+        verify(assignments, org.mockito.Mockito.never()).save(any());
+    }
 }
