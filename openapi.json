@@ -1244,6 +1244,22 @@
           },
           "available" : {
             "type" : "boolean"
+          },
+          "lat" : {
+            "maximum" : 90.0,
+            "exclusiveMaximum" : false,
+            "minimum" : -90.0,
+            "exclusiveMinimum" : false,
+            "type" : "number",
+            "format" : "double"
+          },
+          "lng" : {
+            "maximum" : 180.0,
+            "exclusiveMaximum" : false,
+            "minimum" : -180.0,
+            "exclusiveMinimum" : false,
+            "type" : "number",
+            "format" : "double"
           }
         }
       },
@@ -1406,18 +1422,15 @@
             "type" : "integer",
             "format" : "int32"
           },
-          "number" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
           "first" : {
             "type" : "boolean"
           },
           "last" : {
             "type" : "boolean"
           },
-          "sort" : {
-            "$ref" : "#/components/schemas/SortObject"
+          "number" : {
+            "type" : "integer",
+            "format" : "int32"
           },
           "size" : {
             "type" : "integer",
@@ -1428,6 +1441,9 @@
             "items" : {
               "$ref" : "#/components/schemas/DeliveryExecutive"
             }
+          },
+          "sort" : {
+            "$ref" : "#/components/schemas/SortObject"
           },
           "pageable" : {
             "$ref" : "#/components/schemas/PageableObject"
@@ -1445,6 +1461,9 @@
             "type" : "integer",
             "format" : "int64"
           },
+          "unpaged" : {
+            "type" : "boolean"
+          },
           "sort" : {
             "$ref" : "#/components/schemas/SortObject"
           },
@@ -1458,9 +1477,6 @@
           "pageSize" : {
             "type" : "integer",
             "format" : "int32"
-          },
-          "unpaged" : {
-            "type" : "boolean"
           }
         }
       },
@@ -1522,18 +1538,15 @@
             "type" : "integer",
             "format" : "int32"
           },
-          "number" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
           "first" : {
             "type" : "boolean"
           },
           "last" : {
             "type" : "boolean"
           },
-          "sort" : {
-            "$ref" : "#/components/schemas/SortObject"
+          "number" : {
+            "type" : "integer",
+            "format" : "int32"
           },
           "size" : {
             "type" : "integer",
@@ -1544,6 +1557,9 @@
             "items" : {
               "$ref" : "#/components/schemas/DriverLocationDTO"
             }
+          },
+          "sort" : {
+            "$ref" : "#/components/schemas/SortObject"
           },
           "pageable" : {
             "$ref" : "#/components/schemas/PageableObject"

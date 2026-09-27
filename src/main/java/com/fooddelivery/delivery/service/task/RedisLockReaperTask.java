@@ -141,10 +141,10 @@ private final StringRedisTemplate redisTemplate;
     }
 
     /**
-     * OFFLINE does not mean that the assignment ended. A rider can lose their location heartbeat
-     * or WebSocket connection while carrying an order, and the stale-driver sweeper deliberately
-     * records that connection state as OFFLINE. The active-order lock must survive that transient
-     * state so the rider cannot accept a second order after reconnecting.
+     * OFFLINE does not mean that the assignment ended. The stale-driver sweeper no longer demotes a
+     * rider who is ON_DELIVERY (2026-09-27), but an admin force-assign or a crash between the
+     * status write and the lock cleanup can still leave a rider OFFLINE with an order. The
+     * active-order lock must survive that so the rider cannot accept a second order.
      *
      * <p>A completed delivery moves the rider back to ONLINE and the normal completion path removes
      * both locks. ONLINE is retained here only as crash recovery for that cleanup path.

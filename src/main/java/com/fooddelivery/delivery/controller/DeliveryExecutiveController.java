@@ -115,8 +115,31 @@ public void setVehicleType(final com.fooddelivery.common.enums.VehicleClass vehi
         private String driverId;
         @NotNull
         private Boolean available;
+        /** The device's current fix. Required to go online; ignored when going offline. */
+        @jakarta.validation.constraints.DecimalMin("-90.0")
+        @jakarta.validation.constraints.DecimalMax("90.0")
+        private Double lat;
+        @jakarta.validation.constraints.DecimalMin("-180.0")
+        @jakarta.validation.constraints.DecimalMax("180.0")
+        private Double lng;
 
 public ToggleStatusRequest() {
+        }
+
+public Double getLat() {
+            return this.lat;
+        }
+
+public Double getLng() {
+            return this.lng;
+        }
+
+public void setLat(final Double lat) {
+            this.lat = lat;
+        }
+
+public void setLng(final Double lng) {
+            this.lng = lng;
         }
 
 public String getDriverId() {
@@ -237,9 +260,12 @@ public void setAvailable(final Boolean available) {
         if (!principal.getName().equals(driverId.toString())) {
             return ResponseEntity.status(401).body(ApiResponse.<Void>builder().success(false).message("Unauthorized").build());
         }
-        boolean available = request.getAvailable();
         try {
-            profileService.toggleStatus(driverId, available);
+            if (request.getAvailable()) {
+                profileService.goOnline(driverId, request.getLat(), request.getLng());
+            } else {
+                profileService.goOffline(driverId, com.fooddelivery.delivery.enums.DutyChangeReason.RIDER_REQUEST);
+            }
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(ApiResponse.<Void>builder().success(false).message(e.getMessage()).build());
         }

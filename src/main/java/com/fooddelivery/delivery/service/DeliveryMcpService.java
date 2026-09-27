@@ -46,12 +46,14 @@ private final DeliveryExecutiveController deliveryController;
         }
     }
 
-    @Tool(description = "Toggle the online/offline status of a delivery executive. Provide driverId and boolean isOnline.")
-    public String toggleDriverStatus(String driverId, boolean isOnline) {
+    @Tool(description = "Toggle the online/offline status of a delivery executive. Provide driverId, boolean isOnline, and the rider's current lat/lng (required to go online).")
+    public String toggleDriverStatus(String driverId, boolean isOnline, Double lat, Double lng) {
         try {
             DeliveryExecutiveController.ToggleStatusRequest req = new DeliveryExecutiveController.ToggleStatusRequest();
             req.setDriverId(driverId);
             req.setAvailable(isOnline);
+            req.setLat(lat);
+            req.setLng(lng);
             return objectMapper.writeValueAsString(deliveryController.toggleStatus(createMockPrincipal(driverId), req).getBody());
         } catch (Exception e) {
             return "Failed to toggle driver status: " + e.getMessage();

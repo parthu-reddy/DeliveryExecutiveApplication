@@ -60,9 +60,20 @@ private final KafkaTemplate<String, String> kafkaTemplate;
 
     public void releaseDriverLock(String driverId) {
         log.info("Requesting driver lock release for driver {} via MapsIntegration service", driverId);
-        String cityId = repository.findById(UUID.fromString(driverId)).map(DeliveryExecutive::getCityId).orElse(null);
+        DeliveryExecutive executive = repository.findById(UUID.fromString(driverId)).orElse(null);
+        String cityId = executive == null ? null : executive.getCityId();
         if (cityId == null) {
             log.warn("Cannot release driver lock for driver {}: cityId is null", driverId);
+            return;
+        }
+        // Releasing means "back into drivers:available", the set dispatch offers trips from. Every
+        // caller -- ping timeout, decline, abort, delivered/failed with "go offline after",
+        // cancellation -- used to do that unconditionally, so a rider who had gone offline (or been
+        // swept offline) while a ping to them was pending came back as dispatchable, and their
+        // still-running telemetry kept them in the geo index.
+        if (executive.getStatus() != com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.ONLINE) {
+            log.info("DRIVER_RELEASE_SKIPPED driverId={} status={}: only ONLINE riders return to the pool",
+                    driverId, executive.getStatus());
             return;
         }
         try {

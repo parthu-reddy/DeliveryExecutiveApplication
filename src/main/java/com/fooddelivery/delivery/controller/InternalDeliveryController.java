@@ -16,7 +16,7 @@ private final DeliveryExecutiveProfileService profileService;
 
     @PostMapping("/drivers/{driverId}/suspend")
     public ResponseEntity<Void> suspendDriver(@PathVariable UUID driverId) {
-        profileService.toggleStatus(driverId, false);
+        profileService.goOffline(driverId, com.fooddelivery.delivery.enums.DutyChangeReason.SUSPENDED);
         return ResponseEntity.ok().build();
     }
 

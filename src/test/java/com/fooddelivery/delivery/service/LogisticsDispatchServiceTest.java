@@ -64,4 +64,50 @@ class LogisticsDispatchServiceTest {
         assertThat(payload).contains("\"dispatchCityId\":\"BLR\"");
         assertThat(payload).contains("\"fleetSearchRadiusKm\":5.0");
     }
+
+    @Test
+    void releaseDriverLock_doesNotReturnAnOfflineRiderToThePool() {
+        UUID driverId = UUID.randomUUID();
+        when(repository.findById(driverId)).thenReturn(java.util.Optional.of(rider(driverId,
+                com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.OFFLINE)));
+
+        logisticsDispatchService.releaseDriverLock(driverId.toString());
+
+        org.mockito.Mockito.verifyNoInteractions(mapsClient);
+    }
+
+    @Test
+    void releaseDriverLock_doesNotReturnARiderOnDeliveryToThePool() {
+        UUID driverId = UUID.randomUUID();
+        when(repository.findById(driverId)).thenReturn(java.util.Optional.of(rider(driverId,
+                com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.ON_DELIVERY)));
+
+        logisticsDispatchService.releaseDriverLock(driverId.toString());
+
+        org.mockito.Mockito.verifyNoInteractions(mapsClient);
+    }
+
+    @Test
+    void releaseDriverLock_returnsAnOnlineRiderToThePool() {
+        UUID driverId = UUID.randomUUID();
+        when(repository.findById(driverId)).thenReturn(java.util.Optional.of(rider(driverId,
+                com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.ONLINE)));
+
+        logisticsDispatchService.releaseDriverLock(driverId.toString());
+
+        ArgumentCaptor<com.fooddelivery.common.dto.maps.SetAvailabilityRequest> req =
+                ArgumentCaptor.forClass(com.fooddelivery.common.dto.maps.SetAvailabilityRequest.class);
+        verify(mapsClient).releaseDriver(req.capture());
+        assertThat(req.getValue().getDriverId()).isEqualTo(driverId.toString());
+        assertThat(req.getValue().getCityId()).isEqualTo("BLR");
+    }
+
+    private static com.fooddelivery.delivery.entity.DeliveryExecutive rider(
+            UUID id, com.fooddelivery.delivery.enums.DeliveryExecutiveStatus status) {
+        com.fooddelivery.delivery.entity.DeliveryExecutive e = new com.fooddelivery.delivery.entity.DeliveryExecutive();
+        e.setId(id);
+        e.setCityId("BLR");
+        e.setStatus(status);
+        return e;
+    }
 }

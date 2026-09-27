@@ -27,6 +27,7 @@ class LocationTrackingWebSocketHandlerTest {
     private Counter counter;
     private ValueOperations<String, String> valueOps;
     private GeoOperations<String, String> geoOps;
+    private com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository repository;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
@@ -34,7 +35,9 @@ class LocationTrackingWebSocketHandlerTest {
         objectMapper = new ObjectMapper();
         redisTemplate = mock(StringRedisTemplate.class);
         meterRegistry = mock(MeterRegistry.class);
-        handler = new LocationTrackingWebSocketHandler(objectMapper, redisTemplate, meterRegistry);
+        repository = mock(com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository.class);
+        handler = new LocationTrackingWebSocketHandler(objectMapper, redisTemplate, meterRegistry, repository,
+                new com.fooddelivery.delivery.service.duty.RiderDutyNotifier(redisTemplate, objectMapper));
 
         session = mock(WebSocketSession.class);
         counter = mock(Counter.class);
@@ -96,5 +99,46 @@ class LocationTrackingWebSocketHandlerTest {
         verify(valueOps).get("driver:active_order:driver-123");
         // Sink emits the event, and since orderId is stripped, it should not publish to redis pub/sub 
         // tracking:order:order-789 for this event in processBatch (not tested directly here, but logic holds).
+    }
+
+    /**
+     * A DUTY_STATUS push published while the socket was down reaches nobody. The snapshot on connect
+     * is what corrects an app that still shows "Online Duty" after the sweeper demoted the rider.
+     */
+    @Test
+    void connectSendsTheDutyStatusTheDatabaseHolds() throws Exception {
+        java.util.UUID driverId = java.util.UUID.randomUUID();
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put("userId", driverId.toString());
+        when(session.getAttributes()).thenReturn(attributes);
+        when(session.getId()).thenReturn("s-1");
+        when(session.isOpen()).thenReturn(true);
+        com.fooddelivery.delivery.entity.DeliveryExecutive rider = new com.fooddelivery.delivery.entity.DeliveryExecutive();
+        rider.setId(driverId);
+        rider.setStatus(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.OFFLINE);
+        when(repository.findById(driverId)).thenReturn(java.util.Optional.of(rider));
+
+        handler.afterConnectionEstablished(session);
+
+        org.mockito.ArgumentCaptor<TextMessage> sent = org.mockito.ArgumentCaptor.forClass(TextMessage.class);
+        verify(session).sendMessage(sent.capture());
+        com.fasterxml.jackson.databind.JsonNode json = objectMapper.readTree(sent.getValue().getPayload());
+        org.assertj.core.api.Assertions.assertThat(json.get("type").asText()).isEqualTo("DUTY_STATUS");
+        org.assertj.core.api.Assertions.assertThat(json.get("status").asText()).isEqualTo("OFFLINE");
+        org.assertj.core.api.Assertions.assertThat(json.get("reason").asText()).isEqualTo("CONNECTED");
+    }
+
+    @Test
+    void connectOfAUserWithNoRiderRowSendsNothing() throws Exception {
+        java.util.UUID userId = java.util.UUID.randomUUID();
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put("userId", userId.toString());
+        when(session.getAttributes()).thenReturn(attributes);
+        when(session.getId()).thenReturn("s-2");
+        when(repository.findById(userId)).thenReturn(java.util.Optional.empty());
+
+        handler.afterConnectionEstablished(session);
+
+        verify(session, never()).sendMessage(any());
     }
 }

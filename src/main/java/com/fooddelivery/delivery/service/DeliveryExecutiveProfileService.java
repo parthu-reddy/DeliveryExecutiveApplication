@@ -2,6 +2,8 @@ package com.fooddelivery.delivery.service;
 
 import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import com.fooddelivery.delivery.enums.DeliveryExecutiveStatus;
+import com.fooddelivery.delivery.enums.DutyChangeReason;
+import com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory;
 import com.fooddelivery.common.enums.VerificationStatus;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,7 @@ public class DeliveryExecutiveProfileService {
 private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
     private final IDeliveryExecutiveRepository repository;
     private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+    private final com.fooddelivery.delivery.service.duty.RiderDutyNotifier dutyNotifier;
 
     @org.springframework.beans.factory.annotation.Value("${app.rider.biometric-verification.enabled:true}")
     private boolean biometricVerificationEnabled;
@@ -49,60 +52,86 @@ private final org.springframework.transaction.support.TransactionTemplate transa
         return repository.findById(id);
     }
 
-    public DeliveryExecutive toggleStatus(UUID driverId, boolean isOnline) {
-        // Enforce Biometric freshness check BEFORE starting transaction if possible, 
-        // but we need to fetch the executive first. We will do it inside.
+    /**
+     * Puts the rider on duty at the location their device just reported.
+     *
+     * <p>The fix is required. Dispatch finds riders by intersecting {@code drivers:geo:{city}} with
+     * {@code drivers:available:{city}}; a rider who went online without one was ONLINE in the
+     * database, absent from the geo index, and therefore never offered a trip -- until the sweeper
+     * demoted them a minute later while their screen still said "Online Duty". The city is required
+     * for the same reason: without it none of those keys can be written at all.
+     */
+    public DeliveryExecutive goOnline(UUID driverId, Double lat, Double lng) {
+        if (lat == null || lng == null) {
+            throw new IllegalArgumentException("Location required to go online: allow location access and try again.");
+        }
         DeliveryExecutive updated = transactionTemplate.execute(status -> {
             DeliveryExecutive executive = repository.findById(driverId).orElseThrow(() -> new RuntimeException("Driver not found"));
-            if (isOnline && (executive.getVehicleNumber() == null || executive.getVehicleNumber().trim().isEmpty())) {
+            if (executive.getVehicleNumber() == null || executive.getVehicleNumber().trim().isEmpty()) {
                 throw new IllegalArgumentException("Registration incomplete: Please complete registration before going online.");
             }
-            if (isOnline && executive.getVerificationStatus() != VerificationStatus.APPROVED) {
+            if (executive.getCityId() == null || executive.getCityId().isBlank()) {
+                throw new IllegalArgumentException("Registration incomplete: No operating city on your profile.");
+            }
+            if (executive.getVerificationStatus() != VerificationStatus.APPROVED) {
                 throw new IllegalArgumentException("Onboarding incomplete: Driver verification status is " + executive.getVerificationStatus() + ". Must be APPROVED to go online.");
             }
-            if (isOnline && !executive.isActive()) {
+            if (!executive.isActive()) {
                 throw new IllegalArgumentException("Account inactive: Driver account is currently deactivated or suspended.");
             }
-            if (isOnline && biometricVerificationEnabled) {
+            if (biometricVerificationEnabled) {
                 if (executive.getLastBiometricVerificationAt() == null || executive.getLastBiometricVerificationAt().isBefore(java.time.Instant.now().minus(java.time.Duration.ofHours(24)))) {
                     throw new IllegalArgumentException("Biometric verification required: Please complete your daily selfie verification to go online.");
                 }
             }
-            if (isOnline && (executive.getStatus() == DeliveryExecutiveStatus.ONLINE || executive.getStatus() == DeliveryExecutiveStatus.ON_DELIVERY)) return executive;
-            if (!isOnline && executive.getStatus() == DeliveryExecutiveStatus.OFFLINE) return executive;
-            if (!isOnline && executive.getStatus() == DeliveryExecutiveStatus.ON_DELIVERY) {
+            if (executive.getStatus() == DeliveryExecutiveStatus.OFFLINE) {
+                DeliveryExecutiveStateFactory.getState(executive.getStatus()).goOnline(executive);
+                return repository.save(executive);
+            }
+            return executive;
+        });
+        String id = driverId.toString();
+        String cityId = updated.getCityId();
+        // Projections AFTER commit. The fix is written even when the rider was already on duty:
+        // a second "go online" from a fresh device is exactly the rider re-registering where they are.
+        try {
+            redisTemplate.opsForGeo().add("drivers:geo:" + cityId, new org.springframework.data.geo.Point(lng, lat), id);
+            redisTemplate.opsForZSet().add("driver_last_ping", id, System.currentTimeMillis());
+            if (updated.getStatus() == DeliveryExecutiveStatus.ONLINE) {
+                redisTemplate.opsForSet().add(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVERS_AVAILABLE + cityId, id);
+            }
+            redisTemplate.opsForHash().put("drivers:status", id, updated.getStatus().name());
+        } catch (Exception e) {
+            log.error("Failed to sync driver {} going online with Redis. DB is ONLINE; the sweeper demotes the rider if no location follows.", driverId, e);
+        }
+        dutyNotifier.publish(driverId, updated.getStatus(), DutyChangeReason.RIDER_REQUEST);
+        log.info("Driver {} is now {}", driverId, updated.getStatus());
+        return updated;
+    }
+
+    /** Takes the rider off duty. Refused while they are carrying an order. */
+    public DeliveryExecutive goOffline(UUID driverId, DutyChangeReason reason) {
+        DeliveryExecutive updated = transactionTemplate.execute(status -> {
+            DeliveryExecutive executive = repository.findById(driverId).orElseThrow(() -> new RuntimeException("Driver not found"));
+            if (executive.getStatus() == DeliveryExecutiveStatus.OFFLINE) return executive;
+            if (executive.getStatus() == DeliveryExecutiveStatus.ON_DELIVERY) {
                 throw new IllegalArgumentException("Cannot go offline while on delivery. Please complete the delivery first.");
             }
-            com.fooddelivery.delivery.service.state.DeliveryExecutiveState state = com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory.getState(executive.getStatus());
-            if (isOnline) {
-                state.goOnline(executive);
-            } else {
-                state.goOffline(executive);
-            }
+            DeliveryExecutiveStateFactory.getState(executive.getStatus()).goOffline(executive);
             return repository.save(executive);
         });
-        
-        String cityId = updated.getCityId();
-        if (cityId == null) {
-            log.warn("Driver {} has no cityId, skipping Redis availability sync", driverId);
-        } else {
-            // Sync with Redis AFTER the transaction has successfully committed
-            String key = com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVERS_AVAILABLE + cityId;
-            try {
-                if (isOnline) {
-                    redisTemplate.opsForSet().add(key, driverId.toString());
-                    redisTemplate.opsForZSet().add("driver_last_ping", driverId.toString(), System.currentTimeMillis());
-                } else {
-                    redisTemplate.opsForSet().remove(key, driverId.toString());
-                    redisTemplate.opsForZSet().remove("driver_last_ping", driverId.toString());
-                }
-                redisTemplate.opsForHash().put("drivers:status", driverId.toString(), updated.getStatus().name());
-            } catch (Exception e) {
-                log.error("Failed to sync driver status with Redis for driver {}. DB was updated, but Redis might be inconsistent.", driverId, e);
+        String id = driverId.toString();
+        try {
+            if (updated.getCityId() != null) {
+                redisTemplate.opsForSet().remove(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVERS_AVAILABLE + updated.getCityId(), id);
             }
+            redisTemplate.opsForZSet().remove("driver_last_ping", id);
+            redisTemplate.opsForHash().put("drivers:status", id, updated.getStatus().name());
+        } catch (Exception e) {
+            log.error("Failed to sync driver {} going offline with Redis. DB is OFFLINE; releaseDriverLock will not return them to the pool.", driverId, e);
         }
-        // Ideally trigger a retry or reconciliation job, but DB state is consistent.
-        log.info("Driver {} is now {}", driverId, updated.getStatus());
+        dutyNotifier.publish(driverId, updated.getStatus(), reason);
+        log.info("Driver {} is now {} ({})", driverId, updated.getStatus(), reason);
         return updated;
     }
 
@@ -203,6 +232,7 @@ private final org.springframework.transaction.support.TransactionTemplate transa
             } catch (Exception e) {
                 log.error("Failed to clean up Redis for deactivated driver {}", driverId, e);
             }
+            dutyNotifier.publish(driverId, executive.getStatus(), DutyChangeReason.ACCOUNT_DEACTIVATED);
             log.info("Driver {} deactivated and removed from active tracking", driverId);
         }
     }

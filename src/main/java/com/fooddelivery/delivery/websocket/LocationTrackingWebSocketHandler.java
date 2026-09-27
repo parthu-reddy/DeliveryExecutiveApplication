@@ -21,6 +21,8 @@ public class LocationTrackingWebSocketHandler extends TextWebSocketHandler {
 private final ObjectMapper objectMapper;
     private final StringRedisTemplate redisTemplate;
     private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
+    private final com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository repository;
+    private final com.fooddelivery.delivery.service.duty.RiderDutyNotifier dutyNotifier;
     private final ConcurrentHashMap<String, WebSocketSession> activeSessions = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, WebSocketSession> userSessions = new ConcurrentHashMap<>();
     private final Sinks.Many<TelemetryEvent> telemetrySink = Sinks.many().multicast().onBackpressureBuffer();
@@ -84,6 +86,29 @@ private final ObjectMapper objectMapper;
         activeSessions.put(sessionId, guarded);
         userSessions.put(userId, guarded);
         log.info("WebSocket connected: {} for user: {}", sessionId, userId);
+        sendDutySnapshot(guarded, userId);
+    }
+
+    /**
+     * Tells a freshly connected app what the server believes its duty status is. A DUTY_STATUS push
+     * published while this socket was down (the sweeper demoting a rider in a tunnel) reached no one;
+     * without this the app reconnects, resumes sending locations, and keeps showing "Online Duty" to
+     * a rider dispatch has already dropped.
+     */
+    private void sendDutySnapshot(WebSocketSession session, String userId) {
+        try {
+            java.util.UUID driverId = java.util.UUID.fromString(userId);
+            repository.findById(driverId).ifPresent(rider -> {
+                try {
+                    session.sendMessage(new TextMessage(dutyNotifier.message(rider.getStatus(),
+                            com.fooddelivery.delivery.enums.DutyChangeReason.CONNECTED)));
+                } catch (Exception e) {
+                    log.warn("DUTY_SNAPSHOT_SEND_FAILED driverId={}", userId, e);
+                }
+            });
+        } catch (IllegalArgumentException notARider) {
+            log.debug("No duty snapshot for non-UUID user {}", userId);
+        }
     }
 
     @Override

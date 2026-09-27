@@ -29,7 +29,9 @@ import static org.mockito.Mockito.when;
 class SessionRegistryLifecycleTest {
 
     private final LocationTrackingWebSocketHandler handler = new LocationTrackingWebSocketHandler(
-            new ObjectMapper(), mock(StringRedisTemplate.class), new SimpleMeterRegistry());
+            new ObjectMapper(), mock(StringRedisTemplate.class), new SimpleMeterRegistry(),
+            mock(com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository.class),
+            new com.fooddelivery.delivery.service.duty.RiderDutyNotifier(mock(StringRedisTemplate.class), new ObjectMapper()));
 
     private static final String DRIVER = "4f4a4e37-6ca5-5598-94f1-43ef1628f631";
 
