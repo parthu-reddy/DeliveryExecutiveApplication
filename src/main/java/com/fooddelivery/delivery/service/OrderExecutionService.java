@@ -111,6 +111,10 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                 }
+            } catch (RuntimeException e) {
+                log.error("DELIVERY_STATUS_UPDATE_FAILED driverId={} orderId={} status={}",
+                        driverId, orderId, status, e);
+                throw e;
             }
         }
     }
