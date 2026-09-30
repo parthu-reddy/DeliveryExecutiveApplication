@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -61,6 +62,14 @@ public class OrderAssignment {
 
     @Column(name = "released_at")
     private Instant releasedAt;
+
+    /**
+     * Reassignment and rider status updates can arrive at the same time. The version makes a
+     * stale update retry instead of silently restoring an old driver to an already reassigned row.
+     */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Integer version;
 
     /** The furthest step the rider has confirmed. Only moves forward. */
     @Enumerated(EnumType.STRING)

@@ -27,6 +27,9 @@ public class OrderAssignmentService {
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final com.fooddelivery.delivery.client.CustomerServiceClient customerServiceClient;
 
+    @org.springframework.beans.factory.annotation.Value("${app.rider.biometric-verification.enabled:true}")
+    private boolean biometricVerificationEnabled = true;
+
     public String getPendingPing(UUID driverId) {
         return redisTemplate.opsForValue().get(RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + driverId);
     }
@@ -277,63 +280,433 @@ public class OrderAssignmentService {
         }
     }
 
+    /**
+     * Kept only so a stale internal caller fails closed rather than recreating the unaudited
+     * force-assignment path. New calls must carry the CustomerApplication operation correlation.
+     */
+    @Deprecated(forRemoval = true)
     public void forceAssignOrder(UUID orderId, UUID driverId) {
-        log.info("Admin forcing assignment of order {} to driver {}", orderId, driverId);
-        // Clean up ALL pending pings for drivers that were being pinged
-        java.util.Set<String> pendingDrivers = redisTemplate.opsForSet().members(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId);
-        redisTemplate.delete(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId);
-        if (pendingDrivers != null) {
-            for (String pendingDriverId : pendingDrivers) {
-                redisTemplate.delete(RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + pendingDriverId);
-                if (!pendingDriverId.equals(driverId.toString())) {
-                    try {
-                        logisticsDispatchService.releaseDriverLock(pendingDriverId);
-                    } catch (Exception e) {
-                        log.error("Failed to release driver lock for driver {} on force assignment", pendingDriverId, e);
+        throw new UnsupportedOperationException(
+                "Manual assignment requires an authenticated operation from CustomerApplication.");
+    }
+
+    /**
+     * Applies an audited manual assignment after CustomerApplication has authenticated the
+     * administrator and persisted the current operation on the order.
+     *
+     * <p>Every destructive Redis change occurs after the database/outbox transaction commits.
+     * A rejected rider therefore leaves the existing dispatch pings and delayed dispatch path
+     * intact.
+     */
+    public ManualForceAssignmentResult forceAssignOrder(ManualForceAssignment command) {
+        final ManualDispatchContext dispatch;
+        try {
+            dispatch = loadManualDispatchContext(command);
+        } catch (ManualAssignmentSupersededException superseded) {
+            log.info("MANUAL_ASSIGNMENT_IGNORED orderId={} operationId={} reason={}",
+                    command.orderId(), command.operationId(), superseded.getMessage());
+            return ManualForceAssignmentResult.superseded();
+        }
+        ForceAssignmentOutcome outcome = transactionTemplate.execute(status -> {
+            try {
+                return commitManualForceAssignment(command, dispatch);
+            } catch (ManualAssignmentRejectedException rejection) {
+                // Every deterministic rejection occurs before any assignment mutation. Recording
+                // the result in this transaction makes the command terminal and visible to the
+                // operator instead of letting it retry until DLT.
+                return recordManualAssignmentRejection(command, rejection);
+            }
+        });
+        if (outcome == null) {
+            throw new IllegalStateException("Manual assignment transaction completed without a durable outcome.");
+        }
+        if (outcome.replayed()) {
+            return ManualForceAssignmentResult.replayResult();
+        }
+        if (outcome.rejected()) {
+            return ManualForceAssignmentResult.rejected(outcome.rejectionCode());
+        }
+        projectManualAssignmentAfterCommit(command, outcome);
+        return ManualForceAssignmentResult.appliedResult();
+    }
+
+    private ForceAssignmentOutcome commitManualForceAssignment(
+            ManualForceAssignment command,
+            ManualDispatchContext dispatch) {
+        String outboxIdempotencyKey = "delivery-force-assignment:" + command.operationId();
+        String failureIdempotencyKey = "delivery-manual-assignment-failure:" + command.operationId();
+        java.util.Optional<com.fooddelivery.common.outbox.entity.OutboxEventEntity> existingOutbox =
+                java.util.Optional.ofNullable(outboxEventRepository.findByIdempotencyKey(outboxIdempotencyKey))
+                        .orElse(java.util.Optional.empty());
+        java.util.Optional<com.fooddelivery.common.outbox.entity.OutboxEventEntity> existingFailure =
+                java.util.Optional.ofNullable(outboxEventRepository.findByIdempotencyKey(failureIdempotencyKey))
+                        .orElse(java.util.Optional.empty());
+        if (existingOutbox.isPresent() && existingFailure.isPresent()) {
+            throw new IllegalStateException(
+                    "Manual assignment has both a success and failure result for the same operation.");
+        }
+        if (existingOutbox.isPresent()) {
+            validateManualReplay(existingOutbox.get(), command);
+            return ForceAssignmentOutcome.idempotentReplay();
+        }
+        if (existingFailure.isPresent()) {
+            return ForceAssignmentOutcome.idempotentRejection(
+                    validateManualFailureReplay(existingFailure.get(), command));
+        }
+
+        com.fooddelivery.delivery.entity.OrderAssignment currentAssignment = assignmentRepository
+                .findLockedByOrderId(command.orderId())
+                .orElse(null);
+        UUID previousDriverId = liveDriver(currentAssignment);
+        boolean sameDriver = command.driverId().equals(previousDriverId);
+        if (currentAssignment != null
+                && currentAssignment.getState() == com.fooddelivery.delivery.entity.OrderAssignment.State.ASSIGNED
+                && !sameDriver
+                && currentAssignment.getDeliveryStatus() != null
+                && currentAssignment.getDeliveryStatus() != com.fooddelivery.common.enums.DeliveryStatus.ASSIGNED) {
+            throw new ManualAssignmentRejectedException("ORDER_NOT_REASSIGNABLE",
+                    "Cannot reassign an order after the assigned rider has started delivery.");
+        }
+        if (sameDriver) {
+            throw new ManualAssignmentRejectedException("ORDER_ALREADY_ASSIGNED",
+                    "The requested driver already holds this order assignment.");
+        }
+
+        java.util.Map<UUID, DeliveryExecutive> lockedDrivers = lockDrivers(command.driverId(), previousDriverId);
+        DeliveryExecutive target = lockedDrivers.get(command.driverId());
+        boolean oldDriverReleased = false;
+        String oldDriverCity = null;
+
+        RiderReadiness.requireManualAssignmentReady(
+                target, dispatch.dispatchCityId(), biometricVerificationEnabled, java.time.Instant.now(),
+                hasFreshLocation(target.getId(), dispatch.dispatchCityId()));
+        if (assignmentRepository.existsByDriverIdAndStateAndOrderIdNot(
+                command.driverId(), com.fooddelivery.delivery.entity.OrderAssignment.State.ASSIGNED,
+                command.orderId())) {
+            throw new ManualAssignmentRejectedException("DRIVER_ALREADY_ASSIGNED",
+                    "Driver already has another active assignment.");
+        }
+
+        if (previousDriverId != null) {
+            DeliveryExecutive previous = lockedDrivers.get(previousDriverId);
+            if (previous == null) {
+                throw new ManualAssignmentRejectedException("CURRENT_ASSIGNMENT_INCONSISTENT",
+                        "Current assigned driver could not be locked for reassignment.");
+            }
+            boolean hasAnotherAssignment = assignmentRepository.existsByDriverIdAndStateAndOrderIdNot(
+                    previousDriverId, com.fooddelivery.delivery.entity.OrderAssignment.State.ASSIGNED,
+                    command.orderId());
+            if (!hasAnotherAssignment
+                    && previous.getStatus() == com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.ON_DELIVERY) {
+                previous.setStatus(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.ONLINE);
+                repository.save(previous);
+                oldDriverReleased = true;
+                oldDriverCity = previous.getCityId();
+            }
+        }
+
+        recordAssignment(command.orderId(), command.driverId(), dispatch.details(), currentAssignment);
+        com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory
+                .getState(target.getStatus()).acceptOrder(target);
+        repository.save(target);
+
+        com.fooddelivery.common.event.DriverAssignedEvent event =
+                com.fooddelivery.common.event.DriverAssignedEvent.builder()
+                        .orderId(command.orderId().toString())
+                        .driverId(command.driverId().toString())
+                        .driverName(target.getFullName())
+                        .operationId(command.operationId())
+                        .actorId(command.actorId().toString())
+                        .reason(command.reason())
+                        .assignmentSource("MANUAL_INTERVENTION")
+                        .fromDriverId(previousDriverId == null ? null : previousDriverId.toString())
+                        .build();
+        com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent =
+                outboxEventHelper.createOutboxEvent(
+                        com.fooddelivery.common.constants.AggregateType.ORDER,
+                        command.orderId().toString(),
+                        com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED,
+                        event);
+        outboxEvent.setIdempotencyKey(outboxIdempotencyKey);
+        outboxEventRepository.save(outboxEvent);
+
+        log.info("MANUAL_ASSIGNMENT_COMMITTED orderId={} driverId={} actorId={} operationId={} previousDriverId={}",
+                command.orderId(), command.driverId(), command.actorId(), command.operationId(), previousDriverId);
+        return new ForceAssignmentOutcome(false, null, previousDriverId, oldDriverReleased, oldDriverCity,
+                dispatch.dispatchCityId());
+    }
+
+    private ForceAssignmentOutcome recordManualAssignmentRejection(
+            ManualForceAssignment command,
+            ManualAssignmentRejectedException rejection) {
+        String failureIdempotencyKey = "delivery-manual-assignment-failure:" + command.operationId();
+        com.fooddelivery.common.event.ManualAssignmentFailedEvent event =
+                com.fooddelivery.common.event.ManualAssignmentFailedEvent.builder()
+                        .orderId(command.orderId().toString())
+                        .operationId(command.operationId())
+                        .actorId(command.actorId().toString())
+                        .driverId(command.driverId().toString())
+                        .reasonCode(rejection.reasonCode())
+                        .timestamp(System.currentTimeMillis())
+                        .build();
+        com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent =
+                outboxEventHelper.createOutboxEvent(
+                        com.fooddelivery.common.constants.AggregateType.ORDER,
+                        command.orderId().toString(),
+                        com.fooddelivery.common.constants.EventType.MANUAL_ASSIGNMENT_FAILED,
+                        event);
+        outboxEvent.setIdempotencyKey(failureIdempotencyKey);
+        outboxEventRepository.save(outboxEvent);
+        log.warn("MANUAL_ASSIGNMENT_REJECTED orderId={} driverId={} actorId={} operationId={} reasonCode={}",
+                command.orderId(), command.driverId(), command.actorId(), command.operationId(),
+                rejection.reasonCode());
+        return ForceAssignmentOutcome.rejected(rejection.reasonCode());
+    }
+
+    private ManualDispatchContext loadManualDispatchContext(ManualForceAssignment command) {
+        java.util.Map<String, String> details;
+        try {
+            details = customerServiceClient.getOrderDispatchDetails(command.orderId());
+        } catch (Exception unavailable) {
+            throw new IllegalStateException(
+                    "Unable to validate the current order before manual assignment.", unavailable);
+        }
+        if (details == null) {
+            throw new IllegalStateException("Customer service returned no order context for manual assignment.");
+        }
+        String deliveryStatus = details.get("deliveryStatus");
+        String operationId = details.get("manualInterventionOperationId");
+        String requestedDriverId = details.get("manualInterventionRequestedDriverId");
+        String dispatchCityId = emptyToNull(details.get("dispatchCityId"));
+        if (!com.fooddelivery.common.enums.DeliveryStatus.MANUAL_INTERVENTION_REQUIRED.name().equals(deliveryStatus)) {
+            throw new ManualAssignmentSupersededException(
+                    "Order is no longer awaiting manual dispatch intervention.");
+        }
+        if (!command.operationId().equals(operationId)
+                || !command.driverId().toString().equals(requestedDriverId)) {
+            throw new ManualAssignmentSupersededException(
+                    "Manual assignment was superseded by a newer order intervention.");
+        }
+        if (dispatchCityId == null || !dispatchCityId.equals(command.dispatchCityId())) {
+            throw new ManualAssignmentSupersededException(
+                    "Manual assignment dispatch city does not match the current order.");
+        }
+        java.util.Map<String, String> assignmentDetails = new java.util.HashMap<>();
+        assignmentDetails.put("pickupOtp", emptyToNull(details.get("pickupOtp")));
+        assignmentDetails.put("deliveryOtp", emptyToNull(details.get("deliveryOtp")));
+        assignmentDetails.put("paymentMethod", emptyToNull(details.get("paymentMethod")));
+        return new ManualDispatchContext(assignmentDetails, dispatchCityId);
+    }
+
+    private java.util.Map<UUID, DeliveryExecutive> lockDrivers(UUID targetDriverId, UUID previousDriverId) {
+        java.util.List<UUID> ids = new java.util.ArrayList<>();
+        ids.add(targetDriverId);
+        if (previousDriverId != null && !previousDriverId.equals(targetDriverId)) {
+            ids.add(previousDriverId);
+        }
+        ids.sort(java.util.Comparator.naturalOrder());
+        java.util.Map<UUID, DeliveryExecutive> locked = new java.util.HashMap<>();
+        for (UUID id : ids) {
+            DeliveryExecutive executive = repository.findLockedById(id).orElse(null);
+            if (executive == null) {
+                String reasonCode = id.equals(targetDriverId)
+                        ? "DRIVER_NOT_FOUND"
+                        : "CURRENT_ASSIGNMENT_INCONSISTENT";
+                throw new ManualAssignmentRejectedException(reasonCode, "Driver not found: " + id);
+            }
+            locked.put(id, executive);
+        }
+        return locked;
+    }
+
+    private UUID liveDriver(com.fooddelivery.delivery.entity.OrderAssignment assignment) {
+        if (assignment == null
+                || assignment.getState() != com.fooddelivery.delivery.entity.OrderAssignment.State.ASSIGNED) {
+            return null;
+        }
+        return assignment.getDriverId();
+    }
+
+    private boolean hasFreshLocation(UUID driverId, String cityId) {
+        try {
+            Double lastPing = redisTemplate.opsForZSet().score(RiderLiveness.LAST_PING_KEY, driverId.toString());
+            if (lastPing == null
+                    || lastPing < System.currentTimeMillis() - RiderLiveness.MAX_SIGNAL_AGE_MS) {
+                return false;
+            }
+            java.util.List<org.springframework.data.geo.Point> positions = redisTemplate.opsForGeo()
+                    .position("drivers:geo:" + cityId, driverId.toString());
+            return positions != null && !positions.isEmpty() && positions.get(0) != null;
+        } catch (Exception redisUnavailable) {
+            log.warn("MANUAL_ASSIGNMENT_READINESS_UNAVAILABLE driverId={} cityId={}", driverId, cityId,
+                    redisUnavailable);
+            return false;
+        }
+    }
+
+    private void validateManualReplay(
+            com.fooddelivery.common.outbox.entity.OutboxEventEntity event,
+            ManualForceAssignment command) {
+        if (event.getEventType() != com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED) {
+            throw new IllegalStateException("Manual assignment operation conflicts with a different outbox event.");
+        }
+        try {
+            com.fooddelivery.common.event.DriverAssignedEvent payload = objectMapper.readValue(
+                    event.getPayload(), com.fooddelivery.common.event.DriverAssignedEvent.class);
+            if (!command.orderId().toString().equals(payload.getOrderId())
+                    || !command.driverId().toString().equals(payload.getDriverId())
+                    || !command.operationId().equals(payload.getOperationId())
+                    || !command.actorId().toString().equals(payload.getActorId())
+                    || !command.reason().equals(payload.getReason())) {
+                throw new IllegalStateException(
+                        "Manual assignment operation conflicts with a different request payload.");
+            }
+        } catch (com.fasterxml.jackson.core.JsonProcessingException invalidPayload) {
+            throw new IllegalStateException("Manual assignment audit payload cannot be read.", invalidPayload);
+        }
+    }
+
+    private String validateManualFailureReplay(
+            com.fooddelivery.common.outbox.entity.OutboxEventEntity event,
+            ManualForceAssignment command) {
+        if (event.getEventType() != com.fooddelivery.common.constants.EventType.MANUAL_ASSIGNMENT_FAILED) {
+            throw new IllegalStateException("Manual assignment failure operation conflicts with a different outbox event.");
+        }
+        try {
+            com.fooddelivery.common.event.ManualAssignmentFailedEvent payload = objectMapper.readValue(
+                    event.getPayload(), com.fooddelivery.common.event.ManualAssignmentFailedEvent.class);
+            if (!command.orderId().toString().equals(payload.getOrderId())
+                    || !command.driverId().toString().equals(payload.getDriverId())
+                    || !command.operationId().equals(payload.getOperationId())
+                    || !command.actorId().toString().equals(payload.getActorId())
+                    || payload.getReasonCode() == null
+                    || payload.getReasonCode().isBlank()) {
+                throw new IllegalStateException(
+                        "Manual assignment failure operation conflicts with a different request payload.");
+            }
+            return payload.getReasonCode();
+        } catch (com.fasterxml.jackson.core.JsonProcessingException invalidPayload) {
+            throw new IllegalStateException("Manual assignment failure audit payload cannot be read.", invalidPayload);
+        }
+    }
+
+    /**
+     * The Kafka listener already owns a transaction. {@link TransactionTemplate} therefore joins
+     * it, which means returning from {@code execute} does not necessarily mean the assignment is
+     * durable yet. Redis is only a projection of the durable assignment, so defer projection
+     * until that enclosing transaction commits. Direct callers without an enclosing transaction
+     * have already committed by the time this method runs and can project immediately.
+     */
+    private void projectManualAssignmentAfterCommit(
+            ManualForceAssignment command,
+            ForceAssignmentOutcome outcome) {
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            projectCommittedManualAssignment(command, outcome);
+                        }
+                    });
+            return;
+        }
+        projectCommittedManualAssignment(command, outcome);
+    }
+
+    private void projectCommittedManualAssignment(
+            ManualForceAssignment command,
+            ForceAssignmentOutcome outcome) {
+        try {
+            redisTemplate.opsForValue().set(RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + command.orderId(),
+                    command.driverId().toString(), java.time.Duration.ofHours(24));
+            redisTemplate.opsForValue().set(RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + command.driverId(),
+                    command.orderId().toString(), java.time.Duration.ofHours(24));
+            redisTemplate.opsForValue().set(RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + command.orderId(),
+                    "CANCELLED", java.time.Duration.ofHours(24));
+            redisTemplate.opsForHash().put("drivers:status", command.driverId().toString(),
+                    com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.ON_DELIVERY.name());
+            redisTemplate.opsForSet().remove(
+                    RedisKeyConstants.PREFIX_DRIVERS_AVAILABLE + outcome.dispatchCityId(),
+                    command.driverId().toString());
+
+            java.util.Set<String> pendingDrivers = redisTemplate.opsForSet()
+                    .members(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + command.orderId());
+            redisTemplate.delete(RedisKeyConstants.PREFIX_ORDER_PING_PENDING + command.orderId());
+            redisTemplate.opsForZSet().remove(RedisKeyConstants.PREFIX_ORDER_PING_TIMEOUTS,
+                    command.orderId().toString());
+            redisTemplate.opsForZSet().remove(RedisKeyConstants.QUEUE_DELAYED_DISPATCH,
+                    command.orderId().toString());
+            if (pendingDrivers != null) {
+                for (String pendingDriverId : pendingDrivers) {
+                    redisTemplate.delete(RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + pendingDriverId);
+                    if (!command.driverId().toString().equals(pendingDriverId)) {
+                        releasePendingDriverAfterCommittedForce(pendingDriverId, command.orderId());
                     }
                 }
             }
-        }
-        redisTemplate.opsForZSet().remove(RedisKeyConstants.PREFIX_ORDER_PING_TIMEOUTS, orderId.toString());
-        redisTemplate.opsForZSet().remove(com.fooddelivery.common.constants.RedisKeyConstants.QUEUE_DELAYED_DISPATCH, orderId.toString());
-        // Force set the order driver lock
-        redisTemplate.opsForValue().set(RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId, driverId.toString(), java.time.Duration.ofHours(24));
-        java.util.Map<String, String> dispatchDetails = resolveDispatchDetails(orderId);
-        try {
-            transactionTemplate.executeWithoutResult(status -> {
-                DeliveryExecutive executive = repository.findLockedById(driverId).orElseThrow(() -> new IllegalArgumentException("Driver not found: " + driverId));
-                com.fooddelivery.common.event.DriverAssignedEvent event = com.fooddelivery.common.event.DriverAssignedEvent.builder()
-                        .orderId(orderId.toString())
-                        .driverId(driverId.toString())
-                        .driverName(executive.getFullName())
-                        .build();
-                com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = outboxEventHelper.createOutboxEvent(com.fooddelivery.common.constants.AggregateType.ORDER, orderId.toString(), com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED, event);
-                log.info("Triggering event: DRIVER_ASSIGNED for executive: {}", driverId);
-                outboxEventRepository.save(outboxEvent);
-                recordAssignment(orderId, driverId, dispatchDetails);
-                if (executive.getStatus() == com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.OFFLINE) {
-                    executive.setStatus(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.ONLINE);
+            if (outcome.oldDriverId() != null) {
+                clearActiveOrderIfMatches(outcome.oldDriverId(), command.orderId());
+                if (outcome.oldDriverReleased()
+                        && outcome.oldDriverCity() != null
+                        && hasFreshLocation(outcome.oldDriverId(), outcome.oldDriverCity())) {
+                    logisticsDispatchService.releaseDriverLock(outcome.oldDriverId().toString());
                 }
-                com.fooddelivery.delivery.service.state.DeliveryExecutiveState state = com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory.getState(executive.getStatus());
-                state.acceptOrder(executive);
-                repository.save(executive);
-                redisTemplate.opsForHash().put("drivers:status", driverId.toString(), executive.getStatus().name());
-            });
-        } catch (Exception e) {
-            log.error("Failed to commit DRIVER_ASSIGNED transaction in forceAssignOrder. Releasing Redis lock for order {}", orderId, e);
-            redisTemplate.delete(RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId);
-            throw e;
-        }
-        try {
-            redisTemplate.opsForValue().set(RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + driverId, orderId.toString(), java.time.Duration.ofHours(24));
-            redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + orderId, "CANCELLED", java.time.Duration.ofHours(24));
-            String cityId = repository.findById(driverId).map(DeliveryExecutive::getCityId).orElse(null);
-            if (cityId != null) {
-                String key = RedisKeyConstants.PREFIX_DRIVERS_AVAILABLE + cityId;
-                redisTemplate.opsForSet().remove(key, driverId.toString());
             }
-        } catch (Exception e) {
-            log.error("Failed post-commit active-order setup for driver {} on order {}", driverId, orderId, e);
+        } catch (Exception projectionFailure) {
+            // The durable assignment and outbox event have already committed. A later reconciliation
+            // can repair Redis; throwing here would make Kafka retry a completed command.
+            log.error("MANUAL_ASSIGNMENT_PROJECTION_FAILED orderId={} operationId={}",
+                    command.orderId(), command.operationId(), projectionFailure);
+        }
+    }
+
+    private void releasePendingDriverAfterCommittedForce(String driverId, UUID orderId) {
+        try {
+            logisticsDispatchService.releaseDriverLock(driverId);
+        } catch (Exception releaseFailure) {
+            log.error("Failed to release pending driver {} after committed manual assignment for order {}",
+                    driverId, orderId, releaseFailure);
+        }
+    }
+
+    private static final String DELETE_ACTIVE_ORDER_IF_MATCHES =
+            "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end return 0";
+
+    private void clearActiveOrderIfMatches(UUID driverId, UUID orderId) {
+        try {
+            redisTemplate.execute(new DefaultRedisScript<>(DELETE_ACTIVE_ORDER_IF_MATCHES, Long.class),
+                    java.util.List.of(RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + driverId),
+                    orderId.toString());
+        } catch (Exception redisFailure) {
+            log.error("Failed to clear previous active-order projection for driver {} and order {}",
+                    driverId, orderId, redisFailure);
+        }
+    }
+
+    private record ManualDispatchContext(java.util.Map<String, String> details, String dispatchCityId) {
+    }
+
+    private record ForceAssignmentOutcome(
+            boolean replayed,
+            String rejectionCode,
+            UUID oldDriverId,
+            boolean oldDriverReleased,
+            String oldDriverCity,
+            String dispatchCityId) {
+        static ForceAssignmentOutcome idempotentReplay() {
+            return new ForceAssignmentOutcome(true, null, null, false, null, null);
+        }
+
+        static ForceAssignmentOutcome rejected(String rejectionCode) {
+            return new ForceAssignmentOutcome(false, rejectionCode, null, false, null, null);
+        }
+
+        static ForceAssignmentOutcome idempotentRejection(String rejectionCode) {
+            return rejected(rejectionCode);
+        }
+
+        boolean rejected() {
+            return rejectionCode != null;
         }
     }
 
@@ -383,6 +756,20 @@ public class OrderAssignmentService {
      */
     // Package-private so the event-to-persisted-assignment mapping can be tested directly.
     void recordAssignment(UUID orderId, UUID driverId, java.util.Map<String, String> dispatchDetails) {
+        recordAssignment(orderId, driverId, dispatchDetails, assignmentRepository
+                .findByOrderId(orderId)
+                .orElse(null));
+    }
+
+    /**
+     * Uses the caller's row lock for a manual reassignment. The ordinary first-winner path keeps
+     * using the public overload above because its Redis Lua lock already serialises candidates.
+     */
+    private void recordAssignment(
+            UUID orderId,
+            UUID driverId,
+            java.util.Map<String, String> dispatchDetails,
+            com.fooddelivery.delivery.entity.OrderAssignment existingAssignment) {
         String pickupOtp = dispatchDetails.get("pickupOtp");
         String deliveryOtp = dispatchDetails.get("deliveryOtp");
         com.fooddelivery.common.enums.PaymentMethod paymentMethod = null;
@@ -395,15 +782,20 @@ public class OrderAssignmentService {
             }
         }
 
-        com.fooddelivery.delivery.entity.OrderAssignment assignment = assignmentRepository
-                .findByOrderId(orderId)
-                .orElseGet(() -> com.fooddelivery.delivery.entity.OrderAssignment.builder()
+        com.fooddelivery.delivery.entity.OrderAssignment assignment = existingAssignment != null
+                ? existingAssignment
+                : com.fooddelivery.delivery.entity.OrderAssignment.builder()
                         .orderId(orderId)
-                        .build());
+                        .build();
+        boolean riderChanged = assignment.getDriverId() != null && !driverId.equals(assignment.getDriverId());
         assignment.setDriverId(driverId);
         assignment.setState(com.fooddelivery.delivery.entity.OrderAssignment.State.ASSIGNED);
         assignment.setAssignedAt(java.time.Instant.now());
         assignment.setReleasedAt(null);
+        if (riderChanged) {
+            // A replacement rider has not confirmed any handover state from the former rider.
+            assignment.setDeliveryStatus(null);
+        }
         if (pickupOtp != null) {
             assignment.setPickupOtp(pickupOtp);
         }

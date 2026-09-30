@@ -24,6 +24,7 @@ private final org.springframework.transaction.support.TransactionTemplate transa
 
     @Transactional
     public DeliveryExecutive onboard(UUID driverId, String fullName, String phoneNumber, String vehicleNumber, String photoUrl, com.fooddelivery.common.enums.VehicleClass vehicleType, String cityId) {
+        cityId = com.fooddelivery.common.location.CityIdValidator.requireCanonical(cityId);
         DeliveryExecutive executive = repository.findById(driverId).orElseGet(DeliveryExecutive::new);
         if (executive.getId() == null) {
             executive.setId(driverId);
@@ -67,23 +68,8 @@ private final org.springframework.transaction.support.TransactionTemplate transa
         }
         DeliveryExecutive updated = transactionTemplate.execute(status -> {
             DeliveryExecutive executive = repository.findById(driverId).orElseThrow(() -> new RuntimeException("Driver not found"));
-            if (executive.getVehicleNumber() == null || executive.getVehicleNumber().trim().isEmpty()) {
-                throw new IllegalArgumentException("Registration incomplete: Please complete registration before going online.");
-            }
-            if (executive.getCityId() == null || executive.getCityId().isBlank()) {
-                throw new IllegalArgumentException("Registration incomplete: No operating city on your profile.");
-            }
-            if (executive.getVerificationStatus() != VerificationStatus.APPROVED) {
-                throw new IllegalArgumentException("Onboarding incomplete: Driver verification status is " + executive.getVerificationStatus() + ". Must be APPROVED to go online.");
-            }
-            if (!executive.isActive()) {
-                throw new IllegalArgumentException("Account inactive: Driver account is currently deactivated or suspended.");
-            }
-            if (biometricVerificationEnabled) {
-                if (executive.getLastBiometricVerificationAt() == null || executive.getLastBiometricVerificationAt().isBefore(java.time.Instant.now().minus(java.time.Duration.ofHours(24)))) {
-                    throw new IllegalArgumentException("Biometric verification required: Please complete your daily selfie verification to go online.");
-                }
-            }
+            RiderReadiness.requireEligibleForDuty(
+                    executive, biometricVerificationEnabled, java.time.Instant.now());
             if (executive.getStatus() == DeliveryExecutiveStatus.OFFLINE) {
                 DeliveryExecutiveStateFactory.getState(executive.getStatus()).goOnline(executive);
                 return repository.save(executive);
@@ -96,7 +82,7 @@ private final org.springframework.transaction.support.TransactionTemplate transa
         // a second "go online" from a fresh device is exactly the rider re-registering where they are.
         try {
             redisTemplate.opsForGeo().add("drivers:geo:" + cityId, new org.springframework.data.geo.Point(lng, lat), id);
-            redisTemplate.opsForZSet().add("driver_last_ping", id, System.currentTimeMillis());
+            redisTemplate.opsForZSet().add(RiderLiveness.LAST_PING_KEY, id, System.currentTimeMillis());
             if (updated.getStatus() == DeliveryExecutiveStatus.ONLINE) {
                 redisTemplate.opsForSet().add(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVERS_AVAILABLE + cityId, id);
             }
@@ -125,7 +111,7 @@ private final org.springframework.transaction.support.TransactionTemplate transa
             if (updated.getCityId() != null) {
                 redisTemplate.opsForSet().remove(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVERS_AVAILABLE + updated.getCityId(), id);
             }
-            redisTemplate.opsForZSet().remove("driver_last_ping", id);
+            redisTemplate.opsForZSet().remove(RiderLiveness.LAST_PING_KEY, id);
             redisTemplate.opsForHash().put("drivers:status", id, updated.getStatus().name());
         } catch (Exception e) {
             log.error("Failed to sync driver {} going offline with Redis. DB is OFFLINE; releaseDriverLock will not return them to the pool.", driverId, e);
@@ -137,10 +123,13 @@ private final org.springframework.transaction.support.TransactionTemplate transa
 
     @Transactional(readOnly = true)
     public java.util.List<com.fooddelivery.delivery.dto.DriverLocationDTO> getAvailableDriversWithLocation(String cityId, double lat, double lng, double radiusKm) {
+        cityId = com.fooddelivery.common.location.CityIdValidator.requireCanonical(cityId);
+        final String canonicalCityId = cityId;
         if (lat == 0 && lng == 0) {
-            // Fallback for legacy calls or missing params: fetch all online drivers
-            java.util.List<DeliveryExecutive> onlineDrivers = repository.findByStatus(DeliveryExecutiveStatus.ONLINE);
-            return fetchDriverLocations(cityId, onlineDrivers, true);
+            // Fallback for legacy calls or missing coordinates. It remains city-scoped and only
+            // returns actual fixes; a zero coordinate is not a usable fleet-map position.
+            java.util.List<DeliveryExecutive> onlineDrivers = repository.findByCityIdAndStatus(cityId, DeliveryExecutiveStatus.ONLINE);
+            return fetchDriverLocations(cityId, onlineDrivers, false);
         }
         String locationKey = "drivers:geo:" + cityId;
         java.util.List<com.fooddelivery.delivery.dto.DriverLocationDTO> result = new java.util.ArrayList<>();
@@ -160,8 +149,12 @@ private final org.springframework.transaction.support.TransactionTemplate transa
                     return result;
                 }
                 java.util.List<DeliveryExecutive> drivers = repository.findAllById(onlineDriverIds);
-                // Filter to ensure we only return ONLINE drivers as requested (double check against DB)
-                java.util.List<DeliveryExecutive> onlineDrivers = drivers.stream().filter(d -> d.getStatus() == DeliveryExecutiveStatus.ONLINE).collect(java.util.stream.Collectors.toList());
+                // Redis membership is a projection, not authority. Confirm both the database
+                // duty state and city before returning a location from this city GEO key.
+                java.util.List<DeliveryExecutive> onlineDrivers = drivers.stream()
+                        .filter(d -> canonicalCityId.equals(d.getCityId()))
+                        .filter(d -> d.getStatus() == DeliveryExecutiveStatus.ONLINE)
+                        .collect(java.util.stream.Collectors.toList());
                 log.debug("getAvailableDriversWithLocation: found {} drivers in radius", onlineDrivers.size());
                 return fetchDriverLocations(cityId, onlineDrivers, false);
             }
@@ -173,10 +166,14 @@ private final org.springframework.transaction.support.TransactionTemplate transa
 
     @Transactional(readOnly = true)
     public org.springframework.data.domain.Page<com.fooddelivery.delivery.dto.DriverLocationDTO> getAllDriversWithLocation(String cityId, org.springframework.data.domain.Pageable pageable) {
-        org.springframework.data.domain.Page<DeliveryExecutive> allDrivers = repository.findAll(pageable);
-        log.debug("getAllDriversWithLocation: found {} drivers on page", allDrivers.getNumberOfElements());
-        java.util.List<com.fooddelivery.delivery.dto.DriverLocationDTO> dtoList = fetchDriverLocations(cityId, allDrivers.getContent(), true);
-        return new org.springframework.data.domain.PageImpl<>(dtoList, pageable, allDrivers.getTotalElements());
+        cityId = com.fooddelivery.common.location.CityIdValidator.requireCanonical(cityId);
+        org.springframework.data.domain.Page<DeliveryExecutive> cityDrivers = repository.findByCityId(cityId, pageable);
+        log.debug("getAllDriversWithLocation: found {} drivers in city {} on page", cityDrivers.getNumberOfElements(), cityId);
+        // This endpoint means "with location". Missing Redis coordinates must not become a
+        // fabricated (0,0) map pin. The page metadata deliberately remains based on the scoped
+        // driver page so callers can advance past an entirely locationless page.
+        java.util.List<com.fooddelivery.delivery.dto.DriverLocationDTO> dtoList = fetchDriverLocations(cityId, cityDrivers.getContent(), false);
+        return new org.springframework.data.domain.PageImpl<>(dtoList, pageable, cityDrivers.getTotalElements());
     }
 
     /**

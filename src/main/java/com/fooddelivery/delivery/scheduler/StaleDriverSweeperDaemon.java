@@ -8,6 +8,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import com.fooddelivery.delivery.enums.DutyChangeReason;
 import com.fooddelivery.delivery.service.duty.RiderDutyNotifier;
+import com.fooddelivery.delivery.service.RiderLiveness;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.transaction.support.TransactionTemplate;
 import java.util.HashMap;
@@ -33,8 +34,8 @@ private final StringRedisTemplate redisTemplate;
     private final IDeliveryExecutiveRepository deliveryExecutiveRepository;
     private final TransactionTemplate transactionTemplate;
     private final RiderDutyNotifier dutyNotifier;
-    private static final String DRIVER_LAST_PING_KEY = "driver_last_ping";
-    static final long STALE_THRESHOLD_MS = 60000; // 60 seconds
+    private static final String DRIVER_LAST_PING_KEY = RiderLiveness.LAST_PING_KEY;
+    static final long STALE_THRESHOLD_MS = RiderLiveness.MAX_SIGNAL_AGE_MS;
 
     @Scheduled(fixedDelay = 60000)
     public void sweepStaleDrivers() {

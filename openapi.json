@@ -67,34 +67,6 @@
         }
       }
     },
-    "/api/v1/internal/admin/delivery/orders/{orderId}/assign" : {
-      "post" : {
-        "tags" : [ "admin-delivery-controller" ],
-        "operationId" : "forceAssignOrder",
-        "parameters" : [ {
-          "name" : "orderId",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        }, {
-          "name" : "driverId",
-          "in" : "query",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK"
-          }
-        }
-      }
-    },
     "/api/v1/internal/admin/delivery/drivers/batch" : {
       "post" : {
         "tags" : [ "admin-delivery-controller" ],
@@ -608,6 +580,27 @@
         }
       }
     },
+    "/api/v1/internal/admin/delivery/fleet-cities" : {
+      "get" : {
+        "tags" : [ "admin-delivery-controller" ],
+        "operationId" : "getFleetCities",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/internal/admin/delivery/drivers/{driverId}" : {
       "get" : {
         "tags" : [ "admin-delivery-controller" ],
@@ -668,8 +661,9 @@
         "parameters" : [ {
           "name" : "cityId",
           "in" : "query",
-          "required" : true,
+          "required" : false,
           "schema" : {
+            "pattern" : "^[A-Z][A-Z0-9_-]{0,63}$",
             "type" : "string"
           }
         }, {
@@ -724,16 +718,31 @@
         "parameters" : [ {
           "name" : "cityId",
           "in" : "query",
-          "required" : true,
+          "required" : false,
           "schema" : {
+            "pattern" : "^[A-Z][A-Z0-9_-]{0,63}$",
             "type" : "string"
           }
         }, {
-          "name" : "pageable",
+          "name" : "page",
           "in" : "query",
-          "required" : true,
+          "required" : false,
           "schema" : {
-            "$ref" : "#/components/schemas/Pageable"
+            "minimum" : 0,
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        }, {
+          "name" : "size",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "maximum" : 100,
+            "minimum" : 1,
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 100
           }
         } ],
         "responses" : {
@@ -1290,8 +1299,9 @@
         "type" : "object",
         "properties" : {
           "cityId" : {
-            "maxLength" : 50,
+            "maxLength" : 64,
             "minLength" : 0,
+            "pattern" : "^[A-Z][A-Z0-9_-]{0,63}$",
             "type" : "string"
           },
           "fullName" : {
@@ -1410,19 +1420,17 @@
         "required" : [ "content", "empty", "first", "last", "number", "numberOfElements", "size", "totalElements", "totalPages" ],
         "type" : "object",
         "properties" : {
-          "totalPages" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
           "totalElements" : {
             "type" : "integer",
             "format" : "int64"
           },
-          "pageable" : {
-            "$ref" : "#/components/schemas/PageableObject"
+          "totalPages" : {
+            "type" : "integer",
+            "format" : "int32"
           },
-          "sort" : {
-            "$ref" : "#/components/schemas/SortObject"
+          "numberOfElements" : {
+            "type" : "integer",
+            "format" : "int32"
           },
           "first" : {
             "type" : "boolean"
@@ -1444,9 +1452,11 @@
               "$ref" : "#/components/schemas/DeliveryExecutive"
             }
           },
-          "numberOfElements" : {
-            "type" : "integer",
-            "format" : "int32"
+          "sort" : {
+            "$ref" : "#/components/schemas/SortObject"
+          },
+          "pageable" : {
+            "$ref" : "#/components/schemas/PageableObject"
           },
           "empty" : {
             "type" : "boolean"
@@ -1457,6 +1467,13 @@
         "required" : [ "offset", "pageNumber", "pageSize", "paged", "unpaged" ],
         "type" : "object",
         "properties" : {
+          "offset" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "sort" : {
+            "$ref" : "#/components/schemas/SortObject"
+          },
           "paged" : {
             "type" : "boolean"
           },
@@ -1470,13 +1487,6 @@
           },
           "unpaged" : {
             "type" : "boolean"
-          },
-          "sort" : {
-            "$ref" : "#/components/schemas/SortObject"
-          },
-          "offset" : {
-            "type" : "integer",
-            "format" : "int64"
           }
         }
       },
@@ -1526,19 +1536,17 @@
         "required" : [ "content", "empty", "first", "last", "number", "numberOfElements", "size", "totalElements", "totalPages" ],
         "type" : "object",
         "properties" : {
-          "totalPages" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
           "totalElements" : {
             "type" : "integer",
             "format" : "int64"
           },
-          "pageable" : {
-            "$ref" : "#/components/schemas/PageableObject"
+          "totalPages" : {
+            "type" : "integer",
+            "format" : "int32"
           },
-          "sort" : {
-            "$ref" : "#/components/schemas/SortObject"
+          "numberOfElements" : {
+            "type" : "integer",
+            "format" : "int32"
           },
           "first" : {
             "type" : "boolean"
@@ -1560,9 +1568,11 @@
               "$ref" : "#/components/schemas/DriverLocationDTO"
             }
           },
-          "numberOfElements" : {
-            "type" : "integer",
-            "format" : "int32"
+          "sort" : {
+            "$ref" : "#/components/schemas/SortObject"
+          },
+          "pageable" : {
+            "$ref" : "#/components/schemas/PageableObject"
           },
           "empty" : {
             "type" : "boolean"

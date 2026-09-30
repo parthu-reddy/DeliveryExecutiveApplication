@@ -18,6 +18,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import org.springframework.beans.factory.annotation.Value;
 
 @RestController
 @RequestMapping("/api/delivery")
@@ -32,10 +33,15 @@ private final DeliveryExecutiveProfileService profileService;
     private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
     private final org.springframework.data.redis.listener.RedisMessageListenerContainer redisMessageListenerContainer;
 
+    @Value("${platform.fleet.allowed-city-ids:BLR}")
+    private String allowedFleetCityIds = "BLR";
+
 
     public static class DeliveryOnboardRequest {
         @NotBlank
-        @Size(max = 50)
+        @Size(max = 64)
+        @com.fooddelivery.common.location.CityId
+        @Pattern(regexp = com.fooddelivery.common.location.CityIdValidator.REGEX)
         private String cityId;
         @NotBlank
         @Size(max = 100)
@@ -214,7 +220,7 @@ public void setAvailable(final Boolean available) {
 
     @PostMapping("/onboard")
     public ResponseEntity<ApiResponse<com.fooddelivery.delivery.entity.DeliveryExecutive>> onboardDriver(java.security.Principal principal, @Valid @RequestBody DeliveryOnboardRequest request) {
-        String cityId = request.getCityId();
+        String cityId = com.fooddelivery.common.location.FleetCityScope.resolve(request.getCityId(), allowedFleetCityIds);
         String fullName = request.getFullName();
         String phoneNumber = request.getPhoneNumber();
         String vehicleNumber = request.getVehicleNumber();

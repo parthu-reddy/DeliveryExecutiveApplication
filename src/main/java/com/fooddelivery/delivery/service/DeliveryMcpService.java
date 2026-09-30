@@ -132,19 +132,18 @@ private final DeliveryExecutiveController deliveryController;
     @Tool(description = "Admin: Get all drivers with location. Provide cityId.")
     public String getAllDriversWithLocation(String cityId) {
         try {
-            return objectMapper.writeValueAsString(adminDeliveryController.getAllDriversWithLocation(cityId, org.springframework.data.domain.PageRequest.of(0, 100)).getBody());
+            return objectMapper.writeValueAsString(adminDeliveryController.getAllDriversWithLocation(cityId, 0, 100).getBody());
         } catch (Exception e) {
             return "Error: " + e.getMessage();
         }
     }
 
-    @Tool(description = "Admin: Force assign order. Provide orderId and driverId.")
+    @Tool(description = "Deprecated: manual force assignment requires the audited admin intervention workflow.")
     public String forceAssignOrder(String orderId, String driverId) {
-        try {
-            return objectMapper.writeValueAsString(adminDeliveryController.forceAssignOrder(UUID.fromString(orderId), UUID.fromString(driverId)).getBody());
-        } catch (Exception e) {
-            return "Error: " + e.getMessage();
-        }
+        // MCP calls reach this service without a verified admin principal. Allowing it to invoke
+        // the controller directly would forge an audit trail, so there is intentionally no
+        // mutation here until MCP identity propagation is implemented.
+        return "Manual assignment is unavailable through MCP. Use the audited admin intervention workflow.";
     }
 
     @Tool(description = "Admin: Get driver by ID. Provide driverId.")

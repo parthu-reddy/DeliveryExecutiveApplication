@@ -20,6 +20,12 @@ public interface IDeliveryExecutiveRepository extends JpaRepository<DeliveryExec
     java.util.List<DeliveryExecutive> findByStatus(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus status);
     
     Page<DeliveryExecutive> findByStatus(DeliveryExecutiveStatus status, Pageable pageable);
+
+    /** A fleet page must be scoped in SQL before a city-specific Redis GEO lookup. */
+    Page<DeliveryExecutive> findByCityId(String cityId, Pageable pageable);
+
+    /** Legacy availability calls without a centre still need the same city boundary. */
+    java.util.List<DeliveryExecutive> findByCityIdAndStatus(String cityId, DeliveryExecutiveStatus status);
     
     java.util.Optional<DeliveryExecutive> findByPhoneNumber(String phoneNumber);
 }
