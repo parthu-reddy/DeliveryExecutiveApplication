@@ -1,6 +1,9 @@
 spring:
   main:
     allow-bean-definition-overriding: true
+  jpa:
+    # Never bind a database connection to the lifetime of an SSE request.
+    open-in-view: false
   application:
     name: delivery-service
   config:
