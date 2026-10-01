@@ -43,10 +43,13 @@ private final IDeliveryExecutiveRepository executiveRepository;
                         return;
                     }
                 }
+                // Initial onboarding may activate a newly approved rider. A status refresh
+                // must preserve an already-approved rider's explicit inactive/suspended state.
+                boolean newlyApproved = executive.getVerificationStatus() != VerificationStatus.APPROVED;
                 executive.setVerificationStatus(VerificationStatus.APPROVED);
-                executive.setActive(true);
+                if (newlyApproved) executive.setActive(true);
                 executiveRepository.save(executive);
-                log.info("Executive {} has passed all onboarding checks and is now APPROVED and active.", executiveId);
+                log.info("Executive {} has passed all onboarding checks; APPROVED, active={}.", executiveId, executive.isActive());
             } else {
                 if (executive.getVerificationStatus() == VerificationStatus.APPROVED) {
                     log.warn("Executive {} no longer has all docs approved. Suspending account.", executiveId);
