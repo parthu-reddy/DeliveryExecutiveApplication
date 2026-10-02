@@ -36,6 +36,8 @@ class DeliveryOtpSourceTest {
     private OutboxEventRepository outbox;
     private StringRedisTemplate redis;
     private ValueOperations<String, String> values;
+    private IDeliveryExecutiveRepository executives;
+    private com.fooddelivery.delivery.entity.DeliveryExecutive executive;
 
     private final UUID driverId = UUID.randomUUID();
     private final UUID orderId = UUID.randomUUID();
@@ -47,6 +49,13 @@ class DeliveryOtpSourceTest {
         outbox = mock(OutboxEventRepository.class);
         redis = mock(StringRedisTemplate.class);
         values = mock(ValueOperations.class);
+        executives = mock(IDeliveryExecutiveRepository.class);
+        executive = new com.fooddelivery.delivery.entity.DeliveryExecutive();
+        executive.setId(driverId);
+        executive.setStatus(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.ON_DELIVERY);
+        lenient().when(executives.findLockedById(driverId)).thenReturn(Optional.of(executive));
+        lenient().when(redis.opsForHash()).thenReturn(mock(org.springframework.data.redis.core.HashOperations.class));
+        lenient().when(redis.opsForZSet()).thenReturn(mock(org.springframework.data.redis.core.ZSetOperations.class));
         lenient().when(redis.opsForValue()).thenReturn(values);
         // The dispatch payload key is GONE. That used to be fatal.
         lenient().when(values.get(anyString())).thenReturn(null);
@@ -70,32 +79,27 @@ class DeliveryOtpSourceTest {
 
     private DeliveredStateStrategy delivered() {
         return new DeliveredStateStrategy(redis, new ObjectMapper(), tx(), outbox,
-                mock(IDeliveryExecutiveRepository.class), mock(LogisticsDispatchService.class), assignments);
+                executives, mock(LogisticsDispatchService.class), assignments);
     }
 
     private OutForDeliveryStateStrategy outForDelivery() {
         return new OutForDeliveryStateStrategy(redis, new ObjectMapper(), tx(), outbox,
-                mock(IDeliveryExecutiveRepository.class), mock(LogisticsDispatchService.class), assignments);
+                executives, mock(LogisticsDispatchService.class), assignments);
     }
 
     @Test
     void deliveryStillCompletesWithTheDispatchPayloadGone() {
         DeliveredStateStrategy strategy = delivered();
 
-        // updateExecutiveState needs a driver row this test does not stand up, so the call fails
-        // *after* validate(). Classify on the message rather than the type: "Driver not found" is
-        // also an IllegalArgumentException, and catching the type alone reported a passing OTP
-        // check as a failing one.
-        try {
-            strategy.handleStatusUpdate(driverId, orderId, DeliveryStatus.DELIVERED, null, "654321", false);
-        } catch (RuntimeException e) {
-            assertFalse(String.valueOf(e.getMessage()).contains("OTP"),
-                    "the correct delivery OTP was refused because the Redis payload was missing: "
-                            + e.getMessage());
-        }
-        // The outbox write happens inside the transaction, after validate() and before the driver
-        // lookup -- so seeing it is direct evidence the OTP check passed.
+        assertDoesNotThrow(() -> strategy.handleStatusUpdate(driverId, orderId,
+                DeliveryStatus.DELIVERED, null, "654321", false));
         verify(outbox).save(any());
+        verify(executives).save(executive);
+        assertEquals(com.fooddelivery.delivery.enums.DeliveryExecutiveStatus.ONLINE, executive.getStatus());
+        OrderAssignment saved = assignments.findByOrderId(orderId).orElseThrow();
+        assertEquals(OrderAssignment.State.RELEASED, saved.getState());
+        assertEquals(DeliveryStatus.DELIVERED, saved.getDeliveryStatus());
+        assertNotNull(saved.getReleasedAt());
     }
 
     @Test
