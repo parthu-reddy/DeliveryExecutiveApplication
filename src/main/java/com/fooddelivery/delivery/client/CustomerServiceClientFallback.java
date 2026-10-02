@@ -9,7 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 @Component("deliveryexecutiveCustomerServiceClientFallback")
 public class CustomerServiceClientFallback implements CustomerServiceClient {
     @Override
-    public JsonNode getActiveOrdersForDriver(UUID driverId, int page, int size) {
+    public JsonNode getActiveOrdersForDriver(UUID driverId, java.util.List<UUID> confirmedOrderIds, int page, int size) {
         throw new IllegalStateException("Customer service is currently unavailable.");
     }
 

@@ -109,4 +109,46 @@ class ConfirmedDeliveryProgressTest {
         a.recordDeliveryStatus(DeliveryStatus.DELIVERED);
         assertThat(a.getDeliveryStatus()).isEqualTo(DeliveryStatus.DELIVERED);
     }
+
+    /**
+     * The trip the rider accepted a moment ago: the customer service has not yet recorded the driver
+     * (DRIVER_ASSIGNED is in flight) and this service has not yet recorded a step.
+     */
+    @Test
+    void aJustAcceptedOrderReadsAsThisRidersAssignedTrip() throws Exception {
+        OrderAssignment a = OrderAssignment.builder().orderId(ORDER).driverId(RIDER)
+                .state(OrderAssignment.State.ASSIGNED).build();
+        when(repository.findAllById(any())).thenReturn(List.of(a));
+        JsonNode page = json.readTree("{\"content\":[{\"id\":\"" + ORDER
+                + "\",\"status\":\"ACCEPTED\",\"deliveryStatus\":\"PENDING\",\"deliveryExecutiveId\":null}]}");
+
+        progress.apply(page, RIDER);
+
+        assertThat(deliveryStatusOf(page)).isEqualTo("ASSIGNED");
+        assertThat(page.get("content").get(0).get("deliveryExecutiveId").asText()).isEqualTo(RIDER.toString());
+    }
+
+    @Test
+    void aReleasedAssignmentDoesNotClaimTheOrderForTheRider() throws Exception {
+        OrderAssignment a = OrderAssignment.builder().orderId(ORDER).driverId(RIDER)
+                .state(OrderAssignment.State.RELEASED).build();
+        when(repository.findAllById(any())).thenReturn(List.of(a));
+        JsonNode page = json.readTree("{\"content\":[{\"id\":\"" + ORDER
+                + "\",\"status\":\"ACCEPTED\",\"deliveryStatus\":\"PENDING\",\"deliveryExecutiveId\":null}]}");
+
+        progress.apply(page, RIDER);
+
+        assertThat(deliveryStatusOf(page)).isEqualTo("PENDING");
+        assertThat(page.get("content").get(0).get("deliveryExecutiveId").isNull()).isTrue();
+    }
+
+    @Test
+    void heldOrderIdsAreTheRidersUnreleasedAssignments() {
+        UUID other = UUID.randomUUID();
+        when(repository.findByDriverIdAndState(RIDER, OrderAssignment.State.ASSIGNED)).thenReturn(List.of(
+                OrderAssignment.builder().orderId(ORDER).driverId(RIDER).state(OrderAssignment.State.ASSIGNED).build(),
+                OrderAssignment.builder().orderId(other).driverId(RIDER).state(OrderAssignment.State.ASSIGNED).build()));
+
+        assertThat(progress.heldOrderIds(RIDER)).containsExactly(ORDER, other);
+    }
 }

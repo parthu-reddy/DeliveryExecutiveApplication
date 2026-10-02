@@ -12,7 +12,9 @@ import java.util.UUID;
 public interface CustomerServiceClient {
 
     @GetMapping("/api/v1/internal/orders/driver/{driverId}/active")
-    JsonNode getActiveOrdersForDriver(@PathVariable("driverId") UUID driverId, @RequestParam("page") int page, @RequestParam("size") int size);
+    JsonNode getActiveOrdersForDriver(@PathVariable("driverId") UUID driverId,
+            @RequestParam("confirmedOrderIds") List<UUID> confirmedOrderIds,
+            @RequestParam("page") int page, @RequestParam("size") int size);
 
     @GetMapping("/api/v1/internal/orders/driver/{driverId}/history")
     JsonNode getOrderHistoryForDriver(@PathVariable("driverId") UUID driverId, @RequestParam("from") java.time.Instant from, @RequestParam("to") java.time.Instant to, @RequestParam("page") int page, @RequestParam("size") int size);

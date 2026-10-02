@@ -139,7 +139,8 @@ class RestaurantStatusStreamConnectionTest {
 
     static class StreamHandle { final AtomicReference<SseEmitter> emitter = new AtomicReference<>(); }
 
-    @Configuration(proxyBeanMethods = false)
+    // Registered only through withUserConfiguration. Not @Configuration: this package is component-
+    // scanned by OpenApiGenerationTest, which then found a second DeliveryExecutiveController bean.
     static class StreamConfiguration {
         @Bean PersistenceManagedTypes managedTypes() { return PersistenceManagedTypes.of(OrderAssignment.class.getName()); }
         @Bean OrderAssignmentRepository assignments(EntityManagerFactory factory) {

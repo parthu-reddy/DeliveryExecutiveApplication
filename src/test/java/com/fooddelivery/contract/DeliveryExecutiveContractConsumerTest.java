@@ -45,7 +45,7 @@ public class DeliveryExecutiveContractConsumerTest {
     @Test
     public void testGetActiveOrdersForDriver() {
         com.fasterxml.jackson.databind.JsonNode response = customerServiceClient.getActiveOrdersForDriver(
-                java.util.UUID.fromString("123e4567-e89b-12d3-a456-426614174000"), 0, 10);
+                java.util.UUID.fromString("123e4567-e89b-12d3-a456-426614174000"), java.util.List.of(), 0, 10);
 
         assertNotNull(response);
         assertNotNull(response.get("content"));
@@ -53,6 +53,18 @@ public class DeliveryExecutiveContractConsumerTest {
         // OUT_FOR_DELIVERY is a DeliveryStatus, not an OrderStatus; Order carries both fields.
         assertEquals("OUT_FOR_DELIVERY", response.get("content").get(0).get("deliveryStatus").asText());
         assertEquals(1, response.get("totalElements").asInt());
+    }
+
+    /** The orders this service holds for the driver travel as confirmedOrderIds. */
+    @Test
+    public void testGetActiveOrdersForDriverWithConfirmedAssignments() {
+        com.fasterxml.jackson.databind.JsonNode response = customerServiceClient.getActiveOrdersForDriver(
+                java.util.UUID.fromString("123e4567-e89b-12d3-a456-426614174000"),
+                java.util.List.of(java.util.UUID.fromString("7f7af6a5-1d86-4f29-b4cc-36eefe69a74b")), 0, 10);
+
+        assertNotNull(response);
+        assertEquals(1, response.get("content").size());
+        assertEquals("7f7af6a5-1d86-4f29-b4cc-36eefe69a74b", response.get("content").get(0).get("id").asText());
     }
 
     @Test

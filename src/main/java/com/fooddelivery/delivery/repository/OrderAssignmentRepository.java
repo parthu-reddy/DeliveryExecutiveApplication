@@ -13,6 +13,8 @@ import java.util.UUID;
 
 @Repository
 public interface OrderAssignmentRepository extends JpaRepository<OrderAssignment, UUID> {
+    java.util.List<OrderAssignment> findByDriverIdAndState(UUID driverId, OrderAssignment.State state);
+
 
     Optional<OrderAssignment> findByOrderId(UUID orderId);
 

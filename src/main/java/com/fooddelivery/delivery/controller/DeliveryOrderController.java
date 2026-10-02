@@ -22,7 +22,8 @@ private final CustomerServiceClient customerServiceClient;
     @GetMapping("/active")
     public ResponseEntity<JsonNode> getActiveOrders(Principal principal, @RequestParam(value = "page", defaultValue = "0") int page, @RequestParam(value = "size", defaultValue = "20") int size) {
         UUID driverId = UUID.fromString(principal.getName());
-        JsonNode pageNode = customerServiceClient.getActiveOrdersForDriver(driverId, page, size);
+        JsonNode pageNode = customerServiceClient.getActiveOrdersForDriver(
+                driverId, confirmedDeliveryProgress.heldOrderIds(driverId), page, size);
         confirmedDeliveryProgress.apply(pageNode, driverId);
         mapToUiOrdersInPage(pageNode, driverId);
         return ResponseEntity.ok(pageNode);

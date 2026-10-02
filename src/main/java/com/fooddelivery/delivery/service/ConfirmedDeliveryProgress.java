@@ -22,6 +22,13 @@ import java.util.UUID;
  * and a delivered order came back as the active contract. The assignment row records the step in
  * the same transaction as the event, and this lays it over the customer service's answer.
  *
+ * <p>Acceptance is such a step. This service commits the assignment, then the customer service
+ * records the driver when DRIVER_ASSIGNED arrives. In between, the order the rider just accepted
+ * was in neither their active nor their available list, and the app replaced its list with that
+ * answer -- the trip vanished until a later poll. {@link #heldOrderIds} names the orders this
+ * service holds for the driver so the customer service includes them, and {@link #apply} marks
+ * them as the driver's, ASSIGNED at least.
+ *
  * <p>Forward only, and never over a cancellation: the customer service stays the authority on
  * whether the order is still live.
  */
@@ -30,6 +37,12 @@ import java.util.UUID;
 public class ConfirmedDeliveryProgress {
 
     private final OrderAssignmentRepository assignmentRepository;
+
+    /** Orders this service has assigned to the driver and not released. */
+    public List<UUID> heldOrderIds(UUID driverId) {
+        return assignmentRepository.findByDriverIdAndState(driverId, OrderAssignment.State.ASSIGNED).stream()
+                .map(OrderAssignment::getOrderId).toList();
+    }
 
     /** Applies to a Spring {@code Page} JSON ({@code content} array) in place. */
     public void apply(JsonNode page, UUID driverId) {
@@ -44,11 +57,19 @@ public class ConfirmedDeliveryProgress {
         assignmentRepository.findAllById(ids).forEach(a -> assignments.put(a.getOrderId(), a));
         for (JsonNode order : page.get("content")) {
             OrderAssignment a = assignments.get(uuid(order.path("id").asText(null)));
-            if (a == null || a.getDeliveryStatus() == null || !driverId.equals(a.getDriverId())) continue;
+            if (a == null || !driverId.equals(a.getDriverId())) continue;
             if (isCancelled(order.path("status").asText(""))) continue;
+            DeliveryStatus confirmed = a.getDeliveryStatus();
+            if (a.getState() == OrderAssignment.State.ASSIGNED) {
+                if (order.path("deliveryExecutiveId").isMissingNode() || order.path("deliveryExecutiveId").isNull()) {
+                    ((ObjectNode) order).put("deliveryExecutiveId", driverId.toString());
+                }
+                if (confirmed == null) confirmed = DeliveryStatus.ASSIGNED;
+            }
+            if (confirmed == null) continue;
             DeliveryStatus reported = parse(order.path("deliveryStatus").asText(null));
-            if (reported == null || a.getDeliveryStatus().getSequence() > reported.getSequence()) {
-                ((ObjectNode) order).put("deliveryStatus", a.getDeliveryStatus().name());
+            if (reported == null || confirmed.getSequence() > reported.getSequence()) {
+                ((ObjectNode) order).put("deliveryStatus", confirmed.name());
             }
         }
     }
