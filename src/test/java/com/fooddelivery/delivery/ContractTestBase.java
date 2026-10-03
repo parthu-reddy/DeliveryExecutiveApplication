@@ -6,6 +6,7 @@ import org.mockito.Mockito;
 
 import com.fooddelivery.delivery.controller.AdminDeliveryController;
 import com.fooddelivery.delivery.controller.InternalDeliveryController;
+import com.fooddelivery.delivery.controller.InternalDriverController;
 import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import com.fooddelivery.delivery.enums.DeliveryExecutiveStatus;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
@@ -53,6 +54,7 @@ public abstract class ContractTestBase {
                 new AdminDeliveryController(repository, profileService, orderAssignmentService);
 
         // Serialize as production does: see PlatformJson (contract-harness Jackson drift).
-        com.fooddelivery.common.contract.PlatformJson.standaloneSetup(internalDeliveryController, adminDeliveryController);
+        com.fooddelivery.common.contract.PlatformJson.standaloneSetup(internalDeliveryController, adminDeliveryController,
+                new InternalDriverController(repository));
     }
 }
