@@ -157,8 +157,10 @@ class ConcurrentApplicationDecisionTest {
     private OrderAssignment activeDelivery() {
         var driver=profiles.findById(id).orElseThrow();driver.setApplicationStatus(ApplicationStatus.APPROVED);driver.setActive(true);
         driver.setStatus(DeliveryExecutiveStatus.ON_DELIVERY);driver.setLastBiometricVerificationAt(Instant.now());profiles.saveAndFlush(driver);
-        return assignments.saveAndFlush(OrderAssignment.builder().orderId(UUID.randomUUID()).driverId(id).state(OrderAssignment.State.ASSIGNED)
+        var saved=assignments.saveAndFlush(OrderAssignment.builder().orderId(UUID.randomUUID()).driverId(id).state(OrderAssignment.State.ASSIGNED)
                 .pickupOtp("123456").deliveryOtp("654321").paymentMethod(PaymentMethod.UPI).deliveryStatus(DeliveryStatus.OUT_FOR_DELIVERY).assignedAt(Instant.now()).build());
+        // Compare persisted state before and after the decision, including the database timestamp precision.
+        return assignments.findById(saved.getOrderId()).orElseThrow();
     }
     private void assignmentUnchanged(OrderAssignment before) {
         var after=assignments.findById(before.getOrderId()).orElseThrow();
