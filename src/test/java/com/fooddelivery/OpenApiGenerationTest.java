@@ -88,6 +88,7 @@ public class OpenApiGenerationTest {
 
     @org.springframework.boot.test.mock.mockito.MockBean
     private com.fooddelivery.delivery.service.OnboardingOrchestratorService onboardingOrchestratorService;
+    @org.springframework.boot.test.mock.mockito.MockBean private com.fooddelivery.delivery.service.DeliveryApplicationService deliveryApplications;
 
 
     @org.springframework.boot.test.mock.mockito.MockBean
@@ -133,7 +134,10 @@ public class OpenApiGenerationTest {
     // generated Zod response validator degrades to z.void(); the scoped scan below
     // does not reach com.fooddelivery.common.config.
     @org.springframework.context.annotation.Import({com.fooddelivery.common.config.OpenApiJsonMediaTypeCustomizer.class, com.fooddelivery.common.config.OpenApiPaginationRequiredCustomizer.class})
-    @org.springframework.context.annotation.ComponentScan(basePackages = {"com.fooddelivery.delivery.controller"})
+    @org.springframework.context.annotation.ComponentScan(basePackages = {"com.fooddelivery.delivery.controller"},
+            excludeFilters = @org.springframework.context.annotation.ComponentScan.Filter(
+                    type = org.springframework.context.annotation.FilterType.ANNOTATION,
+                    classes = org.springframework.boot.test.context.TestComponent.class))
     @org.springframework.boot.autoconfigure.EnableAutoConfiguration(excludeName = {"org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration", "org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration", "org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration", "org.springframework.boot.actuate.autoconfigure.security.reactive.ManagementReactiveSecurityAutoConfiguration", "org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration"})
     static class TestApp {
     }
@@ -203,6 +207,8 @@ public class OpenApiGenerationTest {
         }
 
         if (openApiJson != null && !openApiJson.isEmpty()) {
+            org.junit.jupiter.api.Assertions.assertTrue(openApiJson.contains("\"/api/v1/delivery-onboarding/application\""));
+            assertFalse(openApiJson.contains("\"/api/delivery/onboard\""));
             assertFalse(openApiJson.contains("\"/api/v1/internal/admin/delivery/orders/{orderId}/assign\""),
                     "The retired direct-assignment endpoint must not be published in the Delivery OpenAPI contract.");
             Path path = Paths.get("target/openapi.json");

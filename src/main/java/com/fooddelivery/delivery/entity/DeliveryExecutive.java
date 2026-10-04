@@ -1,7 +1,7 @@
 package com.fooddelivery.delivery.entity;
 
 import com.fooddelivery.delivery.enums.DeliveryExecutiveStatus;
-import com.fooddelivery.common.enums.VerificationStatus;
+import com.fooddelivery.common.enums.ApplicationStatus;
 import com.fooddelivery.common.enums.VehicleClass;
 import jakarta.persistence.*;
 import org.locationtech.jts.geom.Point;
@@ -41,9 +41,18 @@ public class DeliveryExecutive {
     @jakarta.validation.constraints.NotNull
     private DeliveryExecutiveStatus status;
     @Enumerated(EnumType.STRING)
-    @JdbcType(PostgreSQLEnumJdbcType.class)
-    @Column(name = "verification_status")
-    private VerificationStatus verificationStatus = VerificationStatus.PENDING;
+    @Column(name = "application_status", nullable = false)
+    private ApplicationStatus applicationStatus = ApplicationStatus.DRAFT;
+    @Column(name = "rejection_reason", length = 500)
+    private String rejectionReason;
+    @Column(name = "submitted_at")
+    private Instant submittedAt;
+    @Column(name = "reviewed_at")
+    private Instant reviewedAt;
+    @Column(name = "reviewed_by")
+    private UUID reviewedBy;
+    @Column(name = "verification_application_version")
+    private Long verificationApplicationVersion;
     @Enumerated(EnumType.STRING)
     @JdbcType(PostgreSQLEnumJdbcType.class)
     @Column(name = "vehicle_type")

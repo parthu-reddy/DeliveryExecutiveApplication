@@ -27,23 +27,20 @@ private final DeliveryExecutiveController deliveryController;
     private final com.fooddelivery.delivery.controller.InternalDeliveryController internalDeliveryController;
     private final com.fooddelivery.delivery.controller.DeliveryVerificationController deliveryVerificationController;
     private final ObjectMapper objectMapper;
+    private final DeliveryApplicationService applications;
 
 
     private Principal createMockPrincipal(String driverId) {
-        return () -> driverId;
+        var auth=org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if(auth==null || !auth.isAuthenticated() || !auth.getName().equals(driverId))
+            throw new org.springframework.security.access.AccessDeniedException("Use your own authenticated delivery identity");
+        return auth;
     }
 
-    @Tool(description = "Onboard a new delivery executive. Provide driverId (representing X-User-Id), phoneNumber, vehicleNumber, and photoUrl.")
-    public String onboardDriver(String driverId, String phoneNumber, String vehicleNumber, String photoUrl) {
-        try {
-            DeliveryExecutiveController.DeliveryOnboardRequest req = new DeliveryExecutiveController.DeliveryOnboardRequest();
-            req.setPhoneNumber(phoneNumber);
-            req.setVehicleNumber(vehicleNumber);
-            req.setPhotoUrl(photoUrl);
-            return objectMapper.writeValueAsString(deliveryController.onboardDriver(createMockPrincipal(driverId), req).getBody());
-        } catch (Exception e) {
-            return "Failed to onboard driver: " + e.getMessage();
-        }
+    @Tool(description = "Save your own delivery application draft. Admin approval is required before duty.")
+    public String saveDeliveryApplication(String fullName, String vehicleNumber, com.fooddelivery.common.enums.VehicleClass vehicleType, String cityId, Integer version) {
+        try { return objectMapper.writeValueAsString(applications.put(new com.fooddelivery.delivery.dto.DeliveryApplicationDraftRequest(fullName, vehicleNumber, vehicleType, cityId, null, version))); }
+        catch (RuntimeException | com.fasterxml.jackson.core.JsonProcessingException refused) { return "The application could not be saved. Review your details and application status."; }
     }
 
     @Tool(description = "Toggle the online/offline status of a delivery executive. Provide driverId, boolean isOnline, and the rider's current lat/lng (required to go online).")
@@ -203,10 +200,10 @@ private final DeliveryExecutiveController deliveryController;
         }
     }
 
-    @Tool(description = "Driver: Get presigned upload URL. Provide docType and contentType.")
-    public String getDriverPresignedUploadUrl(String docType, String contentType) {
+    @Tool(description = "Driver: Get presigned upload URL. Provide docType, contentType and byte length.")
+    public String getDriverPresignedUploadUrl(String docType, String contentType, long contentLength) {
         try {
-            return objectMapper.writeValueAsString(deliveryVerificationController.getPresignedUploadUrl(docType, contentType).getBody());
+            return objectMapper.writeValueAsString(deliveryVerificationController.getPresignedUploadUrl(docType, contentType, contentLength).getBody());
         } catch (Exception e) {
             return "Error: " + e.getMessage();
         }

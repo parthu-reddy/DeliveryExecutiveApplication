@@ -24,7 +24,7 @@ import org.springframework.test.context.ActiveProfiles;
 @org.springframework.test.context.ActiveProfiles("contract-test")
 @AutoConfigureMessageVerifier
 @org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.BEFORE_CLASS)
-@EmbeddedKafka(adminTimeout = 60, partitions = 1, topics = {"platform.logistics.dispatch", "order-events"})
+@EmbeddedKafka(adminTimeout = 60, partitions = 1, topics = {"platform.logistics.dispatch", "order-events", "delivery-partner-events"})
 public abstract class BaseMessagingClass {
 
     @MockBean
@@ -47,6 +47,9 @@ public abstract class BaseMessagingClass {
 
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
+
+    @Autowired
+    private com.fasterxml.jackson.databind.ObjectMapper mapper;
 
     /** Mirrors LogisticsDispatchService.dispatchNearestDriver's request map and key. */
     public void fireLogisticsDispatch() throws Exception {
@@ -76,6 +79,33 @@ public abstract class BaseMessagingClass {
 
     @Autowired
     private KafkaMessageVerifier messageVerifier;
+
+    /** Exercise the production transition serializer and actual outbox topic/header routing. */
+    public void fireDeliveryApplicationStatusChanged() throws Exception {
+        var repo = org.mockito.Mockito.mock(com.fooddelivery.common.outbox.repository.OutboxEventRepository.class);
+        var emitted = new java.util.ArrayList<com.fooddelivery.common.outbox.entity.OutboxEventEntity>();
+        org.mockito.Mockito.when(repo.save(org.mockito.ArgumentMatchers.any())).thenAnswer(call -> {
+            com.fooddelivery.common.outbox.entity.OutboxEventEntity event = call.getArgument(0); emitted.add(event); return event;
+        });
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        org.springframework.transaction.support.TransactionSynchronizationManager.setActualTransactionActive(true);
+        try {
+            var events = new com.fooddelivery.common.service.ApplicationEvents(repo, mapper,
+                    org.mockito.Mockito.mock(com.fooddelivery.common.audit.AuditTrail.class),
+                    org.mockito.Mockito.mock(com.fooddelivery.common.service.NotificationRouterService.class),
+                    new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
+            var id = java.util.UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+            events.delivery(id, com.fooddelivery.common.enums.ApplicationStatus.SUBMITTED, null, 3,
+                    java.time.Instant.parse("2026-10-04T00:00:00Z"), id, "USER",
+                    com.fooddelivery.common.enums.AuditAction.APPLICATION_SUBMITTED, java.util.List.of(id));
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+            org.springframework.transaction.support.TransactionSynchronizationManager.setActualTransactionActive(false);
+        }
+        org.mockito.Mockito.when(repo.findTop100ByStatusInOrderByCreatedAtAsc(org.mockito.ArgumentMatchers.anyList())).thenReturn(emitted);
+        new com.fooddelivery.common.outbox.service.OutboxProcessor(repo, kafkaTemplate,
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry()).processOutboxEvents();
+    }
 
     public void fireTelemetryEvent() {
         String payload = """

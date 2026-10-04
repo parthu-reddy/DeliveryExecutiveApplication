@@ -12,11 +12,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 @PreAuthorize("hasAnyRole('ADMIN', 'SERVICE')")
 @lombok.RequiredArgsConstructor
 public class InternalDeliveryController {
-private final DeliveryExecutiveProfileService profileService;
+private final com.fooddelivery.delivery.service.DeliveryApplicationService applications;
 
     @PostMapping("/drivers/{driverId}/suspend")
     public ResponseEntity<Void> suspendDriver(@PathVariable UUID driverId) {
-        profileService.goOffline(driverId, com.fooddelivery.delivery.enums.DutyChangeReason.SUSPENDED);
+        applications.suspendForChecks(driverId);
         return ResponseEntity.ok().build();
     }
 

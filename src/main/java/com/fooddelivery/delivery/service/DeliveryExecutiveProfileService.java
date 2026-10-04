@@ -4,7 +4,6 @@ import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import com.fooddelivery.delivery.enums.DeliveryExecutiveStatus;
 import com.fooddelivery.delivery.enums.DutyChangeReason;
 import com.fooddelivery.delivery.service.state.DeliveryExecutiveStateFactory;
-import com.fooddelivery.common.enums.VerificationStatus;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,27 +20,6 @@ private final org.springframework.transaction.support.TransactionTemplate transa
 
     @org.springframework.beans.factory.annotation.Value("${app.rider.biometric-verification.enabled:true}")
     private boolean biometricVerificationEnabled;
-
-    @Transactional
-    public DeliveryExecutive onboard(UUID driverId, String fullName, String phoneNumber, String vehicleNumber, String photoUrl, com.fooddelivery.common.enums.VehicleClass vehicleType, String cityId) {
-        cityId = com.fooddelivery.common.location.CityIdValidator.requireCanonical(cityId);
-        DeliveryExecutive executive = repository.findById(driverId).orElseGet(DeliveryExecutive::new);
-        if (executive.getId() == null) {
-            executive.setId(driverId);
-            executive.setStatus(DeliveryExecutiveStatus.OFFLINE);
-        }
-        executive.setFullName(fullName);
-        executive.setPhoneNumber(phoneNumber);
-        executive.setVehicleNumber(vehicleNumber);
-        executive.setPhotoUrl(photoUrl);
-        executive.setCityId(cityId);
-        if (vehicleType != null) {
-            executive.setVehicleType(vehicleType);
-        }
-        // createdAt and updatedAt are auto-managed by @CreationTimestamp/@UpdateTimestamp
-        log.info("Onboarded/Updated Delivery Executive: {}", executive.getId());
-        return repository.save(executive);
-    }
 
     @Transactional(readOnly = true)
     public java.util.Optional<DeliveryExecutive> findByPhoneNumber(String phoneNumber) {

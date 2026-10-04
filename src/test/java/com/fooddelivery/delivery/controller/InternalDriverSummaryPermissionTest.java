@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /** Actual HTTP handlers and method advice: summary access cannot grant admin fleet access. */
 @SpringJUnitConfig(InternalDriverSummaryPermissionTest.Config.class)
 class InternalDriverSummaryPermissionTest {
-    @Configuration @EnableMethodSecurity static class Config {
+    @org.springframework.boot.test.context.TestConfiguration @EnableMethodSecurity static class Config {
         @Bean IDeliveryExecutiveRepository profiles() { return mock(IDeliveryExecutiveRepository.class); }
         @Bean InternalDriverController summaries(IDeliveryExecutiveRepository r) { return new InternalDriverController(r); }
         @Bean AdminDeliveryController admin(IDeliveryExecutiveRepository r) {

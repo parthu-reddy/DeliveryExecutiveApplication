@@ -1,71 +1,17 @@
 package com.fooddelivery.delivery.service;
-
 import com.fooddelivery.common.client.GovernmentIdServiceClient;
-import com.fooddelivery.delivery.entity.DeliveryExecutive;
-import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
-import com.fooddelivery.delivery.service.DeliveryExecutiveProfileService;
 import com.fooddelivery.common.enums.VehicleClass;
-import com.fooddelivery.common.enums.VerificationStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
-
-@Service
-@lombok.extern.slf4j.Slf4j
-@lombok.RequiredArgsConstructor
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+/** Compatibility checks delegate every lifecycle decision to the application owner. */
+@Service @RequiredArgsConstructor
 public class OnboardingOrchestratorService {
-private final IDeliveryExecutiveRepository executiveRepository;
-    private final GovernmentIdServiceClient governmentIdClient;
-    private final DeliveryExecutiveProfileService profileService;
-
-    @Transactional
-    public void evaluateOnboardingStatus(UUID executiveId) {
-        evaluateOnboardingStatus(executiveId, null);
-    }
-
-    @Transactional
-    public void evaluateOnboardingStatus(UUID executiveId, GovernmentIdServiceClient.VerificationSummary preloadedSummary) {
-        DeliveryExecutive executive = executiveRepository.findById(executiveId).orElseThrow(() -> new IllegalArgumentException("Executive not found"));
-        try {
-            var summary = preloadedSummary != null ? preloadedSummary : governmentIdClient.getVerificationSummary(executiveId);
-            if (summary.lastBiometricVerificationAt() != null) {
-                executive.setLastBiometricVerificationAt(summary.lastBiometricVerificationAt());
-            }
-            if (summary.allDocsApproved() && summary.bankApproved()) {
-                VehicleClass vehicleType = executive.getVehicleType();
-                // If vehicleType is null, skip DL class check (treat as no motor vehicle)
-                if (vehicleType != null && vehicleType != VehicleClass.BICYCLE) {
-                    if (!isVehicleClassCompatible(vehicleType, summary.dlVehicleClass())) {
-                        log.warn("Executive {} vehicle class mismatch! Registered: {}, DL allows: {}", executiveId, vehicleType, summary.dlVehicleClass());
-                        executive.setVerificationStatus(VerificationStatus.REJECTED);
-                        executiveRepository.save(executive);
-                        profileService.deactivateDriver(executiveId);
-                        return;
-                    }
-                }
-                // Initial onboarding may activate a newly approved rider. A status refresh
-                // must preserve an already-approved rider's explicit inactive/suspended state.
-                boolean newlyApproved = executive.getVerificationStatus() != VerificationStatus.APPROVED;
-                executive.setVerificationStatus(VerificationStatus.APPROVED);
-                if (newlyApproved) executive.setActive(true);
-                executiveRepository.save(executive);
-                log.info("Executive {} has passed all onboarding checks; APPROVED, active={}.", executiveId, executive.isActive());
-            } else {
-                if (executive.getVerificationStatus() == VerificationStatus.APPROVED) {
-                    log.warn("Executive {} no longer has all docs approved. Suspending account.", executiveId);
-                    executive.setVerificationStatus(VerificationStatus.PENDING);
-                    executiveRepository.save(executive);
-                    profileService.deactivateDriver(executiveId);
-                } else if (summary.lastBiometricVerificationAt() != null) {
-                    executiveRepository.save(executive); // Save anyway if biometric updated
-                }
-            }
-        } catch (Exception e) {
-            log.error("Failed to fetch verification status from GovernmentIDValidationService for executive {}", executiveId, e);
-        }
-    }
-
-    public boolean isVehicleClassCompatible(VehicleClass registeredType, String dlVehicleClass) {
+    private final DeliveryApplicationService applications;
+    private final GovernmentIdServiceClient government;
+    public void evaluateOnboardingStatus(UUID id) { applications.observeChecks(id,government.getVerificationSummary(id)); }
+    public void evaluateOnboardingStatus(UUID id,GovernmentIdServiceClient.VerificationSummary summary) { applications.observeChecks(id,summary); }
+    public static boolean isVehicleClassCompatible(VehicleClass registeredType, String dlVehicleClass) {
         if (registeredType == null || dlVehicleClass == null) return false;
         // E.g. dlVehicleClass might be "MCWG", "LMV", "MCWOG"
         String dlClass = dlVehicleClass.toUpperCase();
@@ -81,5 +27,6 @@ private final IDeliveryExecutiveRepository executiveRepository;
             return false;
         }
     }
+
 
 }

@@ -9,6 +9,50 @@
     "description" : "Generated server url"
   } ],
   "paths" : {
+    "/api/v1/delivery-onboarding/application" : {
+      "get" : {
+        "tags" : [ "delivery-application-controller" ],
+        "operationId" : "mine",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseDeliveryApplicationDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "delivery-application-controller" ],
+        "operationId" : "put",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DeliveryApplicationDraftRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseDeliveryApplicationDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/internal/drivers/summaries" : {
       "post" : {
         "tags" : [ "internal-driver-controller" ],
@@ -102,6 +146,154 @@
         }
       }
     },
+    "/api/v1/internal/admin/delivery-applications/{executiveId}/suspend" : {
+      "post" : {
+        "tags" : [ "admin-delivery-application-controller" ],
+        "operationId" : "suspend",
+        "parameters" : [ {
+          "name" : "executiveId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DeliveryApplicationDecisionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseDeliveryApplicationDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/admin/delivery-applications/{executiveId}/reject" : {
+      "post" : {
+        "tags" : [ "admin-delivery-application-controller" ],
+        "operationId" : "reject",
+        "parameters" : [ {
+          "name" : "executiveId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DeliveryApplicationDecisionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseDeliveryApplicationDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/admin/delivery-applications/{executiveId}/reinstate" : {
+      "post" : {
+        "tags" : [ "admin-delivery-application-controller" ],
+        "operationId" : "reinstate",
+        "parameters" : [ {
+          "name" : "executiveId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DeliveryApplicationDecisionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseDeliveryApplicationDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/admin/delivery-applications/{executiveId}/approve" : {
+      "post" : {
+        "tags" : [ "admin-delivery-application-controller" ],
+        "operationId" : "approve",
+        "parameters" : [ {
+          "name" : "executiveId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DeliveryApplicationDecisionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseDeliveryApplicationDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/delivery/telemetry/sync" : {
       "post" : {
         "tags" : [ "delivery-telemetry-controller" ],
@@ -147,6 +339,34 @@
               "*/*" : {
                 "schema" : {
                   "type" : "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/delivery-onboarding/application/submit" : {
+      "post" : {
+        "tags" : [ "delivery-application-controller" ],
+        "operationId" : "submit",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DeliveryApplicationDecisionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseDeliveryApplicationDto"
                 }
               }
             }
@@ -287,34 +507,6 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ApiResponseVoid"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/delivery/onboard" : {
-      "post" : {
-        "tags" : [ "delivery-executive-controller" ],
-        "operationId" : "onboardDriver",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/DeliveryOnboardRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseDeliveryExecutive"
                 }
               }
             }
@@ -580,6 +772,33 @@
         }
       }
     },
+    "/api/v1/internal/delivery-applications/{executiveId}/context" : {
+      "get" : {
+        "tags" : [ "internal-delivery-application-controller" ],
+        "operationId" : "context",
+        "parameters" : [ {
+          "name" : "executiveId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DeliveryApplicationContextDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/internal/admin/delivery/fleet-cities" : {
       "get" : {
         "tags" : [ "admin-delivery-controller" ],
@@ -759,6 +978,106 @@
         }
       }
     },
+    "/api/v1/internal/admin/delivery-applications" : {
+      "get" : {
+        "tags" : [ "admin-delivery-application-controller" ],
+        "operationId" : "queue",
+        "parameters" : [ {
+          "name" : "status",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : "IN_REVIEW",
+            "enum" : [ "DRAFT", "SUBMITTED", "IN_REVIEW", "APPROVED", "REJECTED", "SUSPENDED" ]
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseSliceDeliveryApplicationQueueDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/admin/delivery-applications/{executiveId}" : {
+      "get" : {
+        "tags" : [ "admin-delivery-application-controller" ],
+        "operationId" : "detail",
+        "parameters" : [ {
+          "name" : "executiveId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseDeliveryApplicationDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/admin/delivery-applications/{executiveId}/history" : {
+      "get" : {
+        "tags" : [ "admin-delivery-application-controller" ],
+        "operationId" : "history",
+        "parameters" : [ {
+          "name" : "executiveId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseSliceAuditEvent"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/delivery/orders/history" : {
       "get" : {
         "tags" : [ "delivery-order-controller" ],
@@ -888,6 +1207,14 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "contentLength",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -895,7 +1222,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseMapStringString"
+                  "$ref" : "#/components/schemas/ApiResponseDocumentUploadDto"
                 }
               }
             }
@@ -1030,6 +1357,178 @@
   },
   "components" : {
     "schemas" : {
+      "DeliveryApplicationDraftRequest" : {
+        "required" : [ "fullName" ],
+        "type" : "object",
+        "properties" : {
+          "fullName" : {
+            "maxLength" : 100,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "vehicleNumber" : {
+            "maxLength" : 50,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "vehicleType" : {
+            "type" : "string",
+            "enum" : [ "BICYCLE", "MCWG", "LMV", "EV_TWO_WHEELER" ]
+          },
+          "cityId" : {
+            "maxLength" : 64,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "photoUrl" : {
+            "maxLength" : 512,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "ApiResponseDeliveryApplicationDto" : {
+        "required" : [ "message", "success", "timestamp" ],
+        "type" : "object",
+        "properties" : {
+          "success" : {
+            "type" : "boolean"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "errorCode" : {
+            "type" : "string"
+          },
+          "data" : {
+            "$ref" : "#/components/schemas/DeliveryApplicationDto"
+          },
+          "timestamp" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "ApplicationDocumentDto" : {
+        "type" : "object",
+        "properties" : {
+          "documentId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "docType" : {
+            "type" : "string"
+          },
+          "objectKey" : {
+            "type" : "string"
+          },
+          "contentType" : {
+            "type" : "string"
+          },
+          "contentLength" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "uploadedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "DeliveryApplicationDto" : {
+        "type" : "object",
+        "properties" : {
+          "executiveId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "DRAFT", "SUBMITTED", "IN_REVIEW", "APPROVED", "REJECTED", "SUSPENDED" ]
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "fullName" : {
+            "type" : "string"
+          },
+          "phoneNumber" : {
+            "type" : "string"
+          },
+          "vehicleNumber" : {
+            "type" : "string"
+          },
+          "vehicleType" : {
+            "type" : "string",
+            "enum" : [ "BICYCLE", "MCWG", "LMV", "EV_TWO_WHEELER" ]
+          },
+          "cityId" : {
+            "type" : "string"
+          },
+          "photoUrl" : {
+            "type" : "string"
+          },
+          "rejectionReason" : {
+            "type" : "string"
+          },
+          "submittedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "reviewedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "reviewedBy" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "canEdit" : {
+            "type" : "boolean"
+          },
+          "documentsAvailable" : {
+            "type" : "boolean"
+          },
+          "checks" : {
+            "$ref" : "#/components/schemas/VerificationSummary"
+          },
+          "documents" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ApplicationDocumentDto"
+            }
+          }
+        }
+      },
+      "VerificationSummary" : {
+        "type" : "object",
+        "properties" : {
+          "allDocsApproved" : {
+            "type" : "boolean"
+          },
+          "bankApproved" : {
+            "type" : "boolean"
+          },
+          "dlVehicleClass" : {
+            "type" : "string"
+          },
+          "dlApproved" : {
+            "type" : "boolean"
+          },
+          "rcApproved" : {
+            "type" : "boolean"
+          },
+          "lastBiometricVerificationAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
       "DeliveryExecutive" : {
         "required" : [ "createdAt", "id", "phoneNumber", "status", "updatedAt" ],
         "type" : "object",
@@ -1057,9 +1556,28 @@
             "type" : "string",
             "enum" : [ "OFFLINE", "ONLINE", "ON_DELIVERY" ]
           },
-          "verificationStatus" : {
+          "applicationStatus" : {
             "type" : "string",
-            "enum" : [ "PENDING", "APPROVED", "VERIFIED", "REJECTED", "MANUAL_REVIEW", "FAILED" ]
+            "enum" : [ "DRAFT", "SUBMITTED", "IN_REVIEW", "APPROVED", "REJECTED", "SUSPENDED" ]
+          },
+          "rejectionReason" : {
+            "type" : "string"
+          },
+          "submittedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "reviewedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "reviewedBy" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "verificationApplicationVersion" : {
+            "type" : "integer",
+            "format" : "int64"
           },
           "vehicleType" : {
             "type" : "string",
@@ -1086,6 +1604,21 @@
           "updatedAt" : {
             "type" : "string",
             "format" : "date-time"
+          }
+        }
+      },
+      "DeliveryApplicationDecisionRequest" : {
+        "required" : [ "version" ],
+        "type" : "object",
+        "properties" : {
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "reason" : {
+            "maxLength" : 500,
+            "minLength" : 0,
+            "type" : "string"
           }
         }
       },
@@ -1294,65 +1827,6 @@
           }
         }
       },
-      "DeliveryOnboardRequest" : {
-        "required" : [ "cityId", "fullName", "phoneNumber", "vehicleNumber" ],
-        "type" : "object",
-        "properties" : {
-          "cityId" : {
-            "maxLength" : 64,
-            "minLength" : 0,
-            "pattern" : "^[A-Z][A-Z0-9_-]{0,63}$",
-            "type" : "string"
-          },
-          "fullName" : {
-            "maxLength" : 100,
-            "minLength" : 0,
-            "type" : "string"
-          },
-          "phoneNumber" : {
-            "maxLength" : 20,
-            "minLength" : 0,
-            "pattern" : "^\\+?[1-9]\\d{1,14}$",
-            "type" : "string"
-          },
-          "vehicleNumber" : {
-            "maxLength" : 50,
-            "minLength" : 0,
-            "type" : "string"
-          },
-          "photoUrl" : {
-            "maxLength" : 255,
-            "minLength" : 0,
-            "type" : "string"
-          },
-          "vehicleType" : {
-            "type" : "string",
-            "enum" : [ "BICYCLE", "MCWG", "LMV", "EV_TWO_WHEELER" ]
-          }
-        }
-      },
-      "ApiResponseDeliveryExecutive" : {
-        "required" : [ "message", "success", "timestamp" ],
-        "type" : "object",
-        "properties" : {
-          "success" : {
-            "type" : "boolean"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "errorCode" : {
-            "type" : "string"
-          },
-          "data" : {
-            "$ref" : "#/components/schemas/DeliveryExecutive"
-          },
-          "timestamp" : {
-            "type" : "string",
-            "format" : "date-time"
-          }
-        }
-      },
       "UpdateOrderStatusRequest" : {
         "required" : [ "status" ],
         "type" : "object",
@@ -1398,6 +1872,23 @@
           }
         }
       },
+      "DeliveryApplicationContextDto" : {
+        "type" : "object",
+        "properties" : {
+          "executiveId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "DRAFT", "SUBMITTED", "IN_REVIEW", "APPROVED", "REJECTED", "SUSPENDED" ]
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
       "Pageable" : {
         "type" : "object",
         "properties" : {
@@ -1428,15 +1919,15 @@
             "type" : "integer",
             "format" : "int32"
           },
-          "numberOfElements" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
           "first" : {
             "type" : "boolean"
           },
           "last" : {
             "type" : "boolean"
+          },
+          "numberOfElements" : {
+            "type" : "integer",
+            "format" : "int32"
           },
           "number" : {
             "type" : "integer",
@@ -1544,15 +2035,15 @@
             "type" : "integer",
             "format" : "int32"
           },
-          "numberOfElements" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
           "first" : {
             "type" : "boolean"
           },
           "last" : {
             "type" : "boolean"
+          },
+          "numberOfElements" : {
+            "type" : "integer",
+            "format" : "int32"
           },
           "number" : {
             "type" : "integer",
@@ -1579,10 +2070,7 @@
           }
         }
       },
-      "JsonNode" : {
-        "type" : "object"
-      },
-      "ApiResponseMapStringString" : {
+      "ApiResponseSliceDeliveryApplicationQueueDto" : {
         "required" : [ "message", "success", "timestamp" ],
         "type" : "object",
         "properties" : {
@@ -1596,12 +2084,232 @@
             "type" : "string"
           },
           "data" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "type" : "string"
-            }
+            "$ref" : "#/components/schemas/SliceDeliveryApplicationQueueDto"
           },
           "timestamp" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "DeliveryApplicationQueueDto" : {
+        "type" : "object",
+        "properties" : {
+          "executiveId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "fullName" : {
+            "type" : "string"
+          },
+          "cityId" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "DRAFT", "SUBMITTED", "IN_REVIEW", "APPROVED", "REJECTED", "SUSPENDED" ]
+          },
+          "submittedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "SliceDeliveryApplicationQueueDto" : {
+        "type" : "object",
+        "properties" : {
+          "first" : {
+            "type" : "boolean"
+          },
+          "last" : {
+            "type" : "boolean"
+          },
+          "numberOfElements" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "number" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "size" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "content" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DeliveryApplicationQueueDto"
+            }
+          },
+          "sort" : {
+            "$ref" : "#/components/schemas/SortObject"
+          },
+          "pageable" : {
+            "$ref" : "#/components/schemas/PageableObject"
+          },
+          "empty" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "ApiResponseSliceAuditEvent" : {
+        "required" : [ "message", "success", "timestamp" ],
+        "type" : "object",
+        "properties" : {
+          "success" : {
+            "type" : "boolean"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "errorCode" : {
+            "type" : "string"
+          },
+          "data" : {
+            "$ref" : "#/components/schemas/SliceAuditEvent"
+          },
+          "timestamp" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "AuditEvent" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "occurredAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "actorUserId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "actorKind" : {
+            "type" : "string"
+          },
+          "action" : {
+            "type" : "string",
+            "enum" : [ "ORGANISATION_CREATED", "ORGANISATION_RENAMED", "ORGANISATION_SUSPENDED", "ORGANISATION_REINSTATED", "ORGANISATION_CLOSED", "MEMBER_INVITED", "INVITATION_ACCEPTED", "INVITATION_DECLINED", "INVITATION_REVOKED", "INVITATION_EXPIRED", "MEMBER_ROLE_CHANGED", "MEMBER_REMOVED", "OWNERSHIP_TRANSFERRED", "APPLICATION_DRAFT_CREATED", "APPLICATION_SUBMITTED", "APPLICATION_IN_REVIEW", "APPLICATION_APPROVED", "APPLICATION_REJECTED", "APPLICATION_SUSPENDED", "APPLICATION_REINSTATED", "KYC_DOCUMENT_VIEWED", "ADMIN_STEP_UP", "TOPUP_REQUESTED", "TOPUP_SETTLED", "TOPUP_FAILED", "CREATIVE_APPROVED", "CREATIVE_REJECTED", "CAMPAIGN_ACTIVATED", "CAMPAIGN_PAUSED" ]
+          },
+          "subjectType" : {
+            "type" : "string"
+          },
+          "subjectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "organisationId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "traceId" : {
+            "type" : "string"
+          },
+          "details" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "object"
+            }
+          }
+        }
+      },
+      "SliceAuditEvent" : {
+        "type" : "object",
+        "properties" : {
+          "first" : {
+            "type" : "boolean"
+          },
+          "last" : {
+            "type" : "boolean"
+          },
+          "numberOfElements" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "number" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "size" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "content" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AuditEvent"
+            }
+          },
+          "sort" : {
+            "$ref" : "#/components/schemas/SortObject"
+          },
+          "pageable" : {
+            "$ref" : "#/components/schemas/PageableObject"
+          },
+          "empty" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "JsonNode" : {
+        "type" : "object"
+      },
+      "ApiResponseDocumentUploadDto" : {
+        "required" : [ "message", "success", "timestamp" ],
+        "type" : "object",
+        "properties" : {
+          "success" : {
+            "type" : "boolean"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "errorCode" : {
+            "type" : "string"
+          },
+          "data" : {
+            "$ref" : "#/components/schemas/DocumentUploadDto"
+          },
+          "timestamp" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "DocumentUploadDto" : {
+        "type" : "object",
+        "properties" : {
+          "documentId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "uploadUrl" : {
+            "type" : "string"
+          },
+          "objectKey" : {
+            "type" : "string"
+          },
+          "contentType" : {
+            "type" : "string"
+          },
+          "contentLength" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "expiresAt" : {
             "type" : "string",
             "format" : "date-time"
           }
@@ -1646,6 +2354,53 @@
           },
           "fullyVerified" : {
             "type" : "boolean"
+          }
+        }
+      },
+      "ApiResponseMapStringString" : {
+        "required" : [ "message", "success", "timestamp" ],
+        "type" : "object",
+        "properties" : {
+          "success" : {
+            "type" : "boolean"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "errorCode" : {
+            "type" : "string"
+          },
+          "data" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
+          "timestamp" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "ApiResponseDeliveryExecutive" : {
+        "required" : [ "message", "success", "timestamp" ],
+        "type" : "object",
+        "properties" : {
+          "success" : {
+            "type" : "boolean"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "errorCode" : {
+            "type" : "string"
+          },
+          "data" : {
+            "$ref" : "#/components/schemas/DeliveryExecutive"
+          },
+          "timestamp" : {
+            "type" : "string",
+            "format" : "date-time"
           }
         }
       },

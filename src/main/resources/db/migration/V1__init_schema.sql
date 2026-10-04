@@ -7,7 +7,7 @@ CREATE TYPE vehicle_class AS ENUM ('BICYCLE', 'MCWG', 'LMV', 'EV_TWO_WHEELER');
 CREATE TABLE delivery_executives (
     id UUID PRIMARY KEY,
     phone_number VARCHAR(20) NOT NULL UNIQUE,
-    vehicle_number VARCHAR(50),
+    vehicle_number VARCHAR(50) UNIQUE,
     status VARCHAR(50) NOT NULL,
     last_known_location geometry(Point, 4326),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -17,9 +17,18 @@ CREATE TABLE delivery_executives (
     email VARCHAR(255),
     full_name VARCHAR(255),
     last_biometric_verification_at TIMESTAMP WITH TIME ZONE,
-    verification_status verification_status DEFAULT 'PENDING',
+    application_status VARCHAR(20) NOT NULL DEFAULT 'DRAFT'
+        CONSTRAINT ck_delivery_application_status CHECK (application_status IN ('DRAFT','SUBMITTED','IN_REVIEW','APPROVED','REJECTED','SUSPENDED')),
+    rejection_reason VARCHAR(500),
+    submitted_at TIMESTAMPTZ,
+    reviewed_at TIMESTAMPTZ,
+    reviewed_by UUID,
+    verification_application_version BIGINT,
+    city_id VARCHAR(255),
     vehicle_type vehicle_class,
-    is_active BOOLEAN DEFAULT FALSE
+    is_active BOOLEAN DEFAULT FALSE,
+    CONSTRAINT ck_delivery_application_reason CHECK (application_status NOT IN ('REJECTED','SUSPENDED') OR
+        (rejection_reason IS NOT NULL AND length(btrim(rejection_reason)) BETWEEN 10 AND 500))
 );
 
 CREATE TABLE executive_bank_details (
@@ -58,7 +67,7 @@ CREATE TABLE biometric_verifications (
 CREATE TABLE telemetry_logs (
     log_id BIGSERIAL PRIMARY KEY,
     executive_id UUID REFERENCES delivery_executives(id) ON DELETE CASCADE,
-    location GEOGRAPHY(POINT, 4326) NOT NULL, 
+    location geometry(Point, 4326) NOT NULL,
     speed_kmh NUMERIC(5,2),
     is_mock_location BOOLEAN NOT NULL DEFAULT FALSE,
     recorded_at TIMESTAMP WITH TIME ZONE NOT NULL
@@ -83,7 +92,7 @@ CREATE INDEX idx_telemetry_location ON telemetry_logs USING GIST(location);
 
 CREATE INDEX idx_docs_executive ON executive_documents(executive_id);
 
-CREATE INDEX IF NOT EXISTS idx_executives_verification_status ON delivery_executives(verification_status);
+CREATE INDEX idx_delivery_application_queue ON delivery_executives(application_status, submitted_at, id);
 
 CREATE INDEX IF NOT EXISTS idx_biometric_executive ON biometric_verifications(executive_id);
 
@@ -92,3 +101,19 @@ CREATE INDEX IF NOT EXISTS idx_telemetry_executive_recorded ON telemetry_logs(ex
 CREATE INDEX IF NOT EXISTS idx_delivery_exec_location_gist ON delivery_executives USING GIST (last_known_location);
 
 CREATE INDEX idx_telemetry_executive ON telemetry_logs(executive_id);
+
+-- Durable assignment authority and concurrency, present on every fresh Dev database.
+CREATE TABLE order_assignments (
+    order_id UUID PRIMARY KEY,
+    driver_id UUID NOT NULL,
+    pickup_otp VARCHAR(6),
+    delivery_otp VARCHAR(6),
+    state VARCHAR(32) NOT NULL,
+    assigned_at TIMESTAMPTZ NOT NULL,
+    released_at TIMESTAMPTZ,
+    payment_method VARCHAR(16),
+    delivery_status VARCHAR(32),
+    version INTEGER NOT NULL DEFAULT 0,
+    CONSTRAINT chk_order_assignment_payment_method_prepaid CHECK (payment_method IS NULL OR payment_method IN ('CARD','UPI','WALLET'))
+);
+CREATE INDEX idx_order_assignments_driver ON order_assignments(driver_id);

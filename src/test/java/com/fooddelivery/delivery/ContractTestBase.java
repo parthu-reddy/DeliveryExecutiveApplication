@@ -49,12 +49,15 @@ public abstract class ContractTestBase {
         Mockito.when(repository.findById(any(UUID.class))).thenReturn(Optional.of(driver));
         Mockito.when(repository.findAllById(anyList())).thenReturn(List.of(driver));
 
-        InternalDeliveryController internalDeliveryController = new InternalDeliveryController(profileService);
+        var applications = Mockito.mock(com.fooddelivery.delivery.service.DeliveryApplicationService.class);
+        Mockito.when(applications.documentContext(DRIVER_ID)).thenReturn(new com.fooddelivery.common.dto.governmentid.DeliveryApplicationContextDto(
+                DRIVER_ID, com.fooddelivery.common.enums.ApplicationStatus.DRAFT, 0));
+        InternalDeliveryController internalDeliveryController = new InternalDeliveryController(applications);
         AdminDeliveryController adminDeliveryController =
                 new AdminDeliveryController(repository, profileService, orderAssignmentService);
 
         // Serialize as production does: see PlatformJson (contract-harness Jackson drift).
         com.fooddelivery.common.contract.PlatformJson.standaloneSetup(internalDeliveryController, adminDeliveryController,
-                new InternalDriverController(repository));
+                new InternalDriverController(repository), new com.fooddelivery.delivery.controller.InternalDeliveryApplicationController(applications));
     }
 }

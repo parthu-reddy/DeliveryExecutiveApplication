@@ -26,7 +26,7 @@ public class InternalDriverBeneficiaryController {
                             .beneficiaryName(driver.getFullName())
                             .accountNumberMasked("XXXX-XXXX-" + driverId.toString().substring(0, 4))
                             .ifsc("BANK001")
-                            .verified(driver.getVerificationStatus() == com.fooddelivery.common.enums.VerificationStatus.APPROVED)
+                            .verified(driver.getApplicationStatus() == com.fooddelivery.common.enums.ApplicationStatus.APPROVED)
                             .source("DRIVER")
                             .build();
                     return ResponseEntity.ok(response);

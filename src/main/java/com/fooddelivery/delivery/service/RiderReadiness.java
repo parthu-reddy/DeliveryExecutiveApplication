@@ -1,6 +1,6 @@
 package com.fooddelivery.delivery.service;
 
-import com.fooddelivery.common.enums.VerificationStatus;
+import com.fooddelivery.common.enums.ApplicationStatus;
 import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import com.fooddelivery.delivery.enums.DeliveryExecutiveStatus;
 
@@ -30,9 +30,9 @@ public final class RiderReadiness {
         if (!com.fooddelivery.common.location.CityIdValidator.isCanonical(executive.getCityId())) {
             throw new IllegalArgumentException("Registration incomplete: No operating city on your profile.");
         }
-        if (executive.getVerificationStatus() != VerificationStatus.APPROVED) {
-            throw new IllegalArgumentException("Onboarding incomplete: Driver verification status is "
-                    + executive.getVerificationStatus() + ". Must be APPROVED to go online.");
+        if (executive.getApplicationStatus() != ApplicationStatus.APPROVED) {
+            throw new IllegalArgumentException("Onboarding incomplete: Your application status is "
+                    + executive.getApplicationStatus() + ". Admin approval is required to go online.");
         }
         if (!executive.isActive()) {
             throw new IllegalArgumentException(
@@ -41,8 +41,7 @@ public final class RiderReadiness {
         if (biometricVerificationEnabled
                 && (executive.getLastBiometricVerificationAt() == null
                 || executive.getLastBiometricVerificationAt().isBefore(now.minus(Duration.ofHours(24))))) {
-            throw new IllegalArgumentException(
-                    "Biometric verification required: Please complete your daily selfie verification to go online.");
+            throw new DailySelfieRequiredException();
         }
     }
 

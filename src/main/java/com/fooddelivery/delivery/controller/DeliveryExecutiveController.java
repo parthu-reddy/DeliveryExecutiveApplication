@@ -37,83 +37,6 @@ private final DeliveryExecutiveProfileService profileService;
     private String allowedFleetCityIds = "BLR";
 
 
-    public static class DeliveryOnboardRequest {
-        @NotBlank
-        @Size(max = 64)
-        @com.fooddelivery.common.location.CityId
-        @Pattern(regexp = com.fooddelivery.common.location.CityIdValidator.REGEX)
-        private String cityId;
-        @NotBlank
-        @Size(max = 100)
-        private String fullName;
-        @NotBlank
-        @Size(max = 20)
-        @Pattern(regexp = "^\\+?[1-9]\\d{1,14}$")
-        private String phoneNumber;
-        @NotBlank
-        @Size(max = 50)
-        private String vehicleNumber;
-        @Size(max = 255)
-        private String photoUrl;
-        private com.fooddelivery.common.enums.VehicleClass vehicleType;
-
-public DeliveryOnboardRequest() {
-        }
-
-public String getCityId() {
-            return this.cityId;
-        }
-
-public String getFullName() {
-            return this.fullName;
-        }
-
-public String getPhoneNumber() {
-            return this.phoneNumber;
-        }
-
-public String getVehicleNumber() {
-            return this.vehicleNumber;
-        }
-
-public String getPhotoUrl() {
-            return this.photoUrl;
-        }
-
-public com.fooddelivery.common.enums.VehicleClass getVehicleType() {
-            return this.vehicleType;
-        }
-
-public void setCityId(final String cityId) {
-            this.cityId = cityId;
-        }
-
-public void setFullName(final String fullName) {
-            this.fullName = fullName;
-        }
-
-public void setPhoneNumber(final String phoneNumber) {
-            this.phoneNumber = phoneNumber;
-        }
-
-public void setVehicleNumber(final String vehicleNumber) {
-            this.vehicleNumber = vehicleNumber;
-        }
-
-public void setPhotoUrl(final String photoUrl) {
-            this.photoUrl = photoUrl;
-        }
-
-public void setVehicleType(final com.fooddelivery.common.enums.VehicleClass vehicleType) {
-            this.vehicleType = vehicleType;
-        }
-
-
-
-
-    }
-
-
     public static class ToggleStatusRequest {
         @NotBlank
         @Size(max = 36)
@@ -218,18 +141,6 @@ public void setAvailable(final Boolean available) {
         
     }
 
-    @PostMapping("/onboard")
-    public ResponseEntity<ApiResponse<com.fooddelivery.delivery.entity.DeliveryExecutive>> onboardDriver(java.security.Principal principal, @Valid @RequestBody DeliveryOnboardRequest request) {
-        String cityId = com.fooddelivery.common.location.FleetCityScope.resolve(request.getCityId(), allowedFleetCityIds);
-        String fullName = request.getFullName();
-        String phoneNumber = request.getPhoneNumber();
-        String vehicleNumber = request.getVehicleNumber();
-        String photoUrl = request.getPhotoUrl();
-        com.fooddelivery.common.enums.VehicleClass vehicleType = request.getVehicleType();
-        com.fooddelivery.delivery.entity.DeliveryExecutive executive = profileService.onboard(UUID.fromString(principal.getName()), fullName, phoneNumber, vehicleNumber, photoUrl, vehicleType, cityId);
-        return ResponseEntity.ok(ApiResponse.success(executive, "Delivery Executive onboarded successfully"));
-    }
-
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<com.fooddelivery.delivery.entity.DeliveryExecutive>> getProfile(java.security.Principal principal) {
         UUID driverId = UUID.fromString(principal.getName());
@@ -272,6 +183,8 @@ public void setAvailable(final Boolean available) {
             } else {
                 profileService.goOffline(driverId, com.fooddelivery.delivery.enums.DutyChangeReason.RIDER_REQUEST);
             }
+        } catch (com.fooddelivery.delivery.service.DailySelfieRequiredException e) {
+            throw e;
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(ApiResponse.<Void>builder().success(false).message(e.getMessage()).build());
         }

@@ -33,6 +33,10 @@ public class DeliveryValidationIntegrationTest extends BaseIntegrationTest {
     @org.springframework.boot.test.mock.mockito.MockBean
     private org.springframework.kafka.core.KafkaAdmin kafkaAdmin;
 
+    // contract-test deliberately disables the Redis-backed production limiter.
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private com.fooddelivery.common.service.RateLimitingService rateLimitingService;
+
     @Test
     void shouldThrowExceptionWhenDuplicateVehicleNumberIsSaved() {
         String duplicateVehicle = "AP09CC1234";

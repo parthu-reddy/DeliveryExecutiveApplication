@@ -11,12 +11,13 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/delivery/verification")
-@PreAuthorize("hasRole('DELIVERY')")
+@PreAuthorize("isAuthenticated()")
 @lombok.extern.slf4j.Slf4j
 @lombok.RequiredArgsConstructor
 public class DeliveryVerificationController {
 private final GovernmentIdServiceClient governmentIdClient;
     private final com.fooddelivery.delivery.service.OnboardingOrchestratorService onboardingOrchestratorService;
+    private final com.fooddelivery.delivery.service.DeliveryApplicationService applications;
 
     @GetMapping("/status")
     public ResponseEntity<ApiResponse<com.fooddelivery.delivery.dto.RiderVerificationStatusDto>> getVerificationStatus(Principal principal) {
@@ -29,14 +30,14 @@ private final GovernmentIdServiceClient governmentIdClient;
             .rcStatus(summary.rcApproved() ? "VERIFIED" : "PENDING")
             .bankStatus(summary.bankApproved() ? "VERIFIED" : "PENDING")
             .biometricStatus(summary.lastBiometricVerificationAt() != null ? "VERIFIED" : "PENDING")
-            .fullyVerified(summary.allDocsApproved())
+            .fullyVerified(applications.isApproved(executiveId))
             .build();
         return ResponseEntity.ok(ApiResponse.success(dto, "Verification status fetched"));
     }
 
     @GetMapping("/upload-url")
-    public ResponseEntity<ApiResponse<Map<String, String>>> getPresignedUploadUrl(@RequestParam("docType") String docType, @RequestParam("contentType") String contentType) {
-        Map<String, String> response = governmentIdClient.getPresignedUploadUrl(docType, contentType);
+    public ResponseEntity<ApiResponse<com.fooddelivery.common.dto.governmentid.DocumentUploadDto>> getPresignedUploadUrl(@RequestParam("docType") String docType, @RequestParam("contentType") String contentType, @RequestParam("contentLength") long contentLength) {
+        var response = governmentIdClient.getPresignedUploadUrl(applications.selfDocumentPurpose(docType), null, docType, contentType, contentLength);
         return ResponseEntity.ok(ApiResponse.success(response, "Upload URL generated"));
     }
 

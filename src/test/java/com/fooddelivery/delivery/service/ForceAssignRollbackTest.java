@@ -1,7 +1,7 @@
 package com.fooddelivery.delivery.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fooddelivery.common.enums.VerificationStatus;
+import com.fooddelivery.common.enums.ApplicationStatus;
 import com.fooddelivery.common.outbox.entity.OutboxEventEntity;
 import com.fooddelivery.common.outbox.repository.OutboxEventRepository;
 import com.fooddelivery.delivery.client.CustomerServiceClient;
@@ -279,7 +279,7 @@ class ForceAssignRollbackTest {
         executive.setId(id);
         executive.setCityId(CITY);
         executive.setVehicleNumber("KA01AB1234");
-        executive.setVerificationStatus(VerificationStatus.APPROVED);
+        executive.setApplicationStatus(ApplicationStatus.APPROVED);
         executive.setActive(true);
         executive.setLastBiometricVerificationAt(Instant.now());
         executive.setStatus(DeliveryExecutiveStatus.ONLINE);

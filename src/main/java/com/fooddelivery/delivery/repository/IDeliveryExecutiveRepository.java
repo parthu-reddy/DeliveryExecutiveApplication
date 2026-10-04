@@ -11,6 +11,9 @@ import org.springframework.data.domain.Pageable;
 
 @Repository
 public interface IDeliveryExecutiveRepository extends JpaRepository<DeliveryExecutive, UUID> {
+    org.springframework.data.domain.Slice<DeliveryExecutive> findByApplicationStatus(com.fooddelivery.common.enums.ApplicationStatus status, Pageable page);
+    @org.springframework.data.jpa.repository.Query("select min(d.submittedAt) from DeliveryExecutive d where d.applicationStatus=:status")
+    java.time.Instant oldestSubmission(@org.springframework.data.repository.query.Param("status") com.fooddelivery.common.enums.ApplicationStatus status);
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @org.springframework.data.jpa.repository.Query("SELECT d FROM DeliveryExecutive d WHERE d.id = :id")
     java.util.Optional<DeliveryExecutive> findLockedById(@org.springframework.data.repository.query.Param("id") UUID id);

@@ -1,7 +1,7 @@
 package com.fooddelivery.delivery.service;
 
 import com.fooddelivery.common.constants.RedisKeyConstants;
-import com.fooddelivery.common.enums.VerificationStatus;
+import com.fooddelivery.common.enums.ApplicationStatus;
 import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import com.fooddelivery.delivery.enums.DeliveryExecutiveStatus;
 import com.fooddelivery.delivery.enums.DutyChangeReason;
@@ -72,7 +72,7 @@ class RiderGoOnlineTest {
         rider.setId(UUID.randomUUID());
         rider.setCityId(CITY);
         rider.setVehicleNumber("KA01AB1234");
-        rider.setVerificationStatus(VerificationStatus.APPROVED);
+        rider.setApplicationStatus(ApplicationStatus.APPROVED);
         rider.setActive(true);
         rider.setStatus(DeliveryExecutiveStatus.OFFLINE);
 
