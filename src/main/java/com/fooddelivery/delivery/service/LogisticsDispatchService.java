@@ -21,12 +21,19 @@ private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
     private final MapsServiceClient mapsClient;
     private final IDeliveryExecutiveRepository repository;
+    private final com.fooddelivery.delivery.client.CustomerServiceClient orders;
 
     public void dispatchNearestDriver(String dispatchCityId, double fleetSearchRadiusKm, double restaurantLat, double restaurantLng, double deliveryLat, double deliveryLng, String deliveryAddress, UUID orderId, java.util.List<String> excludedDriverIds) {
         log.info("LOGISTICS_DISPATCH_STARTED orderId={} dispatchCityId={} fleetSearchRadiusKm={} excludedDriverCount={}",
                 orderId, dispatchCityId, fleetSearchRadiusKm,
                 excludedDriverIds == null ? 0 : excludedDriverIds.size());
         try {
+            var details=orders.getOrderDispatchDetails(orderId);
+            if (details==null || details.get("customerId")==null) throw new IllegalStateException("Dispatch customer identity is unavailable");
+            String customerId=UUID.fromString(details.get("customerId")).toString();
+            var excluded=new java.util.LinkedHashSet<String>();
+            if(excludedDriverIds!=null) excluded.addAll(excludedDriverIds);
+            excluded.add(customerId);
             com.fooddelivery.common.event.DispatchRequestedEvent dispatchRequest =
                     com.fooddelivery.common.event.DispatchRequestedEvent.builder()
                             .orderId(orderId.toString())
@@ -37,7 +44,7 @@ private final KafkaTemplate<String, String> kafkaTemplate;
                             .deliveryLat(deliveryLat)
                             .deliveryLng(deliveryLng)
                             .deliveryAddress(deliveryAddress)
-                            .excludedDriverIds(excludedDriverIds != null ? excludedDriverIds : java.util.Collections.emptyList())
+                            .excludedDriverIds(java.util.List.copyOf(excluded))
                             .build();
             String payload = objectMapper.writeValueAsString(dispatchRequest);
             UUID eventId = UUID.randomUUID();

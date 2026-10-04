@@ -258,6 +258,18 @@ class ForceAssignRollbackTest {
         verify(outbox, never()).save(any());
     }
 
+    @Test
+    void manualAssignmentCannotOverrideTheCustomerExclusion() {
+        var details = new java.util.HashMap<>(dispatchContext());
+        details.put("customerId", DRIVER.toString());
+        when(customer.getOrderDispatchDetails(ORDER)).thenReturn(details);
+        var result = service.forceAssignOrder(command());
+        assertThat(result.rejected()).isTrue();
+        assertThat(result.failureCode()).isEqualTo("SELF_ASSIGNMENT");
+        verify(repository, never()).findLockedById(DRIVER);
+        verify(redis, never()).delete(anyString());
+    }
+
     private ManualForceAssignment command() {
         return new ManualForceAssignment(ORDER, DRIVER, OPERATION, ACTOR,
                 "Rider confirmed nearby", CITY);
@@ -265,6 +277,7 @@ class ForceAssignRollbackTest {
 
     private Map<String, String> dispatchContext() {
         return Map.of(
+                "customerId", ACTOR.toString(),
                 "pickupOtp", "123456",
                 "deliveryOtp", "654321",
                 "paymentMethod", "UPI",

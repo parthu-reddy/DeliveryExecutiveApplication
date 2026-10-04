@@ -32,16 +32,18 @@ class LogisticsDispatchServiceTest {
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
+    @Mock private com.fooddelivery.delivery.client.CustomerServiceClient orders;
     private LogisticsDispatchService logisticsDispatchService;
 
     @BeforeEach
     void setUp() {
-        logisticsDispatchService = new LogisticsDispatchService(kafkaTemplate, objectMapper, mapsClient, repository);
+        logisticsDispatchService = new LogisticsDispatchService(kafkaTemplate, objectMapper, mapsClient, repository, orders);
     }
 
     @Test
     void dispatchNearestDriver_ShouldPublishEvent() {
         UUID orderId = UUID.randomUUID();
+        when(orders.getOrderDispatchDetails(orderId)).thenReturn(java.util.Map.of("customerId",UUID.randomUUID().toString()));
         when(kafkaTemplate.send(org.mockito.ArgumentMatchers.<org.springframework.messaging.Message<String>>any()))
                 .thenReturn(CompletableFuture.completedFuture(null));
 

@@ -109,7 +109,7 @@ class RejectRollbackReReservesTest {
 
         new LogisticsDispatchService(
                 mock(org.springframework.kafka.core.KafkaTemplate.class),
-                new ObjectMapper(), maps, repo)
+                new ObjectMapper(), maps, repo, mock(com.fooddelivery.delivery.client.CustomerServiceClient.class))
                 .reserveDriverLock(DRIVER.toString());
 
         ArgumentCaptor<SetAvailabilityRequest> captor = ArgumentCaptor.forClass(SetAvailabilityRequest.class);
@@ -129,7 +129,7 @@ class RejectRollbackReReservesTest {
 
         new LogisticsDispatchService(
                 mock(org.springframework.kafka.core.KafkaTemplate.class),
-                new ObjectMapper(), maps, repo)
+                new ObjectMapper(), maps, repo, mock(com.fooddelivery.delivery.client.CustomerServiceClient.class))
                 .reserveDriverLock(DRIVER.toString());
 
         verify(maps, org.mockito.Mockito.never()).setDriverAvailability(any());

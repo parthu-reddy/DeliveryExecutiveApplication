@@ -354,6 +354,10 @@ public class OrderAssignmentService {
                     validateManualFailureReplay(existingFailure.get(), command));
         }
 
+        if (command.driverId().equals(dispatch.customerId())) {
+            throw new ManualAssignmentRejectedException("SELF_ASSIGNMENT", "The customer cannot deliver their own order.");
+        }
+
         com.fooddelivery.delivery.entity.OrderAssignment currentAssignment = assignmentRepository
                 .findLockedByOrderId(command.orderId())
                 .orElse(null);
@@ -495,7 +499,7 @@ public class OrderAssignmentService {
         assignmentDetails.put("pickupOtp", emptyToNull(details.get("pickupOtp")));
         assignmentDetails.put("deliveryOtp", emptyToNull(details.get("deliveryOtp")));
         assignmentDetails.put("paymentMethod", emptyToNull(details.get("paymentMethod")));
-        return new ManualDispatchContext(assignmentDetails, dispatchCityId);
+        return new ManualDispatchContext(assignmentDetails, dispatchCityId, UUID.fromString(details.get("customerId")));
     }
 
     private java.util.Map<UUID, DeliveryExecutive> lockDrivers(UUID targetDriverId, UUID previousDriverId) {
@@ -683,7 +687,7 @@ public class OrderAssignmentService {
         }
     }
 
-    private record ManualDispatchContext(java.util.Map<String, String> details, String dispatchCityId) {
+    private record ManualDispatchContext(java.util.Map<String, String> details, String dispatchCityId, UUID customerId) {
     }
 
     private record ForceAssignmentOutcome(
