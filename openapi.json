@@ -988,8 +988,8 @@
           "required" : false,
           "schema" : {
             "type" : "string",
-            "default" : "IN_REVIEW",
-            "enum" : [ "DRAFT", "SUBMITTED", "IN_REVIEW", "APPROVED", "REJECTED", "SUSPENDED" ]
+            "enum" : [ "DRAFT", "SUBMITTED", "IN_REVIEW", "APPROVED", "REJECTED", "SUSPENDED" ],
+            "default" : "IN_REVIEW"
           }
         }, {
           "name" : "page",
@@ -1182,6 +1182,24 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/JsonNode"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/delivery-onboarding/cities" : {
+      "get" : {
+        "tags" : [ "delivery-onboarding-city-controller" ],
+        "operationId" : "cities",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListString"
                 }
               }
             }
@@ -1911,23 +1929,23 @@
         "required" : [ "content", "empty", "first", "last", "number", "numberOfElements", "size", "totalElements", "totalPages" ],
         "type" : "object",
         "properties" : {
-          "totalElements" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
           "totalPages" : {
             "type" : "integer",
             "format" : "int32"
           },
-          "first" : {
-            "type" : "boolean"
+          "totalElements" : {
+            "type" : "integer",
+            "format" : "int64"
           },
-          "last" : {
-            "type" : "boolean"
+          "pageable" : {
+            "$ref" : "#/components/schemas/PageableObject"
           },
           "numberOfElements" : {
             "type" : "integer",
             "format" : "int32"
+          },
+          "sort" : {
+            "$ref" : "#/components/schemas/SortObject"
           },
           "number" : {
             "type" : "integer",
@@ -1943,11 +1961,11 @@
               "$ref" : "#/components/schemas/DeliveryExecutive"
             }
           },
-          "sort" : {
-            "$ref" : "#/components/schemas/SortObject"
+          "first" : {
+            "type" : "boolean"
           },
-          "pageable" : {
-            "$ref" : "#/components/schemas/PageableObject"
+          "last" : {
+            "type" : "boolean"
           },
           "empty" : {
             "type" : "boolean"
@@ -1958,26 +1976,26 @@
         "required" : [ "offset", "pageNumber", "pageSize", "paged", "unpaged" ],
         "type" : "object",
         "properties" : {
-          "offset" : {
-            "type" : "integer",
-            "format" : "int64"
+          "paged" : {
+            "type" : "boolean"
           },
           "sort" : {
             "$ref" : "#/components/schemas/SortObject"
           },
-          "paged" : {
+          "unpaged" : {
             "type" : "boolean"
-          },
-          "pageNumber" : {
-            "type" : "integer",
-            "format" : "int32"
           },
           "pageSize" : {
             "type" : "integer",
             "format" : "int32"
           },
-          "unpaged" : {
-            "type" : "boolean"
+          "pageNumber" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "offset" : {
+            "type" : "integer",
+            "format" : "int64"
           }
         }
       },
@@ -2027,23 +2045,23 @@
         "required" : [ "content", "empty", "first", "last", "number", "numberOfElements", "size", "totalElements", "totalPages" ],
         "type" : "object",
         "properties" : {
-          "totalElements" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
           "totalPages" : {
             "type" : "integer",
             "format" : "int32"
           },
-          "first" : {
-            "type" : "boolean"
+          "totalElements" : {
+            "type" : "integer",
+            "format" : "int64"
           },
-          "last" : {
-            "type" : "boolean"
+          "pageable" : {
+            "$ref" : "#/components/schemas/PageableObject"
           },
           "numberOfElements" : {
             "type" : "integer",
             "format" : "int32"
+          },
+          "sort" : {
+            "$ref" : "#/components/schemas/SortObject"
           },
           "number" : {
             "type" : "integer",
@@ -2059,11 +2077,11 @@
               "$ref" : "#/components/schemas/DriverLocationDTO"
             }
           },
-          "sort" : {
-            "$ref" : "#/components/schemas/SortObject"
+          "first" : {
+            "type" : "boolean"
           },
-          "pageable" : {
-            "$ref" : "#/components/schemas/PageableObject"
+          "last" : {
+            "type" : "boolean"
           },
           "empty" : {
             "type" : "boolean"
@@ -2122,15 +2140,15 @@
       "SliceDeliveryApplicationQueueDto" : {
         "type" : "object",
         "properties" : {
-          "first" : {
-            "type" : "boolean"
-          },
-          "last" : {
-            "type" : "boolean"
+          "pageable" : {
+            "$ref" : "#/components/schemas/PageableObject"
           },
           "numberOfElements" : {
             "type" : "integer",
             "format" : "int32"
+          },
+          "sort" : {
+            "$ref" : "#/components/schemas/SortObject"
           },
           "number" : {
             "type" : "integer",
@@ -2146,11 +2164,11 @@
               "$ref" : "#/components/schemas/DeliveryApplicationQueueDto"
             }
           },
-          "sort" : {
-            "$ref" : "#/components/schemas/SortObject"
+          "first" : {
+            "type" : "boolean"
           },
-          "pageable" : {
-            "$ref" : "#/components/schemas/PageableObject"
+          "last" : {
+            "type" : "boolean"
           },
           "empty" : {
             "type" : "boolean"
@@ -2229,15 +2247,15 @@
       "SliceAuditEvent" : {
         "type" : "object",
         "properties" : {
-          "first" : {
-            "type" : "boolean"
-          },
-          "last" : {
-            "type" : "boolean"
+          "pageable" : {
+            "$ref" : "#/components/schemas/PageableObject"
           },
           "numberOfElements" : {
             "type" : "integer",
             "format" : "int32"
+          },
+          "sort" : {
+            "$ref" : "#/components/schemas/SortObject"
           },
           "number" : {
             "type" : "integer",
@@ -2253,11 +2271,11 @@
               "$ref" : "#/components/schemas/AuditEvent"
             }
           },
-          "sort" : {
-            "$ref" : "#/components/schemas/SortObject"
+          "first" : {
+            "type" : "boolean"
           },
-          "pageable" : {
-            "$ref" : "#/components/schemas/PageableObject"
+          "last" : {
+            "type" : "boolean"
           },
           "empty" : {
             "type" : "boolean"
@@ -2266,6 +2284,31 @@
       },
       "JsonNode" : {
         "type" : "object"
+      },
+      "ApiResponseListString" : {
+        "required" : [ "message", "success", "timestamp" ],
+        "type" : "object",
+        "properties" : {
+          "success" : {
+            "type" : "boolean"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "errorCode" : {
+            "type" : "string"
+          },
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "timestamp" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
       },
       "ApiResponseDocumentUploadDto" : {
         "required" : [ "message", "success", "timestamp" ],
