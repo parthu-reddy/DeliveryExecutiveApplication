@@ -1,7 +1,7 @@
 package com.fooddelivery.contract;
 
 import com.fooddelivery.common.client.GovernmentIdServiceClient;
-import com.fooddelivery.common.client.GovernmentIdServiceClient.VerificationSummary;
+import com.fooddelivery.common.dto.governmentid.VerificationSummary;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

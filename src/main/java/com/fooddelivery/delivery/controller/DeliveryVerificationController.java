@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 import java.util.Map;
 import java.util.UUID;
+import com.fooddelivery.common.dto.governmentid.VerificationSummary;
 
 @RestController
 @RequestMapping("/api/delivery/verification")
@@ -22,7 +23,7 @@ private final GovernmentIdServiceClient governmentIdClient;
     @GetMapping("/status")
     public ResponseEntity<ApiResponse<com.fooddelivery.delivery.dto.RiderVerificationStatusDto>> getVerificationStatus(Principal principal) {
         UUID executiveId = UUID.fromString(principal.getName());
-        GovernmentIdServiceClient.VerificationSummary summary = governmentIdClient.getVerificationSummary(executiveId);
+        VerificationSummary summary = governmentIdClient.getVerificationSummary(executiveId);
         // Evaluate and sync onboarding status with the Executive Profile
         onboardingOrchestratorService.evaluateOnboardingStatus(executiveId, summary);
         com.fooddelivery.delivery.dto.RiderVerificationStatusDto dto = com.fooddelivery.delivery.dto.RiderVerificationStatusDto.builder()

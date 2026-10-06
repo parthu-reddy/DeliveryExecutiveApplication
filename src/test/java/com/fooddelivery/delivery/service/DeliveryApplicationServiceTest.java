@@ -25,6 +25,7 @@ import org.springframework.web.server.ResponseStatusException;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import com.fooddelivery.common.dto.governmentid.VerificationSummary;
 
 class DeliveryApplicationServiceTest {
     final IDeliveryExecutiveRepository repository=mock(IDeliveryExecutiveRepository.class);
@@ -35,7 +36,7 @@ class DeliveryApplicationServiceTest {
     final RiderDutyNotifier duty=mock(RiderDutyNotifier.class);
     final DeliveryApplicationService service=new DeliveryApplicationService(repository,government,events,limits,mock(AuditReader.class),new SimpleMeterRegistry(),redis,duty);
     final DeliveryExecutive rider=new DeliveryExecutive();
-    final GovernmentIdServiceClient.VerificationSummary approved=new GovernmentIdServiceClient.VerificationSummary(true,true,"MCWG",true,true,null);
+    final VerificationSummary approved=new VerificationSummary(true,true,"MCWG",true,true,null);
     @BeforeEach void setUp() {
         rider.setId(UUID.randomUUID());rider.setFullName("Synthetic applicant");rider.setPhoneNumber("7999887766");
         rider.setVehicleNumber("KA01AB1234");rider.setVehicleType(VehicleClass.MCWG);rider.setCityId("BLR");
@@ -74,7 +75,7 @@ class DeliveryApplicationServiceTest {
     @Test void failedChecksRejectWithAReasonAndStaleSubmissionDoesNoWork() {
         rider.setApplicationStatus(ApplicationStatus.SUBMITTED);rider.setVerificationApplicationVersion(4L);
         service.processChecks(rider.getId(),3);verify(repository,never()).saveAndFlush(any());
-        when(government.getVerificationSummary(rider.getId())).thenReturn(new GovernmentIdServiceClient.VerificationSummary(false,false,null,false,false,null));
+        when(government.getVerificationSummary(rider.getId())).thenReturn(new VerificationSummary(false,false,null,false,false,null));
         service.processChecks(rider.getId(),4);assertThat(rider.getApplicationStatus()).isEqualTo(ApplicationStatus.REJECTED);
         assertThat(rider.getRejectionReason()).hasSizeBetween(10,500);assertThat(rider.isActive()).isFalse();
     }
@@ -148,7 +149,7 @@ class DeliveryApplicationServiceTest {
     }
     @Test void approvedInactiveRefreshStaysInactiveAndMissingChecksSuspendThroughLifecycle() {
         rider.setApplicationStatus(ApplicationStatus.APPROVED);rider.setActive(false);service.observeChecks(rider.getId(),approved);assertThat(rider.isActive()).isFalse();
-        rider.setActive(true);service.observeChecks(rider.getId(),new GovernmentIdServiceClient.VerificationSummary(false,false,null,false,false,null));
+        rider.setActive(true);service.observeChecks(rider.getId(),new VerificationSummary(false,false,null,false,false,null));
         assertThat(rider.getApplicationStatus()).isEqualTo(ApplicationStatus.SUSPENDED);assertThat(rider.isActive()).isFalse();
     }
 }

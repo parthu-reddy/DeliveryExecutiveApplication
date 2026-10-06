@@ -12,14 +12,15 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
+import com.fooddelivery.common.dto.governmentid.VerificationSummary;
 
 class OnboardingActivationStateTest {
     private IDeliveryExecutiveRepository repository;
     private DeliveryExecutiveProfileService profiles;
     private OnboardingOrchestratorService service;
     private DeliveryExecutive rider;
-    private final GovernmentIdServiceClient.VerificationSummary approved =
-            new GovernmentIdServiceClient.VerificationSummary(true, true, "MCWG", true, true, null);
+    private final VerificationSummary approved =
+            new VerificationSummary(true, true, "MCWG", true, true, null);
     @BeforeEach void setUp() {
         repository = mock(IDeliveryExecutiveRepository.class);
         profiles = mock(DeliveryExecutiveProfileService.class);
@@ -57,7 +58,7 @@ class OnboardingActivationStateTest {
     @Test void missingVerificationStillSuspendsAPreviouslyApprovedRider() {
         rider.setApplicationStatus(ApplicationStatus.APPROVED); rider.setActive(true);
         service.evaluateOnboardingStatus(rider.getId(),
-                new GovernmentIdServiceClient.VerificationSummary(false, false, null, false, false, null));
+                new VerificationSummary(false, false, null, false, false, null));
         assertThat(rider.getApplicationStatus()).isEqualTo(ApplicationStatus.SUSPENDED);
         assertThat(rider.isActive()).isFalse();
     }

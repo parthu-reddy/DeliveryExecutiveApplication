@@ -35,6 +35,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+import com.fooddelivery.common.dto.governmentid.VerificationSummary;
 
 /**
  * Sole lifecycle owner: passed provider checks prepare admin review, never grant duty.
@@ -243,12 +244,12 @@ public class DeliveryApplicationService {
      * biometric time.
      */
     @Transactional
-    public void observeChecks(UUID id, GovernmentIdServiceClient.VerificationSummary summary) {
+    public void observeChecks(UUID id, VerificationSummary summary) {
         observe(executive(id), summary);
     }
 
     private void observe(
-            DeliveryExecutive executive, GovernmentIdServiceClient.VerificationSummary summary) {
+            DeliveryExecutive executive, VerificationSummary summary) {
         if (summary == null)
             throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
@@ -516,7 +517,7 @@ public class DeliveryApplicationService {
     private DeliveryApplicationDto details(DeliveryExecutive executive) {
         boolean available = true;
         List<ApplicationDocumentDto> documents = List.of();
-        GovernmentIdServiceClient.VerificationSummary checks = null;
+        VerificationSummary checks = null;
         try {
             documents = government.getDeliveryDocuments(executive.getId());
             checks = government.getVerificationSummary(executive.getId());

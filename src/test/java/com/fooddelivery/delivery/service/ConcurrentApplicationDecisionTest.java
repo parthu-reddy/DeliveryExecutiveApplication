@@ -41,6 +41,7 @@ import org.springframework.transaction.annotation.*;
 import org.springframework.transaction.support.TransactionTemplate;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import com.fooddelivery.common.dto.governmentid.VerificationSummary;
 
 /** Real embedded H2 transactions; no external database or application HTTP server. */
 @DataJpaTest(properties = {"spring.cloud.config.enabled=false", "spring.flyway.enabled=false",
@@ -91,7 +92,7 @@ class ConcurrentApplicationDecisionTest {
         driver.setFullName("Synthetic transaction applicant");driver.setCityId("BLR");driver.setVehicleNumber("TEST-"+id);
         driver.setVehicleType(VehicleClass.MCWG);driver.setStatus(DeliveryExecutiveStatus.OFFLINE);
         driver.setApplicationStatus(ApplicationStatus.IN_REVIEW);profiles.saveAndFlush(driver);
-        when(government.getVerificationSummary(id)).thenReturn(new GovernmentIdServiceClient.VerificationSummary(true,true,"MCWG",true,true,null));
+        when(government.getVerificationSummary(id)).thenReturn(new VerificationSummary(true,true,"MCWG",true,true,null));
         when(government.getDeliveryDocuments(id)).thenReturn(List.of("DRIVING_LICENSE","RC","SELFIE").stream().map(type ->
                 new com.fooddelivery.common.dto.governmentid.ApplicationDocumentDto(UUID.randomUUID(),type,
                         "documents/"+id+"/accepted/"+UUID.randomUUID()+".jpg","image/jpeg",100,java.time.Instant.now())).toList());

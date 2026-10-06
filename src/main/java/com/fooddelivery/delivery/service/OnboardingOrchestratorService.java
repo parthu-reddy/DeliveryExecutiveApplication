@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
+import com.fooddelivery.common.dto.governmentid.VerificationSummary;
 
 /** Compatibility checks delegate every lifecycle decision to the application owner. */
 @Service
@@ -21,7 +22,7 @@ public class OnboardingOrchestratorService {
     }
 
     public void evaluateOnboardingStatus(
-            UUID id, GovernmentIdServiceClient.VerificationSummary summary) {
+            UUID id, VerificationSummary summary) {
         applications.observeChecks(id, summary);
     }
 

@@ -1,11 +1,11 @@
 package com.fooddelivery.delivery.dto;
 
-import com.fooddelivery.common.client.GovernmentIdServiceClient;
 import com.fooddelivery.common.dto.governmentid.ApplicationDocumentDto;
 import com.fooddelivery.common.enums.*;
 
 import java.time.Instant;
 import java.util.*;
+import com.fooddelivery.common.dto.governmentid.VerificationSummary;
 
 public record DeliveryApplicationDto(
         UUID executiveId,
@@ -23,7 +23,7 @@ public record DeliveryApplicationDto(
         UUID reviewedBy,
         boolean canEdit,
         boolean documentsAvailable,
-        GovernmentIdServiceClient.VerificationSummary checks,
+        VerificationSummary checks,
         List<ApplicationDocumentDto> documents) {
     @Override
     public String toString() {

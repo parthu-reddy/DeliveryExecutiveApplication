@@ -32,6 +32,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import com.fooddelivery.common.dto.governmentid.VerificationSummary;
 
 /** Real self-derived service writes and controller authorization through HTTP JSON binding. */
 @SpringJUnitConfig(DeliveryApplicationAuthorizationTest.Config.class)
@@ -58,7 +59,7 @@ class DeliveryApplicationAuthorizationTest {
     @BeforeEach void setup(){
         reset(executives,government,events,limits);caller=UUID.randomUUID();auth("CUSTOMER");
         when(government.getDeliveryDocuments(caller)).thenReturn(List.of());
-        when(government.getVerificationSummary(caller)).thenReturn(new GovernmentIdServiceClient.VerificationSummary(false,false,null,false,false,null));
+        when(government.getVerificationSummary(caller)).thenReturn(new VerificationSummary(false,false,null,false,false,null));
         when(limits.resolveBucket(anyString(),anyInt(),anyInt(),any())).thenReturn(io.github.bucket4j.Bucket.builder().addLimit(io.github.bucket4j.Bandwidth.classic(30,io.github.bucket4j.Refill.intervally(30,Duration.ofHours(1)))).build());
         when(executives.saveAndFlush(any())).thenAnswer(inv -> {DeliveryExecutive row=inv.getArgument(0);row.setVersion(row.getVersion()==null?0:row.getVersion()+1);return row;});
         http=MockMvcBuilders.standaloneSetup(applicant,admin,internal).setControllerAdvice(new GlobalExceptionHandler()).build();
@@ -100,7 +101,7 @@ class DeliveryApplicationAuthorizationTest {
         auth("ADMIN");var rider=new DeliveryExecutive();rider.setId(caller);rider.setVersion(0);rider.setFullName("Synthetic applicant");
         rider.setPhoneNumber("7000000001");rider.setVehicleType(VehicleClass.MCWG);rider.setApplicationStatus(ApplicationStatus.IN_REVIEW);
         when(executives.findById(caller)).thenReturn(Optional.of(rider));
-        when(government.getVerificationSummary(caller)).thenReturn(new GovernmentIdServiceClient.VerificationSummary(true,true,"MCWG",true,true,Instant.now()));
+        when(government.getVerificationSummary(caller)).thenReturn(new VerificationSummary(true,true,"MCWG",true,true,Instant.now()));
         when(government.getDeliveryDocuments(caller)).thenReturn(List.of("DRIVING_LICENSE","RC","SELFIE").stream().map(type ->
                 new ApplicationDocumentDto(UUID.randomUUID(),type,"documents/"+caller+"/accepted/file.jpg","image/jpeg",100,Instant.now())).toList());
         http.perform(post(adminBase+"/"+caller+"/approve").contentType("application/json").content("{\"version\":0,\"reviewedBy\":\""+UUID.randomUUID()+"\"}"))
