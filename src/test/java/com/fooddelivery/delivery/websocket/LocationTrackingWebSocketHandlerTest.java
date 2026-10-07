@@ -141,4 +141,64 @@ class LocationTrackingWebSocketHandlerTest {
 
         verify(session, never()).sendMessage(any());
     }
+
+    // ---------- live ETA snapshot (A5b) ----------
+
+    /** The WebSocket is the path the rider app uses; its 1 s flush writes the order's snapshot. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void flushWritesTheSnapshotForTheAssignedOrderAtReceiptTime() throws Exception {
+        handler.subscribeToTelemetrySink();
+        when(redisTemplate.opsForZSet()).thenReturn(mock(org.springframework.data.redis.core.ZSetOperations.class));
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put("userId", "driver-123");
+        when(session.getAttributes()).thenReturn(attributes);
+        when(valueOps.get("driver:active_order:driver-123")).thenReturn("order-789");
+        long before = System.currentTimeMillis();
+
+        handler.handleTextMessage(session, new TextMessage(
+                "{\"driverId\":\"driver-123\",\"orderId\":\"order-789\",\"cityId\":\"BLR\",\"lat\":12.97,\"lng\":77.59}"));
+
+        org.mockito.ArgumentCaptor<String> observedAt = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(redisTemplate, timeout(5000)).execute(any(org.springframework.data.redis.core.script.RedisScript.class),
+                eq(java.util.List.of("driver:active_order:driver-123", "tracking:order-location:order-789")),
+                eq("order-789"), anyString(), observedAt.capture(), anyString());
+        org.assertj.core.api.Assertions.assertThat(Long.parseLong(observedAt.getValue()))
+                .isBetween(before, System.currentTimeMillis());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void flushWritesNoSnapshotForAnOrderTheRiderIsNotOn() throws Exception {
+        handler.subscribeToTelemetrySink();
+        when(redisTemplate.opsForZSet()).thenReturn(mock(org.springframework.data.redis.core.ZSetOperations.class));
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put("userId", "driver-123");
+        when(session.getAttributes()).thenReturn(attributes);
+        when(valueOps.get("driver:active_order:driver-123")).thenReturn("order-999");
+
+        handler.handleTextMessage(session, new TextMessage(
+                "{\"driverId\":\"driver-123\",\"orderId\":\"order-789\",\"cityId\":\"BLR\",\"lat\":12.97,\"lng\":77.59}"));
+
+        // The flush ran (the geo index is updated for every fix) ...
+        verify(geoOps, timeout(5000)).add(eq("drivers:geo:BLR"), any(Point.class), eq("driver-123"));
+        // ... and wrote no snapshot nor relayed to any order.
+        verify(redisTemplate, never()).execute(any(org.springframework.data.redis.core.script.RedisScript.class),
+                anyList(), any(), any(), any(), any());
+        verify(redisTemplate, never()).convertAndSend(anyString(), anyString());
+    }
+
+    @Test
+    void nonNumericCoordinatesAreDroppedBeforeTheSink() throws Exception {
+        handler.subscribeToTelemetrySink();
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put("userId", "driver-123");
+        when(session.getAttributes()).thenReturn(attributes);
+
+        handler.handleTextMessage(session, new TextMessage(
+                "{\"driverId\":\"driver-123\",\"orderId\":\"order-789\",\"cityId\":\"BLR\",\"lat\":\"12.97\",\"lng\":77.59}"));
+
+        Thread.sleep(1500); // one full buffer window: the flush would have run by now
+        verify(redisTemplate, never()).opsForGeo();
+    }
 }

@@ -70,10 +70,18 @@ private final StringRedisTemplate redisTemplate;
                 redisTemplate.opsForGeo().add(locationKey, new Point(lastPayload.longitude(), lastPayload.latitude()), authId);
                 redisTemplate.opsForZSet().add("driver_last_ping", authId, System.currentTimeMillis());
             }
-            // Publish tracking events for SSE subscribers
+            // Relay to the customer's live map only for the order this rider is assigned to now. The
+            // payload's orderId is the rider's claim; without this check any rider could draw on any
+            // customer's map. Spoofed (mock) fixes are never relayed. Batches are delayed uploads,
+            // so they write no ETA snapshot.
+            boolean claimsAnOrder = telemetryBatch.stream()
+                    .anyMatch(event -> event.getOrderId() != null && authId.equals(event.getDriverId()));
+            String activeOrderId = claimsAnOrder ? redisTemplate.opsForValue().get(
+                    com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + authId) : null;
             for (TelemetryEventRequest event : telemetryBatch) {
                 String orderId = event.getOrderId();
-                if (orderId != null && !orderId.isEmpty() && authId.equals(event.getDriverId())) {
+                if (orderId != null && orderId.equals(activeOrderId) && authId.equals(event.getDriverId())
+                        && !Boolean.TRUE.equals(event.getIsMockLocation())) {
                     String channel = "tracking:order:" + orderId;
                     redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(event));
                 }
@@ -109,9 +117,13 @@ private final StringRedisTemplate redisTemplate;
         // Publish to live tracking SSE if driver has an active order
         String activeOrderId = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + executiveId);
         if (activeOrderId != null) {
+            // The phone's clock is not trusted to be ahead of ours: a fix stamped in our future is
+            // taken as received now. One older than the snapshot window (a delayed upload) is not
+            // written, so it can never freshen the customer's live estimate.
+            long now = System.currentTimeMillis();
             com.fooddelivery.delivery.service.RiderLocationSnapshotWriter.write(redisTemplate, objectMapper,
                     executiveId.toString(), activeOrderId, cityId, payload.latitude(), payload.longitude(),
-                    payload.timestampMs(), System.currentTimeMillis());
+                    Math.min(payload.timestampMs(), now), now);
             try {
                 String channel = "tracking:order:" + activeOrderId;
                 TelemetryEventRequest trackingEvent = new TelemetryEventRequest();

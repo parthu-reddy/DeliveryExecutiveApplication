@@ -201,6 +201,13 @@
         <version>1.2.1</version>
         <scope>test</scope>
     </dependency>
+    <!-- Executes RiderLocationSnapshotWriter's Lua in a unit test: no Redis runs at build time. -->
+    <dependency>
+        <groupId>org.luaj</groupId>
+        <artifactId>luaj-jse</artifactId>
+        <version>3.0.1</version>
+        <scope>test</scope>
+    </dependency>
 </dependencies>
 
     <dependencyManagement>

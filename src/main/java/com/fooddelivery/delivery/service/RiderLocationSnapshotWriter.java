@@ -13,7 +13,12 @@ import java.util.List;
 public final class RiderLocationSnapshotWriter {
     private RiderLocationSnapshotWriter() { }
 
-    private static final DefaultRedisScript<Long> WRITE = new DefaultRedisScript<>("""
+    /**
+     * KEYS: the rider's active-order key, the order's snapshot key. ARGV: order id, snapshot JSON,
+     * observedAt, PX. Writes only for the rider's current order, never over a newer position.
+     * Package-private so RiderLocationSnapshotWriterScriptTest executes this exact text.
+     */
+    static final String SCRIPT = """
             if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
             local previous = redis.call('GET', KEYS[2])
             if previous then
@@ -23,7 +28,9 @@ public final class RiderLocationSnapshotWriter {
             end
             redis.call('SET', KEYS[2], ARGV[2], 'PX', ARGV[4])
             return 1
-            """, Long.class);
+            """;
+
+    private static final DefaultRedisScript<Long> WRITE = new DefaultRedisScript<>(SCRIPT, Long.class);
 
     public static void write(StringRedisTemplate redis, ObjectMapper mapper, String driverId,
                              String orderId, String cityId, double lat, double lng,
