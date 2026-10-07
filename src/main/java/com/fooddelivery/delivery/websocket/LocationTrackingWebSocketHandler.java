@@ -57,6 +57,9 @@ private final ObjectMapper objectMapper;
                 redisTemplate.opsForZSet().add("driver_last_ping", event.driverId(),
                         System.currentTimeMillis());
                 if (event.orderId() != null && !event.orderId().isEmpty()) {
+                    com.fooddelivery.delivery.service.RiderLocationSnapshotWriter.write(redisTemplate, objectMapper,
+                            event.driverId(), event.orderId(), event.cityId(), event.lat(), event.lng(),
+                            event.observedAtMs(), System.currentTimeMillis());
                     redisTemplate.convertAndSend("tracking:order:" + event.orderId(),
                             objectMapper.writeValueAsString(event));
                 }
@@ -126,8 +129,13 @@ private final ObjectMapper objectMapper;
                 return;
             }
             
-            double lat = jsonNode.get("lat").asDouble();
-            double lng = jsonNode.get("lng").asDouble();
+            if (!jsonNode.has("lat") || !jsonNode.get("lat").isNumber()
+                    || !jsonNode.has("lng") || !jsonNode.get("lng").isNumber()) return;
+            double lat = jsonNode.get("lat").doubleValue();
+            double lng = jsonNode.get("lng").doubleValue();
+            long observedAtMs = System.currentTimeMillis();
+            if (!new com.fooddelivery.common.dto.maps.LiveRiderLocation(driverId, null, null, lat, lng, observedAtMs)
+                    .isFresh(observedAtMs)) return;
             String orderId = jsonNode.has("orderId") ? jsonNode.get("orderId").asText() : null;
             String cityId = jsonNode.has("cityId") ? jsonNode.get("cityId").asText() : null;
             
@@ -140,7 +148,7 @@ private final ObjectMapper objectMapper;
             }
 
             // Emit to the sink (reactive)
-            telemetrySink.tryEmitNext(new TelemetryEvent(driverId, orderId, lat, lng, cityId));
+            telemetrySink.tryEmitNext(new TelemetryEvent(driverId, orderId, lat, lng, cityId, observedAtMs));
         } catch (Exception e) {
             log.error("TELEMETRY_PAYLOAD_REJECTED sessionId={} payloadBytes={} errorType={} error={}",
                     session.getId(), payload == null ? 0 : payload.length(),
@@ -222,6 +230,6 @@ private final ObjectMapper objectMapper;
     }
 
 
-    private record TelemetryEvent(String driverId, String orderId, double lat, double lng, String cityId) {
+    private record TelemetryEvent(String driverId, String orderId, double lat, double lng, String cityId, long observedAtMs) {
     }
 }

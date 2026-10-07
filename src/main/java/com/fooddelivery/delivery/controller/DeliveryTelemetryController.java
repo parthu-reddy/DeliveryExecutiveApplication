@@ -109,6 +109,9 @@ private final StringRedisTemplate redisTemplate;
         // Publish to live tracking SSE if driver has an active order
         String activeOrderId = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + executiveId);
         if (activeOrderId != null) {
+            com.fooddelivery.delivery.service.RiderLocationSnapshotWriter.write(redisTemplate, objectMapper,
+                    executiveId.toString(), activeOrderId, cityId, payload.latitude(), payload.longitude(),
+                    payload.timestampMs(), System.currentTimeMillis());
             try {
                 String channel = "tracking:order:" + activeOrderId;
                 TelemetryEventRequest trackingEvent = new TelemetryEventRequest();

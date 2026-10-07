@@ -38,6 +38,8 @@ private final MapsServiceClient mapsClient;
             body.put("distance", route.getDistance());
             body.put("duration", route.getDuration());
             body.put("travelSeconds", route.travelSeconds());
+            body.put("durationSeconds", route.getDurationSeconds());
+            body.put("distanceMeters", route.getDistanceMeters());
             return ResponseEntity.ok(body);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(ApiResponse.error("Failed to calculate route: " + e.getMessage()));
