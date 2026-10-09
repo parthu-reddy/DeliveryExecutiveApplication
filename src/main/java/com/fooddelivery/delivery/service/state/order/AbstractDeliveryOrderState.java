@@ -69,13 +69,33 @@ protected final StringRedisTemplate redisTemplate;
         // Default no-op. Override in subclasses if validation is needed.
     }
 
+    /** Wrong OTPs allowed per order and kind within {@link #OTP_LOCKOUT} before every attempt is refused. */
+    static final int MAX_WRONG_OTP_ATTEMPTS = 5;
+    /** Counted from the first wrong attempt; the lock lifts by itself when it ends. */
+    static final java.time.Duration OTP_LOCKOUT = java.time.Duration.ofMinutes(5);
+    static final String OTP_FAILURES_PREFIX = "delivery:otp-failures:";
+
     /**
      * Compares a submitted OTP against the assignment.
      *
      * <p>Constant time, and an absent expected value denies rather than passes -- an OTP check that
      * cannot find what it is comparing against has not succeeded.
+     *
+     * <p>Wrong attempts are capped (F8, 2026-10-09). Before, the only brake was the gateway's per-IP
+     * limit (20/s), so the assigned rider could guess the 6-digit delivery OTP and mark an order
+     * delivered without handing it over. After {@link #MAX_WRONG_OTP_ATTEMPTS} wrong attempts every
+     * attempt, the right code included, is refused with 429 until {@link #OTP_LOCKOUT} has passed:
+     * about one guess a minute, instead of thousands. Only the assigned rider reaches this check,
+     * so nobody else can lock a rider out.
      */
-    protected void requireOtp(String expected, String submitted, String what) {
+    protected void requireOtp(UUID orderId, String expected, String submitted, String what) {
+        String failuresKey = OTP_FAILURES_PREFIX + orderId + ":" + what;
+        String failures = redisTemplate.opsForValue().get(failuresKey);
+        if (failures != null && Long.parseLong(failures) >= MAX_WRONG_OTP_ATTEMPTS) {
+            log.warn("Refusing {} OTP for order {}: {} wrong attempts", what, orderId, failures);
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.TOO_MANY_REQUESTS,
+                    "Too many incorrect " + what + " OTP attempts. Try again in a few minutes, or contact support.");
+        }
         if (expected == null || expected.isBlank()) {
             log.error("No {} OTP recorded on the assignment; refusing the handover.", what);
             throw new IllegalArgumentException("Invalid " + what + " OTP.");
@@ -84,8 +104,12 @@ protected final StringRedisTemplate redisTemplate;
         byte[] b = (submitted == null ? "" : submitted).getBytes(java.nio.charset.StandardCharsets.UTF_8);
         if (!java.security.MessageDigest.isEqual(a, b)) {
             log.error("{} OTP mismatch.", what);
+            // The window starts with the first failure; INCR keeps the TTL that SET NX gave the key.
+            redisTemplate.opsForValue().setIfAbsent(failuresKey, "0", OTP_LOCKOUT);
+            redisTemplate.opsForValue().increment(failuresKey);
             throw new IllegalArgumentException("Invalid " + what + " OTP.");
         }
+        redisTemplate.delete(failuresKey);
     }
 
     protected void saveOutboxEvent(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp) {

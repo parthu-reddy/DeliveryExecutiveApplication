@@ -127,7 +127,7 @@ class DeliveryOtpSourceTest {
 
     @Test
     void pickupStillRequiresTheRestaurantToBeReady() {
-        when(values.get(contains("restaurant-status"))).thenReturn(null);
+        when(values.get(contains("restaurantStatus"))).thenReturn(null);
 
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
                 () -> outForDelivery().handleStatusUpdate(driverId, orderId,
@@ -137,7 +137,7 @@ class DeliveryOtpSourceTest {
 
     @Test
     void pickupSucceedsWithTheCorrectOtpOnceReady() {
-        when(values.get(contains(orderId.toString()))).thenReturn("READY_FOR_PICKUP");
+        when(values.get(contains("restaurantStatus"))).thenReturn("READY_FOR_PICKUP");
 
         assertDoesNotThrow(() -> outForDelivery().handleStatusUpdate(driverId, orderId,
                 DeliveryStatus.OUT_FOR_DELIVERY, "123456", null, false));
@@ -146,7 +146,7 @@ class DeliveryOtpSourceTest {
 
     @Test
     void aWrongPickupOtpIsRefusedEvenWhenReady() {
-        when(values.get(contains(orderId.toString()))).thenReturn("READY_FOR_PICKUP");
+        when(values.get(contains("restaurantStatus"))).thenReturn("READY_FOR_PICKUP");
 
         assertThrows(IllegalArgumentException.class, () -> outForDelivery().handleStatusUpdate(
                 driverId, orderId, DeliveryStatus.OUT_FOR_DELIVERY, "999999", null, false));
@@ -159,7 +159,7 @@ class DeliveryOtpSourceTest {
      */
     @Test
     void anAcceptedPickupIsRecordedOnTheAssignmentWithTheEvent() {
-        when(values.get(contains(orderId.toString()))).thenReturn("READY_FOR_PICKUP");
+        when(values.get(contains("restaurantStatus"))).thenReturn("READY_FOR_PICKUP");
 
         outForDelivery().handleStatusUpdate(driverId, orderId, DeliveryStatus.OUT_FOR_DELIVERY, "123456", null, false);
 

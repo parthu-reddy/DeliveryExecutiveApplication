@@ -50,7 +50,7 @@ public class DeliveredStateStrategy extends AbstractDeliveryOrderState {
      */
     @Override
     protected void validate(OrderAssignment assignment, String pickupOtp, String deliveryOtp) {
-        requireOtp(assignment.getDeliveryOtp(), deliveryOtp, "delivery");
+        requireOtp(assignment.getOrderId(), assignment.getDeliveryOtp(), deliveryOtp, "delivery");
     }
 
     @Override

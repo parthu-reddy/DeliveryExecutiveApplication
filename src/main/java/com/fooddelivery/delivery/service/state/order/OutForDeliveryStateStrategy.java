@@ -49,6 +49,6 @@ public class OutForDeliveryStateStrategy extends AbstractDeliveryOrderState {
         if (!com.fooddelivery.common.enums.OrderStatus.READY_FOR_PICKUP.name().equals(restaurantStatus)) {
             throw new IllegalArgumentException("Restaurant has not marked the order as ready yet.");
         }
-        requireOtp(assignment.getPickupOtp(), pickupOtp, "pickup");
+        requireOtp(assignment.getOrderId(), assignment.getPickupOtp(), pickupOtp, "pickup");
     }
 }
