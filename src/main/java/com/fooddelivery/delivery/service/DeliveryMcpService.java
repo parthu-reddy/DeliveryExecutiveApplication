@@ -207,18 +207,6 @@ public class DeliveryMcpService {
         }
     }
 
-    @Tool(
-            description =
-                    "Deprecated: manual force assignment requires the audited admin intervention"
-                        + " workflow.")
-    public String forceAssignOrder(String orderId, String driverId) {
-        // MCP calls reach this service without a verified admin principal. Allowing it to invoke
-        // the controller directly would forge an audit trail, so there is intentionally no
-        // mutation here until MCP identity propagation is implemented.
-        return "Manual assignment is unavailable through MCP. Use the audited admin intervention"
-                   + " workflow.";
-    }
-
     @Tool(description = "Admin: Get driver by ID. Provide driverId.")
     public String getDriverById(String driverId) {
         try {

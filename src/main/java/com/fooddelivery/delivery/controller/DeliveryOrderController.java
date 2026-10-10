@@ -21,6 +21,7 @@ private final CustomerServiceClient customerServiceClient;
 
     @GetMapping("/active")
     public ResponseEntity<JsonNode> getActiveOrders(Principal principal, @RequestParam(value = "page", defaultValue = "0") int page, @RequestParam(value = "size", defaultValue = "20") int size) {
+        com.fooddelivery.delivery.controller.PageBounds.check(page, size);
         UUID driverId = UUID.fromString(principal.getName());
         JsonNode pageNode = customerServiceClient.getActiveOrdersForDriver(
                 driverId, confirmedDeliveryProgress.heldOrderIds(driverId), page, size);
@@ -72,6 +73,7 @@ private final CustomerServiceClient customerServiceClient;
             // is gets decided where the rider is, not on a server. TimezoneCorrectness_2026-09-25.
             @RequestParam("from") java.time.Instant from, @RequestParam("to") java.time.Instant to,
             @RequestParam(value = "page", defaultValue = "0") int page, @RequestParam(value = "size", defaultValue = "20") int size) {
+        com.fooddelivery.delivery.controller.PageBounds.check(page, size);
         UUID driverId = UUID.fromString(principal.getName());
         JsonNode pageNode = customerServiceClient.getOrderHistoryForDriver(driverId, from, to, page, size);
         mapToUiOrdersInPage(pageNode, driverId);

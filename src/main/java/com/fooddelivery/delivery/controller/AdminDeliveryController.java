@@ -6,15 +6,12 @@ import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
 import com.fooddelivery.delivery.service.DeliveryExecutiveProfileService;
 import com.fooddelivery.delivery.service.OrderAssignmentService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import java.util.List;
 import java.util.UUID;
@@ -69,18 +66,6 @@ private final IDeliveryExecutiveRepository repository;
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
                 page, size, org.springframework.data.domain.Sort.by("id").ascending());
         return ResponseEntity.ok(profileService.getAllDriversWithLocation(cityId, pageable));
-    }
-
-    @PostMapping("/orders/{orderId}/assign")
-    @PreAuthorize("hasRole('ADMIN')")
-    @io.swagger.v3.oas.annotations.Operation(hidden = true)
-    public ResponseEntity<Void> forceAssignOrder(@PathVariable UUID orderId, @RequestParam UUID driverId) {
-        // This endpoint used to mutate DeliveryExecutiveApplication directly. It had no
-        // CustomerApplication operation record, no immutable actor/reason audit, and could race
-        // the customer order state. Manual assignment is now initiated only through the audited
-        // CustomerApplication intervention endpoint.
-        throw new ResponseStatusException(HttpStatus.GONE,
-                "Use the audited CustomerApplication manual intervention endpoint to assign a driver.");
     }
 
     @GetMapping("/drivers/{driverId}")

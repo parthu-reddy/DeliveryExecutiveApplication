@@ -506,16 +506,6 @@ public class OrderAssignmentService {
     }
 
     /**
-     * Kept only so a stale internal caller fails closed rather than recreating the unaudited
-     * force-assignment path. New calls must carry the CustomerApplication operation correlation.
-     */
-    @Deprecated(forRemoval = true)
-    public void forceAssignOrder(UUID orderId, UUID driverId) {
-        throw new UnsupportedOperationException(
-                "Manual assignment requires an authenticated operation from CustomerApplication.");
-    }
-
-    /**
      * Applies an audited manual assignment after CustomerApplication has authenticated the
      * administrator and persisted the current operation on the order.
      *
