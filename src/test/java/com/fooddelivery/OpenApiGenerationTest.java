@@ -118,9 +118,9 @@ public class OpenApiGenerationTest {
 
     // DeliveryExecutiveController took this in Phase 2, when the OTP and the authorization decision
     // moved off the Redis dispatch payload and onto order_assignments. This class mocks every
-    // collaborator by hand, so a new constructor parameter breaks it -- and it is excluded from the
-    // default surefire run (-P specs enables it), so the break sat here unseen and the committed
-    // openapi.json silently stopped being regenerated.
+    // collaborator by hand, so a new constructor parameter breaks it. It was then left out of the
+    // default surefire run, so the break sat here unseen and the committed openapi.json silently
+    // stopped being regenerated; it runs in every build since 2026-10-11.
     @org.springframework.boot.test.mock.mockito.MockBean
     private com.fooddelivery.delivery.repository.OrderAssignmentRepository orderAssignmentRepository;
 
@@ -212,9 +212,37 @@ public class OpenApiGenerationTest {
             Path path = Paths.get("target/openapi.json");
             if (path.getParent() != null) Files.createDirectories(path.getParent());
             Files.write(path, openApiJson.getBytes(StandardCharsets.UTF_8));
+            assertCommittedSpecCurrent(openApiJson);
             System.out.println("OpenAPI spec written to target/openapi.json");
         } else {
             throw new IllegalStateException("Failed to retrieve OpenAPI spec.");
         }
+    }
+
+    // openapi.json at the module root is what the UI client and the validators are generated from. Red here
+    // when the controllers no longer produce it, so it cannot go stale unnoticed. Parsed trees are compared
+    // because springdoc's key order is not stable between runs.
+    private static void assertCommittedSpecCurrent(String openApiJson) throws java.io.IOException {
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        com.fasterxml.jackson.databind.JsonNode generated = mapper.readTree(openApiJson);
+        com.fasterxml.jackson.databind.JsonNode committed = mapper.readTree(
+                java.nio.file.Files.readString(java.nio.file.Paths.get("openapi.json")));
+        if (generated.equals(committed)) {
+            return;
+        }
+        java.util.List<String> changed = new java.util.ArrayList<>();
+        for (String section : new String[] {"/paths", "/components/schemas"}) {
+            java.util.Set<String> names = new java.util.TreeSet<>();
+            generated.at(section).fieldNames().forEachRemaining(names::add);
+            committed.at(section).fieldNames().forEachRemaining(names::add);
+            for (String name : names) {
+                if (!generated.at(section).path(name).equals(committed.at(section).path(name))) {
+                    changed.add(section + "/" + name);
+                }
+            }
+        }
+        org.junit.jupiter.api.Assertions.fail("openapi.json is stale (differs at "
+                + (changed.isEmpty() ? "info/servers/tags" : changed) + "). Copy target/openapi.json over it;"
+                + " for a UI service FoodDeliveryAppUI/scripts/generate-api-types.sh does that and regenerates the client.");
     }
 }
