@@ -23,11 +23,16 @@ import java.util.UUID;
  * <p>A rider's app reports latitude/longitude; everything else is the server's: the time (this service's clock, never
  * the app's), the city (the rider's profile, never the app's), and whether the move is physically possible. A jump of
  * more than 250 m at more than 120 km/h since the last accepted fix is dropped -- dispatch keeps the last good
- * position -- and counted as a strike. The third strike within an hour takes an idle (ONLINE) rider off duty with
- * reason {@link DutyChangeReason#LOCATION_IMPLAUSIBLE}; a rider carrying an order is never demoted, their impossible
- * fixes are only dropped and logged. The account stays active.
+ * position -- and counted as a strike.
  *
- * <p>Owner decisions 2026-10-11, RandomDocuments/RiderGpsAntiSpoofing_2026-10-11.
+ * <p>A strike is per JUMP, not per frame: the app re-sends its position every 5 s, so a rider whose GPS jumps and holds
+ * reports the same far point again and again. Frames within 250 m of the previous rejected frame are the same jump:
+ * no new strike, and once {@value #REANCHOR_FRAMES} consistent frames have arrived (about 10 s) that point becomes the
+ * new baseline. The third strike (= third jump) within an hour takes an idle (ONLINE) rider off duty with reason
+ * {@link DutyChangeReason#LOCATION_IMPLAUSIBLE}; a rider carrying an order is never demoted, their impossible fixes
+ * are only dropped and logged. The account stays active.
+ *
+ * <p>Owner decisions 2026-10-11 (option c for strikes), RandomDocuments/RiderGpsAntiSpoofing_2026-10-11.
  */
 @Component
 @Slf4j
@@ -41,10 +46,16 @@ public class RiderLocationGuard {
     /** Longer than the liveness window: a fix older than this says nothing about the next one. */
     static final Duration LAST_FIX_TTL = Duration.ofMinutes(10);
     static final Duration CITY_TTL = Duration.ofHours(1);
+    /** Consistent frames at a rejected point after which it is accepted as the rider's real position. */
+    static final int REANCHOR_FRAMES = 3;
+    /** Six frames at the 5 s cadence: a gap longer than this ends the jump, and the next far frame is a new one. */
+    static final Duration PENDING_TTL = Duration.ofSeconds(30);
 
     static final String LAST_FIX = "driver:last_fix:";
     static final String CITY = "driver:city:";
     static final String STRIKES = "driver:spoof_strikes:";
+    /** The latest rejected frame of the jump in progress: {@code lat,lng,frames}. */
+    static final String PENDING = "driver:pending_fix:";
 
     private final StringRedisTemplate redis;
     private final IDeliveryExecutiveRepository repository;
@@ -91,11 +102,38 @@ public class RiderLocationGuard {
             long elapsedMs = now - Long.parseLong(p[2]);
             double speedKmh = elapsedMs <= 0 ? Double.POSITIVE_INFINITY : metres / (elapsedMs / 1000.0) * 3.6;
             if (metres > JITTER_METRES && speedKmh > MAX_SPEED_KMH) {
-                strike(riderId, metres, elapsedMs, speedKmh);
-                return Optional.empty();
+                return implausible(riderId, cityId, lat, lng, now, metres, elapsedMs, speedKmh);
             }
         }
+        redis.delete(PENDING + id);
         return Optional.of(record(id, cityId, lat, lng, now));
+    }
+
+    /** One strike per jump; a jump held for {@link #REANCHOR_FRAMES} consistent frames becomes the new baseline. */
+    private Optional<Fix> implausible(UUID riderId, String cityId, double lat, double lng, long now,
+                                      double metres, long elapsedMs, double speedKmh) {
+        String id = riderId.toString();
+        String pending = redis.opsForValue().get(PENDING + id);
+        int frames = 1;
+        if (pending != null) {
+            String[] p = pending.split(",");
+            if (haversineMetres(Double.parseDouble(p[0]), Double.parseDouble(p[1]), lat, lng) <= JITTER_METRES) {
+                frames = Integer.parseInt(p[2]) + 1;
+            }
+        }
+        if (frames >= REANCHOR_FRAMES) {
+            redis.delete(PENDING + id);
+            meterRegistry.counter("rider.location.reanchored").increment();
+            log.warn("RIDER_LOCATION_REANCHORED driverId={} frames={} metres={}", id, frames, Math.round(metres));
+            return Optional.of(record(id, cityId, lat, lng, now));
+        }
+        redis.opsForValue().set(PENDING + id, lat + "," + lng + "," + frames, PENDING_TTL);
+        if (frames == 1) {
+            strike(riderId, metres, elapsedMs, speedKmh);
+        } else {
+            log.info("RIDER_LOCATION_HELD driverId={} frames={} (same jump, no strike)", id, frames);
+        }
+        return Optional.empty();
     }
 
     /**
@@ -107,7 +145,7 @@ public class RiderLocationGuard {
         if (!validCoordinates(lat, lng) || rider.getCityId() == null) {
             throw new IllegalArgumentException("A valid location and a profile city are required to go online.");
         }
-        redis.delete(STRIKES + id);
+        redis.delete(java.util.List.of(STRIKES + id, PENDING + id));
         redis.opsForValue().set(CITY + id, rider.getCityId(), CITY_TTL);
         return record(id, rider.getCityId(), lat, lng, clock.millis());
     }
@@ -118,7 +156,7 @@ public class RiderLocationGuard {
     }
 
     public static void forgetKeys(StringRedisTemplate redis, String riderId) {
-        redis.delete(java.util.List.of(LAST_FIX + riderId, CITY + riderId));
+        redis.delete(java.util.List.of(LAST_FIX + riderId, CITY + riderId, PENDING + riderId));
     }
 
     private Fix record(String id, String cityId, double lat, double lng, long now) {
