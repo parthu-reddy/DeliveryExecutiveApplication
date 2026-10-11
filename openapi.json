@@ -294,58 +294,6 @@
         }
       }
     },
-    "/api/v1/delivery/telemetry/sync" : {
-      "post" : {
-        "tags" : [ "delivery-telemetry-controller" ],
-        "operationId" : "syncLocation",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/LocationPayload"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK"
-          }
-        }
-      }
-    },
-    "/api/v1/delivery/telemetry/batch" : {
-      "post" : {
-        "tags" : [ "delivery-telemetry-controller" ],
-        "operationId" : "processBatchTelemetry",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/TelemetryEventRequest"
-                }
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/delivery-onboarding/application/submit" : {
       "post" : {
         "tags" : [ "delivery-application-controller" ],
@@ -988,8 +936,8 @@
           "required" : false,
           "schema" : {
             "type" : "string",
-            "enum" : [ "DRAFT", "SUBMITTED", "IN_REVIEW", "APPROVED", "REJECTED", "SUSPENDED" ],
-            "default" : "IN_REVIEW"
+            "default" : "IN_REVIEW",
+            "enum" : [ "DRAFT", "SUBMITTED", "IN_REVIEW", "APPROVED", "REJECTED", "SUSPENDED" ]
           }
         }, {
           "name" : "page",
@@ -1640,68 +1588,6 @@
           }
         }
       },
-      "LocationPayload" : {
-        "required" : [ "isMockLocation", "latitude", "longitude", "speedKmh", "timestampMs" ],
-        "type" : "object",
-        "properties" : {
-          "latitude" : {
-            "type" : "number",
-            "format" : "double"
-          },
-          "longitude" : {
-            "type" : "number",
-            "format" : "double"
-          },
-          "speedKmh" : {
-            "type" : "number",
-            "format" : "double"
-          },
-          "isMockLocation" : {
-            "type" : "boolean"
-          },
-          "timestampMs" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        }
-      },
-      "TelemetryEventRequest" : {
-        "required" : [ "driverId", "lat", "lng" ],
-        "type" : "object",
-        "properties" : {
-          "driverId" : {
-            "maxLength" : 36,
-            "minLength" : 0,
-            "pattern" : "^[0-9a-fA-F\\-]{36}$",
-            "type" : "string"
-          },
-          "lat" : {
-            "type" : "number",
-            "format" : "double"
-          },
-          "lng" : {
-            "type" : "number",
-            "format" : "double"
-          },
-          "orderId" : {
-            "maxLength" : 36,
-            "minLength" : 0,
-            "pattern" : "^[0-9a-fA-F\\-]{36}$",
-            "type" : "string"
-          },
-          "speedKmh" : {
-            "type" : "number",
-            "format" : "double"
-          },
-          "isMockLocation" : {
-            "type" : "boolean"
-          },
-          "timestampMs" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        }
-      },
       "RCRequest" : {
         "required" : [ "registrationNumber" ],
         "type" : "object",
@@ -1951,19 +1837,13 @@
         "required" : [ "content", "empty", "first", "last", "number", "numberOfElements", "size", "totalElements", "totalPages" ],
         "type" : "object",
         "properties" : {
-          "totalPages" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
           "totalElements" : {
             "type" : "integer",
             "format" : "int64"
           },
-          "sort" : {
-            "$ref" : "#/components/schemas/SortObject"
-          },
-          "pageable" : {
-            "$ref" : "#/components/schemas/PageableObject"
+          "totalPages" : {
+            "type" : "integer",
+            "format" : "int32"
           },
           "numberOfElements" : {
             "type" : "integer",
@@ -1989,6 +1869,12 @@
           "last" : {
             "type" : "boolean"
           },
+          "sort" : {
+            "$ref" : "#/components/schemas/SortObject"
+          },
+          "pageable" : {
+            "$ref" : "#/components/schemas/PageableObject"
+          },
           "empty" : {
             "type" : "boolean"
           }
@@ -1998,6 +1884,10 @@
         "required" : [ "offset", "pageNumber", "pageSize", "paged", "unpaged" ],
         "type" : "object",
         "properties" : {
+          "offset" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
           "sort" : {
             "$ref" : "#/components/schemas/SortObject"
           },
@@ -2014,10 +1904,6 @@
           },
           "unpaged" : {
             "type" : "boolean"
-          },
-          "offset" : {
-            "type" : "integer",
-            "format" : "int64"
           }
         }
       },
@@ -2067,19 +1953,13 @@
         "required" : [ "content", "empty", "first", "last", "number", "numberOfElements", "size", "totalElements", "totalPages" ],
         "type" : "object",
         "properties" : {
-          "totalPages" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
           "totalElements" : {
             "type" : "integer",
             "format" : "int64"
           },
-          "sort" : {
-            "$ref" : "#/components/schemas/SortObject"
-          },
-          "pageable" : {
-            "$ref" : "#/components/schemas/PageableObject"
+          "totalPages" : {
+            "type" : "integer",
+            "format" : "int32"
           },
           "numberOfElements" : {
             "type" : "integer",
@@ -2104,6 +1984,12 @@
           },
           "last" : {
             "type" : "boolean"
+          },
+          "sort" : {
+            "$ref" : "#/components/schemas/SortObject"
+          },
+          "pageable" : {
+            "$ref" : "#/components/schemas/PageableObject"
           },
           "empty" : {
             "type" : "boolean"
@@ -2162,12 +2048,6 @@
       "SliceDeliveryApplicationQueueDto" : {
         "type" : "object",
         "properties" : {
-          "sort" : {
-            "$ref" : "#/components/schemas/SortObject"
-          },
-          "pageable" : {
-            "$ref" : "#/components/schemas/PageableObject"
-          },
           "numberOfElements" : {
             "type" : "integer",
             "format" : "int32"
@@ -2191,6 +2071,12 @@
           },
           "last" : {
             "type" : "boolean"
+          },
+          "sort" : {
+            "$ref" : "#/components/schemas/SortObject"
+          },
+          "pageable" : {
+            "$ref" : "#/components/schemas/PageableObject"
           },
           "empty" : {
             "type" : "boolean"
@@ -2269,12 +2155,6 @@
       "SliceAuditEvent" : {
         "type" : "object",
         "properties" : {
-          "sort" : {
-            "$ref" : "#/components/schemas/SortObject"
-          },
-          "pageable" : {
-            "$ref" : "#/components/schemas/PageableObject"
-          },
           "numberOfElements" : {
             "type" : "integer",
             "format" : "int32"
@@ -2298,6 +2178,12 @@
           },
           "last" : {
             "type" : "boolean"
+          },
+          "sort" : {
+            "$ref" : "#/components/schemas/SortObject"
+          },
+          "pageable" : {
+            "$ref" : "#/components/schemas/PageableObject"
           },
           "empty" : {
             "type" : "boolean"

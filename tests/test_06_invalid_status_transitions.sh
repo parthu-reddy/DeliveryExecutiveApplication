@@ -22,7 +22,6 @@ DEL_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d "{\"name\"
 DEL_EXEC_ID=$(echo $DEL_RESPONSE | jq -r '.data.id')
 
 curl -s -X POST -H "Content-Type: application/json" -d "{\"driverId\": \"$DEL_EXEC_ID\", \"available\": true}" http://localhost:8092/api/delivery/status > /dev/null
-curl -s -X POST -H "Content-Type: application/json" -d "[{\"driverId\": \"$DEL_EXEC_ID\", \"lat\": 12.9716, \"lng\": 77.5946, \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}]" http://localhost:8092/api/v1/delivery/telemetry/batch > /dev/null
 
 echo "5. Placing Order..."
 ORDER_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d "{

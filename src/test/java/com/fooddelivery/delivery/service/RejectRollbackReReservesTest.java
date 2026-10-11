@@ -40,8 +40,8 @@ import static org.mockito.Mockito.when;
  * holding a ping for this order. Selection could then pick them for a different order and overwrite
  * {@code driver:pending_ping}, losing the restored ping entirely.
  *
- * <p>The re-reserve goes through {@code /api/fleet/availability} with {@code available=false}.
- * {@code /api/fleet/release} cannot do it: that endpoint ignores the flag and always releases.
+ * <p>The re-reserve goes through {@code /api/v1/internal/fleet/availability} with {@code available=false}.
+ * {@code /api/v1/internal/fleet/release} cannot do it: that endpoint ignores the flag and always releases.
  */
 class RejectRollbackReReservesTest {
 

@@ -95,8 +95,6 @@ public class OpenApiGenerationTest {
     private com.fooddelivery.common.client.GovernmentIdServiceClient governmentIdServiceClient;
 
 
-    @org.springframework.boot.test.mock.mockito.MockBean
-    private com.fooddelivery.telemetry.service.TelemetryIngestionService telemetryIngestionService;
 
 
     @org.springframework.boot.test.mock.mockito.MockBean

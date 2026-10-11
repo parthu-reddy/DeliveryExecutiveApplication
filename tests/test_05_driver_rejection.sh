@@ -23,7 +23,6 @@ DEL_EXEC_ID=$(echo $DEL_RESPONSE | jq -r '.data.id')
 
 echo "4.5. Making Delivery Executive 1 ONLINE and Setting Location..."
 curl -s -X POST -H "Content-Type: application/json" -d "{\"driverId\": \"$DEL_EXEC_ID\", \"available\": true}" http://localhost:8092/api/delivery/status > /dev/null
-curl -s -X POST -H "Content-Type: application/json" -d "[{\"driverId\": \"$DEL_EXEC_ID\", \"lat\": 12.9716, \"lng\": 77.5946, \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}]" http://localhost:8092/api/v1/delivery/telemetry/batch > /dev/null
 
 echo "4.6. Onboarding Delivery Executive 2 (Fallback)..."
 DEL_PHONE_2="888$(printf "%07d" $RANDOM$RANDOM | cut -c1-7)"
@@ -32,7 +31,6 @@ DEL_EXEC_ID_2=$(echo $DEL_RESPONSE_2 | jq -r '.data.id')
 
 echo "4.7. Making Delivery Executive 2 ONLINE and Setting Location..."
 curl -s -X POST -H "Content-Type: application/json" -d "{\"driverId\": \"$DEL_EXEC_ID_2\", \"available\": true}" http://localhost:8092/api/delivery/status > /dev/null
-curl -s -X POST -H "Content-Type: application/json" -d "[{\"driverId\": \"$DEL_EXEC_ID_2\", \"lat\": 12.9716, \"lng\": 77.5946, \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}]" http://localhost:8092/api/v1/delivery/telemetry/batch > /dev/null
 
 echo "5. Placing Order..."
 ORDER_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d "{

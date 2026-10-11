@@ -23,6 +23,7 @@ private final ObjectMapper objectMapper;
     private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
     private final com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository repository;
     private final com.fooddelivery.delivery.service.duty.RiderDutyNotifier dutyNotifier;
+    private final com.fooddelivery.delivery.service.location.RiderLocationGuard locationGuard;
     private final ConcurrentHashMap<String, WebSocketSession> activeSessions = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, WebSocketSession> userSessions = new ConcurrentHashMap<>();
     private final Sinks.Many<TelemetryEvent> telemetrySink = Sinks.many().multicast().onBackpressureBuffer();
@@ -44,18 +45,13 @@ private final ObjectMapper objectMapper;
             .subscribe(this::flushBatch);
     }
 
+    /**
+     * Fans accepted fixes out to order tracking. Dispatch's position index was already written, in order, by
+     * {@link com.fooddelivery.delivery.service.location.RiderLocationGuard#accept} when the fix arrived.
+     */
     private void flushBatch(java.util.List<TelemetryEvent> batch) {
         for (TelemetryEvent event : batch) {
             try {
-                if (event.cityId() == null || event.cityId().isEmpty()) {
-                    log.warn("Dropped telemetry event due to missing cityId: {}", event.driverId());
-                    meterRegistry.counter("ws.telemetry.missing_city").increment();
-                    continue;
-                }
-                redisTemplate.opsForGeo().add("drivers:geo:" + event.cityId(),
-                        new Point(event.lng(), event.lat()), event.driverId());
-                redisTemplate.opsForZSet().add("driver_last_ping", event.driverId(),
-                        System.currentTimeMillis());
                 if (event.orderId() != null && !event.orderId().isEmpty()) {
                     com.fooddelivery.delivery.service.RiderLocationSnapshotWriter.write(redisTemplate, objectMapper,
                             event.driverId(), event.orderId(), event.cityId(), event.lat(), event.lng(),
@@ -133,12 +129,11 @@ private final ObjectMapper objectMapper;
                     || !jsonNode.has("lng") || !jsonNode.get("lng").isNumber()) return;
             double lat = jsonNode.get("lat").doubleValue();
             double lng = jsonNode.get("lng").doubleValue();
-            long observedAtMs = System.currentTimeMillis();
-            if (!new com.fooddelivery.common.dto.maps.LiveRiderLocation(driverId, null, null, lat, lng, observedAtMs)
-                    .isFresh(observedAtMs)) return;
+            java.util.Optional<com.fooddelivery.delivery.service.location.RiderLocationGuard.Fix> fix =
+                    locationGuard.accept(java.util.UUID.fromString(driverId), lat, lng);
+            if (fix.isEmpty()) return;
             String orderId = jsonNode.has("orderId") ? jsonNode.get("orderId").asText() : null;
-            String cityId = jsonNode.has("cityId") ? jsonNode.get("cityId").asText() : null;
-            
+
             if (orderId != null) {
                 String activeOrder = redisTemplate.opsForValue().get("driver:active_order:" + driverId);
                 if (!orderId.equals(activeOrder)) {
@@ -148,7 +143,7 @@ private final ObjectMapper objectMapper;
             }
 
             // Emit to the sink (reactive)
-            telemetrySink.tryEmitNext(new TelemetryEvent(driverId, orderId, lat, lng, cityId, observedAtMs));
+            telemetrySink.tryEmitNext(new TelemetryEvent(driverId, orderId, lat, lng, fix.get().cityId(), fix.get().observedAtMs()));
         } catch (Exception e) {
             log.error("TELEMETRY_PAYLOAD_REJECTED sessionId={} payloadBytes={} errorType={} error={}",
                     session.getId(), payload == null ? 0 : payload.length(),

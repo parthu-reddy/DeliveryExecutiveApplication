@@ -88,7 +88,7 @@ private final KafkaTemplate<String, String> kafkaTemplate;
             request.setCityId(cityId);
             request.setDriverId(driverId);
             request.setAvailable(true);
-            log.info("Sending request to MapsIntegration /api/fleet/release: {}", request);
+            log.info("Sending request to MapsIntegration /api/v1/internal/fleet/release: {}", request);
             java.util.Map<String, Object> response = mapsClient.releaseDriver(request);
             log.info("Successfully requested driver lock release for driver {}. Response: {}", driverId, response);
         } catch (Exception e) {
@@ -105,7 +105,7 @@ private final KafkaTemplate<String, String> kafkaTemplate;
      * the release had already advertised the driver as free. Without this the two halves disagree:
      * the driver holds a ping for an order they are also available to be re-offered.
      *
-     * <p>Goes through {@code /api/fleet/availability}, not {@code /api/fleet/release}, because the
+     * <p>Goes through {@code /api/v1/internal/fleet/availability}, not {@code /api/v1/internal/fleet/release}, because the
      * latter ignores the {@code available} flag and always releases.
      */
     public void reserveDriverLock(String driverId) {

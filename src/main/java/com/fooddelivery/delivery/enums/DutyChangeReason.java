@@ -10,6 +10,8 @@ public enum DutyChangeReason {
     RIDER_REQUEST,
     /** No location reached the server for the liveness window; dispatch cannot place the rider. */
     LOCATION_LOST,
+    /** Three physically impossible location jumps within an hour (RiderLocationGuard); the account stays active. */
+    LOCATION_IMPLAUSIBLE,
     /** An admin or service suspended the rider. */
     SUSPENDED,
     /** The account was deactivated. */

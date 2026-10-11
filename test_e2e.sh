@@ -31,7 +31,6 @@ echo "Delivery Executive ID: $DEL_EXEC_ID, Phone: $DEL_PHONE"
 
 echo "4.5. Making Delivery Executive ONLINE and Setting Location..."
 curl -s -X POST -H "Content-Type: application/json" -d "{\"driverId\": \"$DEL_EXEC_ID\", \"available\": true}" http://localhost:8095/api/delivery/status
-curl -s -X POST -H "Content-Type: application/json" -d "[{\"driverId\": \"$DEL_EXEC_ID\", \"lat\": 12.9716, \"lng\": 77.5946, \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}]" http://localhost:8095/api/v1/delivery/telemetry/batch
 echo ""
 
 echo "5. Creating Order..."

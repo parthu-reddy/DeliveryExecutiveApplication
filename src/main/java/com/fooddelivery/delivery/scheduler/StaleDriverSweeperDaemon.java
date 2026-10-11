@@ -7,10 +7,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import com.fooddelivery.delivery.enums.DutyChangeReason;
-import com.fooddelivery.delivery.service.duty.RiderDutyNotifier;
 import com.fooddelivery.delivery.service.RiderLiveness;
 import org.springframework.data.redis.core.ZSetOperations;
-import org.springframework.transaction.support.TransactionTemplate;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -32,8 +30,7 @@ public class StaleDriverSweeperDaemon {
 private final StringRedisTemplate redisTemplate;
     private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
     private final IDeliveryExecutiveRepository deliveryExecutiveRepository;
-    private final TransactionTemplate transactionTemplate;
-    private final RiderDutyNotifier dutyNotifier;
+    private final com.fooddelivery.delivery.service.duty.RiderDutyDemotion demotion;
     private static final String DRIVER_LAST_PING_KEY = RiderLiveness.LAST_PING_KEY;
     static final long STALE_THRESHOLD_MS = RiderLiveness.MAX_SIGNAL_AGE_MS;
 
@@ -119,23 +116,11 @@ private final StringRedisTemplate redisTemplate;
      */
     private boolean demote(UUID driverId, long threshold) {
         String id = driverId.toString();
-        DeliveryExecutive demotedRider = transactionTemplate.execute(status -> {
-            DeliveryExecutive rider = deliveryExecutiveRepository.findLockedById(driverId).orElse(null);
-            if (rider == null || rider.getStatus() != DeliveryExecutiveStatus.ONLINE) return null;
+        DeliveryExecutive demotedRider = demotion.demote(driverId, rider -> {
             Double lastPing = redisTemplate.opsForZSet().score(DRIVER_LAST_PING_KEY, id);
-            if (lastPing != null && lastPing >= threshold) return null;
-            rider.setStatus(DeliveryExecutiveStatus.OFFLINE);
-            return deliveryExecutiveRepository.save(rider);
-        });
+            return lastPing == null || lastPing < threshold;
+        }, DutyChangeReason.LOCATION_LOST);
         if (demotedRider == null) return false;
-        // Redis only AFTER the commit.
-        if (demotedRider.getCityId() != null) {
-            redisTemplate.opsForSet().remove(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVERS_AVAILABLE + demotedRider.getCityId(), id);
-            redisTemplate.opsForGeo().remove("drivers:geo:" + demotedRider.getCityId(), id);
-        }
-        redisTemplate.opsForZSet().remove(DRIVER_LAST_PING_KEY, id);
-        redisTemplate.opsForHash().put("drivers:status", id, DeliveryExecutiveStatus.OFFLINE.name());
-        dutyNotifier.publish(driverId, DeliveryExecutiveStatus.OFFLINE, DutyChangeReason.LOCATION_LOST);
         log.info("Marked driver {} as OFFLINE: no location for {} s", id, STALE_THRESHOLD_MS / 1000);
         return true;
     }

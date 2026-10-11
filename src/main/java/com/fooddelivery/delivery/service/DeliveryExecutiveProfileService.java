@@ -19,6 +19,7 @@ public class DeliveryExecutiveProfileService {
     private final IDeliveryExecutiveRepository repository;
     private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
     private final com.fooddelivery.delivery.service.duty.RiderDutyNotifier dutyNotifier;
+    private final com.fooddelivery.delivery.service.location.RiderLocationGuard locationGuard;
 
     @org.springframework.beans.factory.annotation.Value(
             "${app.rider.biometric-verification.enabled:true}")
@@ -44,10 +45,12 @@ public class DeliveryExecutiveProfileService {
      * for the same reason: without it none of those keys can be written at all.
      */
     public DeliveryExecutive goOnline(UUID driverId, Double lat, Double lng) {
-        if (lat == null || lng == null) {
+        if (lat == null || lng == null
+                || !com.fooddelivery.delivery.service.location.RiderLocationGuard.validCoordinates(lat, lng)) {
             throw new IllegalArgumentException(
                     "Location required to go online: allow location access and try again.");
         }
+        java.util.concurrent.atomic.AtomicBoolean cameOnDuty = new java.util.concurrent.atomic.AtomicBoolean();
         DeliveryExecutive updated =
                 transactionTemplate.execute(
                         status -> {
@@ -63,6 +66,7 @@ public class DeliveryExecutiveProfileService {
                             if (executive.getStatus() == DeliveryExecutiveStatus.OFFLINE) {
                                 DeliveryExecutiveStateFactory.getState(executive.getStatus())
                                         .goOnline(executive);
+                                cameOnDuty.set(true);
                                 return repository.save(executive);
                             }
                             return executive;
@@ -73,15 +77,13 @@ public class DeliveryExecutiveProfileService {
         // a second "go online" from a fresh device is exactly the rider re-registering where they
         // are.
         try {
-            redisTemplate
-                    .opsForGeo()
-                    .add(
-                            "drivers:geo:" + cityId,
-                            new org.springframework.data.geo.Point(lng, lat),
-                            id);
-            redisTemplate
-                    .opsForZSet()
-                    .add(RiderLiveness.LAST_PING_KEY, id, System.currentTimeMillis());
+            // Coming on duty starts clean; a second "go online" while already on duty is an ordinary position
+            // update and must be plausible like any other (else it would teleport the rider).
+            if (cameOnDuty.get()) {
+                locationGuard.startFresh(updated, lat, lng);
+            } else {
+                locationGuard.accept(driverId, lat, lng);
+            }
             if (updated.getStatus() == DeliveryExecutiveStatus.ONLINE) {
                 redisTemplate
                         .opsForSet()
@@ -138,6 +140,7 @@ public class DeliveryExecutiveProfileService {
             }
             redisTemplate.opsForZSet().remove(RiderLiveness.LAST_PING_KEY, id);
             redisTemplate.opsForHash().put("drivers:status", id, updated.getStatus().name());
+            locationGuard.forget(driverId);
         } catch (Exception e) {
             log.error(
                     "Failed to sync driver {} going offline with Redis. DB is OFFLINE;"

@@ -28,6 +28,7 @@ class LocationTrackingWebSocketHandlerTest {
     private ValueOperations<String, String> valueOps;
     private GeoOperations<String, String> geoOps;
     private com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository repository;
+    private com.fooddelivery.delivery.service.location.RiderLocationGuard locationGuard;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
@@ -36,8 +37,13 @@ class LocationTrackingWebSocketHandlerTest {
         redisTemplate = mock(StringRedisTemplate.class);
         meterRegistry = mock(MeterRegistry.class);
         repository = mock(com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository.class);
+        locationGuard = mock(com.fooddelivery.delivery.service.location.RiderLocationGuard.class);
+        // The guard's rules have their own test (RiderLocationGuardTest); here it accepts and stamps server time.
+        when(locationGuard.accept(any(java.util.UUID.class), anyDouble(), anyDouble())).thenAnswer(inv ->
+                java.util.Optional.of(new com.fooddelivery.delivery.service.location.RiderLocationGuard.Fix(
+                        inv.getArgument(0).toString(), "BLR", inv.getArgument(1), inv.getArgument(2), System.currentTimeMillis())));
         handler = new LocationTrackingWebSocketHandler(objectMapper, redisTemplate, meterRegistry, repository,
-                new com.fooddelivery.delivery.service.duty.RiderDutyNotifier(redisTemplate, objectMapper));
+                new com.fooddelivery.delivery.service.duty.RiderDutyNotifier(redisTemplate, objectMapper), locationGuard);
 
         session = mock(WebSocketSession.class);
         counter = mock(Counter.class);
@@ -52,10 +58,10 @@ class LocationTrackingWebSocketHandlerTest {
     @Test
     void shouldDropMessageWhenIdentityMismatch() throws Exception {
         Map<String, Object> attributes = new HashMap<>();
-        attributes.put("userId", "driver-123");
+        attributes.put("userId", "4f4a4e37-6ca5-5598-94f1-43ef1628f631");
         when(session.getAttributes()).thenReturn(attributes);
 
-        String payload = "{\"driverId\":\"driver-456\", \"lat\":12.34, \"lng\":56.78}";
+        String payload = "{\"driverId\":\"9b2e7c1a-0000-4000-8000-000000000456\", \"lat\":12.34, \"lng\":56.78}";
         TextMessage message = new TextMessage(payload);
 
         handler.handleTextMessage(session, message);
@@ -64,16 +70,16 @@ class LocationTrackingWebSocketHandlerTest {
         verify(counter).increment();
         // Since it's reactive, we wait for a moment just in case, but it should not call tryEmitNext
         Thread.sleep(100);
-        verify(redisTemplate, never()).opsForGeo();
+        verify(locationGuard, never()).accept(any(), anyDouble(), anyDouble());
     }
 
     @Test
     void shouldAcceptMessageWhenIdentityMatches() throws Exception {
         Map<String, Object> attributes = new HashMap<>();
-        attributes.put("userId", "driver-123");
+        attributes.put("userId", "4f4a4e37-6ca5-5598-94f1-43ef1628f631");
         when(session.getAttributes()).thenReturn(attributes);
 
-        String payload = "{\"driverId\":\"driver-123\", \"lat\":12.34, \"lng\":56.78}";
+        String payload = "{\"driverId\":\"4f4a4e37-6ca5-5598-94f1-43ef1628f631\", \"lat\":12.34, \"lng\":56.78}";
         TextMessage message = new TextMessage(payload);
 
         handler.handleTextMessage(session, message);
@@ -86,17 +92,17 @@ class LocationTrackingWebSocketHandlerTest {
     @Test
     void shouldIgnoreOrderIdWhenUnassigned() throws Exception {
         Map<String, Object> attributes = new HashMap<>();
-        attributes.put("userId", "driver-123");
+        attributes.put("userId", "4f4a4e37-6ca5-5598-94f1-43ef1628f631");
         when(session.getAttributes()).thenReturn(attributes);
 
-        String payload = "{\"driverId\":\"driver-123\", \"orderId\":\"order-789\", \"lat\":12.34, \"lng\":56.78}";
+        String payload = "{\"driverId\":\"4f4a4e37-6ca5-5598-94f1-43ef1628f631\", \"orderId\":\"order-789\", \"lat\":12.34, \"lng\":56.78}";
         TextMessage message = new TextMessage(payload);
 
-        when(valueOps.get("driver:active_order:driver-123")).thenReturn("order-999"); // different order
+        when(valueOps.get("driver:active_order:4f4a4e37-6ca5-5598-94f1-43ef1628f631")).thenReturn("order-999"); // different order
 
         handler.handleTextMessage(session, message);
 
-        verify(valueOps).get("driver:active_order:driver-123");
+        verify(valueOps).get("driver:active_order:4f4a4e37-6ca5-5598-94f1-43ef1628f631");
         // Sink emits the event, and since orderId is stripped, it should not publish to redis pub/sub 
         // tracking:order:order-789 for this event in processBatch (not tested directly here, but logic holds).
     }
@@ -151,17 +157,17 @@ class LocationTrackingWebSocketHandlerTest {
         handler.subscribeToTelemetrySink();
         when(redisTemplate.opsForZSet()).thenReturn(mock(org.springframework.data.redis.core.ZSetOperations.class));
         Map<String, Object> attributes = new HashMap<>();
-        attributes.put("userId", "driver-123");
+        attributes.put("userId", "4f4a4e37-6ca5-5598-94f1-43ef1628f631");
         when(session.getAttributes()).thenReturn(attributes);
-        when(valueOps.get("driver:active_order:driver-123")).thenReturn("order-789");
+        when(valueOps.get("driver:active_order:4f4a4e37-6ca5-5598-94f1-43ef1628f631")).thenReturn("order-789");
         long before = System.currentTimeMillis();
 
         handler.handleTextMessage(session, new TextMessage(
-                "{\"driverId\":\"driver-123\",\"orderId\":\"order-789\",\"cityId\":\"BLR\",\"lat\":12.97,\"lng\":77.59}"));
+                "{\"driverId\":\"4f4a4e37-6ca5-5598-94f1-43ef1628f631\",\"orderId\":\"order-789\",\"cityId\":\"BLR\",\"lat\":12.97,\"lng\":77.59}"));
 
         org.mockito.ArgumentCaptor<String> observedAt = org.mockito.ArgumentCaptor.forClass(String.class);
         verify(redisTemplate, timeout(5000)).execute(any(org.springframework.data.redis.core.script.RedisScript.class),
-                eq(java.util.List.of("driver:active_order:driver-123", "tracking:order-location:order-789")),
+                eq(java.util.List.of("driver:active_order:4f4a4e37-6ca5-5598-94f1-43ef1628f631", "tracking:order-location:order-789")),
                 eq("order-789"), anyString(), observedAt.capture(), anyString());
         org.assertj.core.api.Assertions.assertThat(Long.parseLong(observedAt.getValue()))
                 .isBetween(before, System.currentTimeMillis());
@@ -173,16 +179,17 @@ class LocationTrackingWebSocketHandlerTest {
         handler.subscribeToTelemetrySink();
         when(redisTemplate.opsForZSet()).thenReturn(mock(org.springframework.data.redis.core.ZSetOperations.class));
         Map<String, Object> attributes = new HashMap<>();
-        attributes.put("userId", "driver-123");
+        attributes.put("userId", "4f4a4e37-6ca5-5598-94f1-43ef1628f631");
         when(session.getAttributes()).thenReturn(attributes);
-        when(valueOps.get("driver:active_order:driver-123")).thenReturn("order-999");
+        when(valueOps.get("driver:active_order:4f4a4e37-6ca5-5598-94f1-43ef1628f631")).thenReturn("order-999");
 
         handler.handleTextMessage(session, new TextMessage(
-                "{\"driverId\":\"driver-123\",\"orderId\":\"order-789\",\"cityId\":\"BLR\",\"lat\":12.97,\"lng\":77.59}"));
+                "{\"driverId\":\"4f4a4e37-6ca5-5598-94f1-43ef1628f631\",\"orderId\":\"order-789\",\"cityId\":\"BLR\",\"lat\":12.97,\"lng\":77.59}"));
 
-        // The flush ran (the geo index is updated for every fix) ...
-        verify(geoOps, timeout(5000)).add(eq("drivers:geo:BLR"), any(Point.class), eq("driver-123"));
-        // ... and wrote no snapshot nor relayed to any order.
+        // The fix was accepted (the guard wrote dispatch's position) ...
+        verify(locationGuard).accept(java.util.UUID.fromString("4f4a4e37-6ca5-5598-94f1-43ef1628f631"), 12.97, 77.59);
+        Thread.sleep(1500); // one full buffer window: the flush has run
+        // ... and the flush wrote no snapshot nor relayed to any order.
         verify(redisTemplate, never()).execute(any(org.springframework.data.redis.core.script.RedisScript.class),
                 anyList(), any(), any(), any(), any());
         verify(redisTemplate, never()).convertAndSend(anyString(), anyString());
@@ -192,13 +199,14 @@ class LocationTrackingWebSocketHandlerTest {
     void nonNumericCoordinatesAreDroppedBeforeTheSink() throws Exception {
         handler.subscribeToTelemetrySink();
         Map<String, Object> attributes = new HashMap<>();
-        attributes.put("userId", "driver-123");
+        attributes.put("userId", "4f4a4e37-6ca5-5598-94f1-43ef1628f631");
         when(session.getAttributes()).thenReturn(attributes);
 
         handler.handleTextMessage(session, new TextMessage(
-                "{\"driverId\":\"driver-123\",\"orderId\":\"order-789\",\"cityId\":\"BLR\",\"lat\":\"12.97\",\"lng\":77.59}"));
+                "{\"driverId\":\"4f4a4e37-6ca5-5598-94f1-43ef1628f631\",\"orderId\":\"order-789\",\"cityId\":\"BLR\",\"lat\":\"12.97\",\"lng\":77.59}"));
 
         Thread.sleep(1500); // one full buffer window: the flush would have run by now
+        verify(locationGuard, never()).accept(any(), anyDouble(), anyDouble());
         verify(redisTemplate, never()).opsForGeo();
     }
 }

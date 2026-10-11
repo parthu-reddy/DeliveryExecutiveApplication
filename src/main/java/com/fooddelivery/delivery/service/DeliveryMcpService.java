@@ -3,7 +3,6 @@ package com.fooddelivery.delivery.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fooddelivery.delivery.controller.DeliveryExecutiveController;
-import com.fooddelivery.delivery.controller.DeliveryTelemetryController;
 import com.fooddelivery.delivery.controller.LogisticsController;
 
 import org.springframework.ai.tool.annotation.Tool;
@@ -18,7 +17,6 @@ import java.util.UUID;
 @lombok.RequiredArgsConstructor
 public class DeliveryMcpService {
     private final DeliveryExecutiveController deliveryController;
-    private final DeliveryTelemetryController telemetryController;
     private final LogisticsController logisticsController;
     private final com.fooddelivery.delivery.controller.AdminDeliveryController
             adminDeliveryController;
@@ -128,29 +126,6 @@ public class DeliveryMcpService {
                             .getBody());
         } catch (Exception e) {
             return "Failed to update order status: " + e.getMessage();
-        }
-    }
-
-    @Tool(
-            description =
-                    "Process batch telemetry for drivers. Provide JSON string of list of telemetry"
-                        + " events.")
-    public String processBatchTelemetry(String telemetryBatchJson) {
-        try {
-            List<com.fooddelivery.delivery.dto.TelemetryEventRequest> batch =
-                    objectMapper.readValue(
-                            telemetryBatchJson,
-                            new TypeReference<
-                                    List<
-                                            com.fooddelivery.delivery.dto
-                                                    .TelemetryEventRequest>>() {});
-            String authId = batch.isEmpty() ? "mock-driver-id" : batch.get(0).getDriverId();
-            return objectMapper.writeValueAsString(
-                    telemetryController
-                            .processBatchTelemetry(createMockPrincipal(authId), batch)
-                            .getBody());
-        } catch (Exception e) {
-            return "Failed to process batch telemetry: " + e.getMessage();
         }
     }
 

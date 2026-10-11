@@ -56,8 +56,10 @@ class DeliveryFreshSchemaBaselineTest {
                 "length(btrim(rejection_reason)) BETWEEN 10 AND 500");
         assertThat(executives).doesNotContain("verification_status verification_status");
         assertThat(sql).contains(
-                "location geometry(Point, 4326) NOT NULL",
                 "CREATE INDEX idx_delivery_application_queue ON delivery_executives(application_status, submitted_at, id);");
+        // The unused /telemetry REST path and its location-log table were deleted 2026-10-11; rider positions live in
+        // Redis, written only by RiderLocationGuard (RandomDocuments/RiderGpsAntiSpoofing_2026-10-11).
+        assertThat(sql).doesNotContain("telemetry_logs");
 
         assertThat(assignments).contains(
                 "order_id UUID PRIMARY KEY",

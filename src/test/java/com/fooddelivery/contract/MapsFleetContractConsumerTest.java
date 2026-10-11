@@ -74,7 +74,7 @@ public class MapsFleetContractConsumerTest {
 
     /**
      * The re-reserve direction. This is the call that had no endpoint on the client at all until
-     * 2026-09-17, and the reason it needs its own endpoint: {@code /api/fleet/release} requires
+     * 2026-09-17, and the reason it needs its own endpoint: {@code /api/v1/internal/fleet/release} requires
      * {@code available} to be present and then ignores it.
      */
     @Test

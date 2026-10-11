@@ -81,7 +81,12 @@ class RiderGoOnlineTest {
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         notifier = mock(RiderDutyNotifier.class);
-        service = new DeliveryExecutiveProfileService(tx, repository, redis, notifier);
+        // A real guard over the same Redis mocks: the geo/last-ping writes asserted below are now its writes.
+        when(redis.opsForValue()).thenReturn(mock(org.springframework.data.redis.core.ValueOperations.class));
+        service = new DeliveryExecutiveProfileService(tx, repository, redis, notifier,
+                new com.fooddelivery.delivery.service.location.RiderLocationGuard(redis, repository,
+                        mock(com.fooddelivery.delivery.service.duty.RiderDutyDemotion.class),
+                        new io.micrometer.core.instrument.simple.SimpleMeterRegistry(), java.time.Clock.systemUTC()));
     }
 
     @Test

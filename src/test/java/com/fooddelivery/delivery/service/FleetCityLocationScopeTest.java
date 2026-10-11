@@ -41,7 +41,7 @@ class FleetCityLocationScopeTest {
         geo = mock(GeoOperations.class);
         when(redis.opsForGeo()).thenReturn(geo);
         service = new DeliveryExecutiveProfileService(mock(org.springframework.transaction.support.TransactionTemplate.class),
-                repository, redis, mock(RiderDutyNotifier.class));
+                repository, redis, mock(RiderDutyNotifier.class), mock(com.fooddelivery.delivery.service.location.RiderLocationGuard.class));
 
         blrRider = new DeliveryExecutive();
         blrRider.setId(UUID.randomUUID());

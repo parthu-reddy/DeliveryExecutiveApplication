@@ -64,15 +64,6 @@ CREATE TABLE biometric_verifications (
     verification_time TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE telemetry_logs (
-    log_id BIGSERIAL PRIMARY KEY,
-    executive_id UUID REFERENCES delivery_executives(id) ON DELETE CASCADE,
-    location geometry(Point, 4326) NOT NULL,
-    speed_kmh NUMERIC(5,2),
-    is_mock_location BOOLEAN NOT NULL DEFAULT FALSE,
-    recorded_at TIMESTAMP WITH TIME ZONE NOT NULL
-);
-
 
 
 
@@ -88,19 +79,14 @@ CREATE INDEX idx_delivery_executives_status ON delivery_executives(status);
 
 CREATE INDEX idx_executives_status ON delivery_executives(status);
 
-CREATE INDEX idx_telemetry_location ON telemetry_logs USING GIST(location);
-
 CREATE INDEX idx_docs_executive ON executive_documents(executive_id);
 
 CREATE INDEX idx_delivery_application_queue ON delivery_executives(application_status, submitted_at, id);
 
 CREATE INDEX IF NOT EXISTS idx_biometric_executive ON biometric_verifications(executive_id);
 
-CREATE INDEX IF NOT EXISTS idx_telemetry_executive_recorded ON telemetry_logs(executive_id, recorded_at DESC);
-
 CREATE INDEX IF NOT EXISTS idx_delivery_exec_location_gist ON delivery_executives USING GIST (last_known_location);
 
-CREATE INDEX idx_telemetry_executive ON telemetry_logs(executive_id);
 
 -- Durable assignment authority and concurrency, present on every fresh Dev database.
 CREATE TABLE order_assignments (

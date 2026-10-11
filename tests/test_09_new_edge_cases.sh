@@ -21,7 +21,6 @@ DEL_PHONE="888$(printf "%07d" $RANDOM$RANDOM | cut -c1-7)"
 DEL_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d "{\"name\": \"Edge Driver\", \"phoneNumber\": \"$DEL_PHONE\", \"vehicleNumber\": \"KA01AB8889\"}" http://localhost:8092/api/delivery/onboard)
 DEL_EXEC_ID=$(echo $DEL_RESPONSE | jq -r '.data.id')
 curl -s -X POST -H "Content-Type: application/json" -d "{\"driverId\": \"$DEL_EXEC_ID\", \"available\": true}" http://localhost:8092/api/delivery/status > /dev/null
-curl -s -X POST -H "Content-Type: application/json" -d "[{\"driverId\": \"$DEL_EXEC_ID\", \"lat\": 12.9716, \"lng\": 77.5946, \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}]" http://localhost:8092/api/v1/delivery/telemetry/batch > /dev/null
 
 
 echo "=========================================================="
@@ -57,8 +56,6 @@ echo "Successfully cancelled by restaurant."
 
 echo "=========================================================="
 echo "EDGE CASE 2: Driver marks DELIVERY_FAILED"
-echo "Pushing telemetry to make driver available..."
-curl -s -X POST -H "Content-Type: application/json" -d "[{\"driverId\": \"$DEL_EXEC_ID\", \"lat\": 12.9716, \"lng\": 77.5946, \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}]" http://localhost:8092/api/v1/delivery/telemetry/batch > /dev/null
 
 ORDER_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d "{\"customerId\": \"$CUST_ID\",\"restaurantId\": \"$REST_ID\",\"items\": [{\"menuItemId\": \"$MENU_ID\", \"quantity\": 1}]}" http://localhost:8092/api/v1/orders)
 ORDER_ID_2=$(echo $ORDER_RESPONSE | jq -r '.data.id')
@@ -104,8 +101,6 @@ echo "Refund processed successfully."
 
 echo "=========================================================="
 echo "EDGE CASE 3: Driver ping Timeout Simulator"
-echo "Pushing telemetry to make driver available..."
-curl -s -X POST -H "Content-Type: application/json" -d "[{\"driverId\": \"$DEL_EXEC_ID\", \"lat\": 12.9716, \"lng\": 77.5946, \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}]" http://localhost:8092/api/v1/delivery/telemetry/batch > /dev/null
 
 ORDER_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d "{\"customerId\": \"$CUST_ID\",\"restaurantId\": \"$REST_ID\",\"items\": [{\"menuItemId\": \"$MENU_ID\", \"quantity\": 1}]}" http://localhost:8092/api/v1/orders)
 ORDER_ID_3=$(echo $ORDER_RESPONSE | jq -r '.data.id')

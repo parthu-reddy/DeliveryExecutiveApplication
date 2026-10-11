@@ -93,7 +93,8 @@ class StaleDriverSweeperDaemonTest {
         when(tx.execute(any())).thenAnswer(inv -> ((TransactionCallback<?>) inv.getArgument(0)).doInTransaction(null));
 
         notifier = mock(RiderDutyNotifier.class);
-        sweeper = new StaleDriverSweeperDaemon(redis, new SimpleMeterRegistry(), repository, tx, notifier);
+        sweeper = new StaleDriverSweeperDaemon(redis, new SimpleMeterRegistry(), repository,
+                new com.fooddelivery.delivery.service.duty.RiderDutyDemotion(redis, repository, tx, notifier));
     }
 
     private UUID rider(DeliveryExecutiveStatus status, Double lastPing) {
