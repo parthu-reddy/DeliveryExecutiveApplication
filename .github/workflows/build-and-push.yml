@@ -8,6 +8,7 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout Microservice
         uses: actions/checkout@v5
@@ -58,10 +59,24 @@ jobs:
           path: deps/Deployment
           token: ${{ secrets.CHECKOUT_TOKEN }}
 
-      - name: Clean up old Docker images
-        run: python3 deps/Deployment/retention.py --apply --delete-all --service delivery-service
-
+      # Upload to OCIR, bounded. On 2026-10-13 six of 21 pushes stalled on "pushing layers" for over an hour with
+      # no error and no retry. A stalled attempt now times out and one retry re-pushes from the builder's cache; a
+      # second failure fails the job, which build_services.sh reports.
       - name: Build and push Docker image
+        id: push
+        timeout-minutes: 8
+        continue-on-error: true
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: DeliveryExecutiveApplication/Dockerfile
+          push: true
+          tags: hyd.ocir.io/axekmbadoczl/food-delivery/delivery-service:${{ github.sha }}
+          platforms: linux/arm64
+
+      - name: Retry build and push Docker image
+        if: steps.push.outcome == 'failure'
+        timeout-minutes: 8
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -108,5 +123,10 @@ jobs:
             git pull --rebase origin main
             sleep $((1 + RANDOM % 5))
           done
+
+      # Only after the push succeeded and the pin points at it: --keep 0 keeps exactly the pinned image. Deleting
+      # first (the old order) left six services with no image at all when their push then hung.
+      - name: Clean up old Docker images
+        run: python3 deps/Deployment/retention.py --apply --keep 0 --service delivery-service
 
 #
