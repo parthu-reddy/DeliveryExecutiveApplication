@@ -8,8 +8,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.UUID;
 
-@FeignClient(name = "customer-service", contextId = "customerServiceClient", fallback = CustomerServiceClientFallback.class)
-public interface CustomerServiceClient {
+@FeignClient(name = "order-service", contextId = "orderServiceClient", fallback = OrderServiceClientFallback.class)
+public interface OrderServiceClient {
 
     @GetMapping("/api/v1/internal/orders/driver/{driverId}/active")
     JsonNode getActiveOrdersForDriver(@PathVariable("driverId") UUID driverId,

@@ -2,7 +2,7 @@ package com.fooddelivery.delivery.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fooddelivery.delivery.client.CustomerServiceClient;
+import com.fooddelivery.delivery.client.OrderServiceClient;
 import com.fooddelivery.delivery.service.OrderAssignmentService;
 import org.junit.jupiter.api.Test;
 
@@ -32,10 +32,10 @@ class AvailableOrdersPingWindowTest {
     private static final UUID DRIVER = UUID.fromString("4f4a4e37-6ca5-5598-94f1-43ef1628f631");
     private static final UUID ORDER = UUID.fromString("083610e8-d508-4b12-a78b-7c4e13cf3ade");
 
-    private final CustomerServiceClient customerServiceClient = mock(CustomerServiceClient.class);
+    private final OrderServiceClient orderServiceClient = mock(OrderServiceClient.class);
     private final OrderAssignmentService assignments = mock(OrderAssignmentService.class);
     private final DeliveryOrderController controller =
-            new DeliveryOrderController(customerServiceClient, assignments,
+            new DeliveryOrderController(orderServiceClient, assignments,
                     org.mockito.Mockito.mock(com.fooddelivery.delivery.service.ConfirmedDeliveryProgress.class));
 
     private final Principal principal = DRIVER::toString;
@@ -44,7 +44,7 @@ class AvailableOrdersPingWindowTest {
         when(assignments.getPendingPing(DRIVER)).thenReturn(ORDER.toString());
         when(assignments.getPingExpiration(ORDER)).thenReturn(deadline);
         JsonNode order = new ObjectMapper().createObjectNode().put("id", ORDER.toString());
-        when(customerServiceClient.getUnassignedOrders()).thenReturn(List.of(order));
+        when(orderServiceClient.getUnassignedOrders()).thenReturn(List.of(order));
     }
 
     @Test
@@ -54,7 +54,7 @@ class AvailableOrdersPingWindowTest {
         List<JsonNode> body = controller.getAvailableOrders(principal).getBody();
 
         assertThat(body).isEmpty();
-        verify(customerServiceClient, never()).getUnassignedOrders();
+        verify(orderServiceClient, never()).getUnassignedOrders();
     }
 
     @Test

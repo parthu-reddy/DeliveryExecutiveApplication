@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fooddelivery.common.client.MapsServiceClient;
 import com.fooddelivery.common.dto.maps.SetAvailabilityRequest;
 import com.fooddelivery.common.outbox.repository.OutboxEventRepository;
-import com.fooddelivery.delivery.client.CustomerServiceClient;
+import com.fooddelivery.delivery.client.OrderServiceClient;
 import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
 import com.fooddelivery.delivery.repository.OrderAssignmentRepository;
@@ -70,7 +70,7 @@ class RejectRollbackReReservesTest {
                 dispatch,
                 mock(OrderAssignmentRepository.class),
                 new ObjectMapper(),
-                mock(CustomerServiceClient.class));
+                mock(OrderServiceClient.class));
     }
 
     @Test
@@ -109,7 +109,7 @@ class RejectRollbackReReservesTest {
 
         new LogisticsDispatchService(
                 mock(org.springframework.kafka.core.KafkaTemplate.class),
-                new ObjectMapper(), maps, repo, mock(com.fooddelivery.delivery.client.CustomerServiceClient.class))
+                new ObjectMapper(), maps, repo, mock(com.fooddelivery.delivery.client.OrderServiceClient.class))
                 .reserveDriverLock(DRIVER.toString());
 
         ArgumentCaptor<SetAvailabilityRequest> captor = ArgumentCaptor.forClass(SetAvailabilityRequest.class);
@@ -129,7 +129,7 @@ class RejectRollbackReReservesTest {
 
         new LogisticsDispatchService(
                 mock(org.springframework.kafka.core.KafkaTemplate.class),
-                new ObjectMapper(), maps, repo, mock(com.fooddelivery.delivery.client.CustomerServiceClient.class))
+                new ObjectMapper(), maps, repo, mock(com.fooddelivery.delivery.client.OrderServiceClient.class))
                 .reserveDriverLock(DRIVER.toString());
 
         verify(maps, org.mockito.Mockito.never()).setDriverAvailability(any());

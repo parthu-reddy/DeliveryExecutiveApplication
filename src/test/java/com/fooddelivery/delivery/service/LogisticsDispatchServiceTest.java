@@ -32,7 +32,7 @@ class LogisticsDispatchServiceTest {
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    @Mock private com.fooddelivery.delivery.client.CustomerServiceClient orders;
+    @Mock private com.fooddelivery.delivery.client.OrderServiceClient orders;
     private LogisticsDispatchService logisticsDispatchService;
 
     @BeforeEach

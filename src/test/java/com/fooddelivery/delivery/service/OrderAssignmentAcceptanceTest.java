@@ -2,7 +2,7 @@ package com.fooddelivery.delivery.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fooddelivery.common.outbox.repository.OutboxEventRepository;
-import com.fooddelivery.delivery.client.CustomerServiceClient;
+import com.fooddelivery.delivery.client.OrderServiceClient;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
 import com.fooddelivery.delivery.repository.OrderAssignmentRepository;
 import org.junit.jupiter.api.Test;
@@ -39,7 +39,7 @@ class OrderAssignmentAcceptanceTest {
                 mock(LogisticsDispatchService.class),
                 mock(OrderAssignmentRepository.class),
                 new ObjectMapper(),
-                mock(CustomerServiceClient.class));
+                mock(OrderServiceClient.class));
 
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> service.acceptOrderPing(UUID.randomUUID(), UUID.randomUUID()));
@@ -71,7 +71,7 @@ class OrderAssignmentAcceptanceTest {
                 mock(LogisticsDispatchService.class),
                 mock(OrderAssignmentRepository.class),
                 new ObjectMapper(),
-                mock(CustomerServiceClient.class));
+                mock(OrderServiceClient.class));
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> service.acceptOrderPing(UUID.randomUUID(), UUID.randomUUID()));

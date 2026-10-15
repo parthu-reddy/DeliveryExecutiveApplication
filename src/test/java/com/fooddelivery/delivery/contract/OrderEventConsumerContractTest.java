@@ -35,7 +35,7 @@ import static org.mockito.Mockito.verify;
         webEnvironment = SpringBootTest.WebEnvironment.NONE,
         properties = "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration,org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration")
 @ActiveProfiles("contract-test")
-@AutoConfigureStubRunner(ids = "com.fooddelivery:food-delivery-backend:+:stubs")
+@AutoConfigureStubRunner(ids = "com.fooddelivery:order-service:+:stubs")
 @org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.BEFORE_CLASS)
 @EmbeddedKafka(adminTimeout = 60, partitions = 1, topics = {"order-events"})
 class OrderEventConsumerContractTest {

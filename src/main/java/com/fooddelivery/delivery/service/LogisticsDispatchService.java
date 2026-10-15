@@ -21,7 +21,7 @@ private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
     private final MapsServiceClient mapsClient;
     private final IDeliveryExecutiveRepository repository;
-    private final com.fooddelivery.delivery.client.CustomerServiceClient orders;
+    private final com.fooddelivery.delivery.client.OrderServiceClient orders;
 
     public void dispatchNearestDriver(String dispatchCityId, double fleetSearchRadiusKm, double restaurantLat, double restaurantLng, double deliveryLat, double deliveryLng, String deliveryAddress, UUID orderId, java.util.List<String> excludedDriverIds) {
         log.info("LOGISTICS_DISPATCH_STARTED orderId={} dispatchCityId={} fleetSearchRadiusKm={} excludedDriverCount={}",

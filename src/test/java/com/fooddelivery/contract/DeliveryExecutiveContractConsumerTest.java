@@ -16,20 +16,17 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
 @ActiveProfiles("contract-test")
-@SpringBootTest(classes = DeliveryExecutiveContractConsumerTest.TestConfig.class, webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {
-    // Stub ids are Maven artifactIds; Feign resolves by spring.application.name. These two
-    // differ for these services, so the stub must be registered under the name the client asks for.
-    "stubrunner.idsToServiceIds.food-delivery-backend=customer-service"
-})
-@AutoConfigureStubRunner(ids = { "com.fooddelivery:food-delivery-backend:+:stubs" })
+// order-service's artifactId is its service id, so its stub needs no id mapping (decomposition Phase 8).
+@SpringBootTest(classes = DeliveryExecutiveContractConsumerTest.TestConfig.class, webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@AutoConfigureStubRunner(ids = { "com.fooddelivery:order-service:+:stubs" })
 public class DeliveryExecutiveContractConsumerTest {
 
 
     @Autowired
-    private com.fooddelivery.delivery.client.CustomerServiceClient customerServiceClient;
+    private com.fooddelivery.delivery.client.OrderServiceClient orderServiceClient;
 
     @MockBean
-    private com.fooddelivery.delivery.client.CustomerServiceClientFallback customerServiceClientFallback;
+    private com.fooddelivery.delivery.client.OrderServiceClientFallback customerServiceClientFallback;
 
 
     @org.springframework.boot.SpringBootConfiguration
@@ -44,7 +41,7 @@ public class DeliveryExecutiveContractConsumerTest {
 
     @Test
     public void testGetActiveOrdersForDriver() {
-        com.fasterxml.jackson.databind.JsonNode response = customerServiceClient.getActiveOrdersForDriver(
+        com.fasterxml.jackson.databind.JsonNode response = orderServiceClient.getActiveOrdersForDriver(
                 java.util.UUID.fromString("123e4567-e89b-12d3-a456-426614174000"), java.util.List.of(), 0, 10);
 
         assertNotNull(response);
@@ -58,7 +55,7 @@ public class DeliveryExecutiveContractConsumerTest {
     /** The orders this service holds for the driver travel as confirmedOrderIds. */
     @Test
     public void testGetActiveOrdersForDriverWithConfirmedAssignments() {
-        com.fasterxml.jackson.databind.JsonNode response = customerServiceClient.getActiveOrdersForDriver(
+        com.fasterxml.jackson.databind.JsonNode response = orderServiceClient.getActiveOrdersForDriver(
                 java.util.UUID.fromString("123e4567-e89b-12d3-a456-426614174000"),
                 java.util.List.of(java.util.UUID.fromString("7f7af6a5-1d86-4f29-b4cc-36eefe69a74b")), 0, 10);
 
@@ -69,7 +66,7 @@ public class DeliveryExecutiveContractConsumerTest {
 
     @Test
     public void testGetOrderHistoryForDriver() {
-        com.fasterxml.jackson.databind.JsonNode response = customerServiceClient.getOrderHistoryForDriver(
+        com.fasterxml.jackson.databind.JsonNode response = orderServiceClient.getOrderHistoryForDriver(
                 java.util.UUID.fromString("123e4567-e89b-12d3-a456-426614174000"),
                 java.time.Instant.parse("2023-01-01T00:00:00Z"), java.time.Instant.parse("2023-01-02T00:00:00Z"), 0, 10);
 
@@ -82,7 +79,7 @@ public class DeliveryExecutiveContractConsumerTest {
 
     @Test
     public void testGetUnassignedOrders() {
-        java.util.List<com.fasterxml.jackson.databind.JsonNode> response = customerServiceClient.getUnassignedOrders();
+        java.util.List<com.fasterxml.jackson.databind.JsonNode> response = orderServiceClient.getUnassignedOrders();
 
         assertNotNull(response);
         assertEquals(1, response.size());
@@ -91,7 +88,7 @@ public class DeliveryExecutiveContractConsumerTest {
 
     @Test
     public void testGetDriverOrderMoney() {
-        com.fooddelivery.common.dto.order.DriverOrderEarnings response = customerServiceClient.getOrderEarnings(
+        com.fooddelivery.common.dto.order.DriverOrderEarnings response = orderServiceClient.getOrderEarnings(
                 java.util.UUID.fromString("123e4567-e89b-12d3-a456-426614174000"));
 
         assertNotNull(response);

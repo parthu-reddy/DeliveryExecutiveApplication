@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fooddelivery.common.constants.RedisKeyConstants;
 import com.fooddelivery.common.enums.PaymentMethod;
 import com.fooddelivery.common.outbox.repository.OutboxEventRepository;
-import com.fooddelivery.delivery.client.CustomerServiceClient;
+import com.fooddelivery.delivery.client.OrderServiceClient;
 import com.fooddelivery.delivery.entity.OrderAssignment;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
 import com.fooddelivery.delivery.repository.OrderAssignmentRepository;
@@ -51,7 +51,7 @@ class AssignmentRecordsDispatchFactsTest {
         service = new OrderAssignmentService(redis, mock(TransactionTemplate.class),
                 mock(OutboxEventRepository.class), mock(OutboxEventHelper.class),
                 mock(IDeliveryExecutiveRepository.class), mock(LogisticsDispatchService.class),
-                assignments, new ObjectMapper(), mock(CustomerServiceClient.class));
+                assignments, new ObjectMapper(), mock(OrderServiceClient.class));
     }
 
     private void dispatchPayload(String json) {

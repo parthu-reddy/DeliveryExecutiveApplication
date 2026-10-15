@@ -1,7 +1,7 @@
 package com.fooddelivery.delivery.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fooddelivery.delivery.client.CustomerServiceClient;
+import com.fooddelivery.delivery.client.OrderServiceClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.kafka.core.KafkaTemplate;
 import java.util.*;
@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class DispatchSelfAssignmentTest {
-    final CustomerServiceClient orders=mock(CustomerServiceClient.class);
+    final OrderServiceClient orders=mock(OrderServiceClient.class);
     final KafkaTemplate<String,String> kafka=mock(KafkaTemplate.class);
     final ObjectMapper mapper=new ObjectMapper();
     final LogisticsDispatchService service=new LogisticsDispatchService(kafka,mapper,mock(com.fooddelivery.common.client.MapsServiceClient.class),

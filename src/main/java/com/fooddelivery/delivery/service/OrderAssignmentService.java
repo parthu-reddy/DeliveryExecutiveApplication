@@ -27,7 +27,7 @@ public class OrderAssignmentService {
     private final com.fooddelivery.delivery.repository.OrderAssignmentRepository
             assignmentRepository;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
-    private final com.fooddelivery.delivery.client.CustomerServiceClient customerServiceClient;
+    private final com.fooddelivery.delivery.client.OrderServiceClient orderServiceClient;
 
     @org.springframework.beans.factory.annotation.Value(
             "${app.rider.biometric-verification.enabled:true}")
@@ -729,7 +729,7 @@ public class OrderAssignmentService {
     private ManualDispatchContext loadManualDispatchContext(ManualForceAssignment command) {
         java.util.Map<String, String> details;
         try {
-            details = customerServiceClient.getOrderDispatchDetails(command.orderId());
+            details = orderServiceClient.getOrderDispatchDetails(command.orderId());
         } catch (Exception unavailable) {
             throw new IllegalStateException(
                     "Unable to validate the current order before manual assignment.", unavailable);
@@ -1068,7 +1068,7 @@ public class OrderAssignmentService {
                 orderId);
         try {
             java.util.Map<String, String> details =
-                    customerServiceClient.getOrderDispatchDetails(orderId);
+                    orderServiceClient.getOrderDispatchDetails(orderId);
             if (details != null) {
                 result.put("pickupOtp", emptyToNull(details.get("pickupOtp")));
                 result.put("deliveryOtp", emptyToNull(details.get("deliveryOtp")));

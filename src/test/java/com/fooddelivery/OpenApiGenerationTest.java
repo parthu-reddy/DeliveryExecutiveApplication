@@ -98,7 +98,7 @@ public class OpenApiGenerationTest {
 
 
     @org.springframework.boot.test.mock.mockito.MockBean
-    private com.fooddelivery.delivery.client.CustomerServiceClient customerServiceClient;
+    private com.fooddelivery.delivery.client.OrderServiceClient orderServiceClient;
 
 
     @org.springframework.boot.test.mock.mockito.MockBean

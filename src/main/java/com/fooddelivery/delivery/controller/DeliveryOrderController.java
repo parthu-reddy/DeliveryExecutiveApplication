@@ -1,6 +1,6 @@
 package com.fooddelivery.delivery.controller;
 
-import com.fooddelivery.delivery.client.CustomerServiceClient;
+import com.fooddelivery.delivery.client.OrderServiceClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,7 +15,7 @@ import java.util.UUID;
 @lombok.extern.slf4j.Slf4j
 @lombok.RequiredArgsConstructor
 public class DeliveryOrderController {
-private final CustomerServiceClient customerServiceClient;
+private final OrderServiceClient orderServiceClient;
     private final com.fooddelivery.delivery.service.OrderAssignmentService orderAssignmentService;
     private final com.fooddelivery.delivery.service.ConfirmedDeliveryProgress confirmedDeliveryProgress;
 
@@ -23,7 +23,7 @@ private final CustomerServiceClient customerServiceClient;
     public ResponseEntity<JsonNode> getActiveOrders(Principal principal, @RequestParam(value = "page", defaultValue = "0") int page, @RequestParam(value = "size", defaultValue = "20") int size) {
         com.fooddelivery.delivery.controller.PageBounds.check(page, size);
         UUID driverId = UUID.fromString(principal.getName());
-        JsonNode pageNode = customerServiceClient.getActiveOrdersForDriver(
+        JsonNode pageNode = orderServiceClient.getActiveOrdersForDriver(
                 driverId, confirmedDeliveryProgress.heldOrderIds(driverId), page, size);
         confirmedDeliveryProgress.apply(pageNode, driverId);
         mapToUiOrdersInPage(pageNode, driverId);
@@ -52,7 +52,7 @@ private final CustomerServiceClient customerServiceClient;
                     driverId, pendingOrderId, timeoutAt);
             return ResponseEntity.ok(java.util.Collections.emptyList());
         }
-        List<JsonNode> orders = customerServiceClient.getUnassignedOrders();
+        List<JsonNode> orders = orderServiceClient.getUnassignedOrders();
         List<JsonNode> matchingOrders = orders.stream().filter(order -> {
             JsonNode idNode = order.get("id");
             return idNode != null && pendingOrderId.equals(idNode.asText());
@@ -75,7 +75,7 @@ private final CustomerServiceClient customerServiceClient;
             @RequestParam(value = "page", defaultValue = "0") int page, @RequestParam(value = "size", defaultValue = "20") int size) {
         com.fooddelivery.delivery.controller.PageBounds.check(page, size);
         UUID driverId = UUID.fromString(principal.getName());
-        JsonNode pageNode = customerServiceClient.getOrderHistoryForDriver(driverId, from, to, page, size);
+        JsonNode pageNode = orderServiceClient.getOrderHistoryForDriver(driverId, from, to, page, size);
         mapToUiOrdersInPage(pageNode, driverId);
         return ResponseEntity.ok(pageNode);
     }
@@ -92,7 +92,7 @@ private final CustomerServiceClient customerServiceClient;
             java.util.Map<String, com.fooddelivery.common.dto.order.DriverOrderEarnings> earningsMap = new java.util.HashMap<>();
             if (!orderIds.isEmpty()) {
                 try {
-                    List<com.fooddelivery.common.dto.order.DriverOrderEarnings> batch = customerServiceClient.getDriverOrderMoneyBatch(driverId, orderIds);
+                    List<com.fooddelivery.common.dto.order.DriverOrderEarnings> batch = orderServiceClient.getDriverOrderMoneyBatch(driverId, orderIds);
                     if (batch != null) {
                         for (com.fooddelivery.common.dto.order.DriverOrderEarnings e : batch) {
                             earningsMap.put(e.getOrderId().toString(), e);

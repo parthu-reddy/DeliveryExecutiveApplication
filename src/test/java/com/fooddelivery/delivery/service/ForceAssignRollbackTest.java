@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fooddelivery.common.enums.ApplicationStatus;
 import com.fooddelivery.common.outbox.entity.OutboxEventEntity;
 import com.fooddelivery.common.outbox.repository.OutboxEventRepository;
-import com.fooddelivery.delivery.client.CustomerServiceClient;
+import com.fooddelivery.delivery.client.OrderServiceClient;
 import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import com.fooddelivery.delivery.entity.OrderAssignment;
 import com.fooddelivery.delivery.enums.DeliveryExecutiveStatus;
@@ -60,7 +60,7 @@ class ForceAssignRollbackTest {
     private IDeliveryExecutiveRepository repository;
     private OrderAssignmentRepository assignments;
     private OutboxEventRepository outbox;
-    private CustomerServiceClient customer;
+    private OrderServiceClient customer;
     private OrderAssignmentService service;
 
     @AfterEach
@@ -90,7 +90,7 @@ class ForceAssignRollbackTest {
         repository = mock(IDeliveryExecutiveRepository.class);
         assignments = mock(OrderAssignmentRepository.class);
         outbox = mock(OutboxEventRepository.class);
-        customer = mock(CustomerServiceClient.class);
+        customer = mock(OrderServiceClient.class);
         when(assignments.findLockedByOrderId(ORDER)).thenReturn(Optional.empty());
         when(outbox.findByIdempotencyKey(anyString())).thenReturn(Optional.empty());
         when(customer.getOrderDispatchDetails(ORDER)).thenReturn(dispatchContext());

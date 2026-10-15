@@ -3,7 +3,7 @@ package com.fooddelivery.delivery.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fooddelivery.common.constants.RedisKeyConstants;
 import com.fooddelivery.common.outbox.repository.OutboxEventRepository;
-import com.fooddelivery.delivery.client.CustomerServiceClient;
+import com.fooddelivery.delivery.client.OrderServiceClient;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
 import com.fooddelivery.delivery.repository.OrderAssignmentRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -79,7 +79,7 @@ class UnreachedDriverNotPenalisedTest {
                 mock(LogisticsDispatchService.class),
                 mock(OrderAssignmentRepository.class),
                 new ObjectMapper(),
-                mock(CustomerServiceClient.class));
+                mock(OrderServiceClient.class));
     }
 
     @Test
@@ -125,7 +125,7 @@ class UnreachedDriverNotPenalisedTest {
                 mock(LogisticsDispatchService.class),
                 mock(OrderAssignmentRepository.class),
                 new ObjectMapper(),
-                mock(CustomerServiceClient.class));
+                mock(OrderServiceClient.class));
 
         svc.timeoutOrderPing(ORDER);
 
@@ -154,7 +154,7 @@ class UnreachedDriverNotPenalisedTest {
                 dispatch,
                 mock(OrderAssignmentRepository.class),
                 new ObjectMapper(),
-                mock(CustomerServiceClient.class));
+                mock(OrderServiceClient.class));
 
         svc.timeoutOrderPing(ORDER);
 
