@@ -169,11 +169,9 @@ protected final StringRedisTemplate redisTemplate;
      * stops satisfying {@link OrderAssignment#authorises}.
      */
     protected void releaseAssignment(UUID orderId) {
-        assignmentRepository.findByOrderId(orderId).ifPresent(assignment -> {
-            assignment.setState(OrderAssignment.State.RELEASED);
-            assignment.setReleasedAt(java.time.Instant.now());
-            assignmentRepository.save(assignment);
-        });
+        assignmentRepository.findByOrderId(orderId)
+                .filter(assignment -> assignment.release(Instant.now()))
+                .ifPresent(assignmentRepository::save);
     }
 
     protected abstract com.fooddelivery.common.constants.EventType getEventType();

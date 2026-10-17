@@ -14,9 +14,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.util.UUID;
 
 @Entity
-@Table(name = "delivery_executives", indexes = {
-    @jakarta.persistence.Index(name = "idx_delivery_exec_location", columnList = "last_known_location")
-})
+@Table(name = "delivery_executives")
 @lombok.extern.slf4j.Slf4j
 @lombok.Getter
 @lombok.Setter

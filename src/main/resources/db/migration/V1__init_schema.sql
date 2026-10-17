@@ -75,9 +75,9 @@ CREATE TABLE biometric_verifications (
 
 
 
-CREATE INDEX idx_delivery_executives_status ON delivery_executives(status);
-
-CREATE INDEX idx_executives_status ON delivery_executives(status);
+-- Riders in one status untouched since a cutoff (the stale-online sweep); also every lookup by status. Was
+-- (status) twice under two names.
+CREATE INDEX idx_delivery_executives_status_updated ON delivery_executives(status, updated_at);
 
 CREATE INDEX idx_docs_executive ON executive_documents(executive_id);
 

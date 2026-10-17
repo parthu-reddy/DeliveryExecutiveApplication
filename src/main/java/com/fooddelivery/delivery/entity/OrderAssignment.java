@@ -84,6 +84,20 @@ public class OrderAssignment {
         }
     }
 
+    /**
+     * Ends the assignment's authority; the row stays as the record of who held the order. The only place a row
+     * becomes RELEASED. Returns false, changing nothing, when it is not live, so a repeated or late terminal event
+     * keeps the first release time.
+     */
+    public boolean release(Instant at) {
+        if (state != State.ASSIGNED) {
+            return false;
+        }
+        state = State.RELEASED;
+        releasedAt = at;
+        return true;
+    }
+
     /** An assignment only authorises while it is live. */
     public boolean authorises(UUID candidateDriverId) {
         return state == State.ASSIGNED && driverId != null && driverId.equals(candidateDriverId);

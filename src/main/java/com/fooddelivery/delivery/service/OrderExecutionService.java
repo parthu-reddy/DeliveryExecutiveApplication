@@ -50,8 +50,7 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
                             .build();
                     com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = outboxEventHelper.createOutboxEvent(com.fooddelivery.common.constants.AggregateType.ORDER, orderId.toString(), com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED, event);
                     outboxEventRepository.save(outboxEvent);
-                    assignment.setState(com.fooddelivery.delivery.entity.OrderAssignment.State.RELEASED);
-                    assignment.setReleasedAt(java.time.Instant.now());
+                    assignment.release(java.time.Instant.now());
                     assignmentRepository.save(assignment);
                 });
                 break; // exit loop on success

@@ -5,6 +5,7 @@ import com.fooddelivery.common.constants.EventType;
 import com.fooddelivery.delivery.entity.DeliveryExecutive;
 import com.fooddelivery.delivery.enums.DeliveryExecutiveStatus;
 import com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository;
+import com.fooddelivery.delivery.repository.OrderAssignmentRepository;
 import com.fooddelivery.delivery.service.LogisticsDispatchService;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -21,6 +22,7 @@ private final StringRedisTemplate redisTemplate;
     private final IDeliveryExecutiveRepository executiveRepository;
     private final LogisticsDispatchService logisticsDispatchService;
     private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
+    private final OrderAssignmentRepository assignmentRepository;
 
     @Override
     public Class<com.fooddelivery.common.event.OrderScopedEvent> eventClass() {
@@ -60,6 +62,18 @@ private final StringRedisTemplate redisTemplate;
         }
         redisTemplate.opsForZSet().remove(com.fooddelivery.common.constants.RedisKeyConstants.QUEUE_DELAYED_DISPATCH, orderId.toString());
         if (EventType.ORDER_CANCELLED.name().equals(eventType) || EventType.DELIVERY_FAILED.name().equals(eventType) || EventType.ORDER_CANCELLED_BY_RESTAURANT.name().equals(eventType) || EventType.ORDER_CANCELLED_BY_CUSTOMER.name().equals(eventType) || EventType.ORDER_CANCELLED_BY_ADMIN.name().equals(eventType) || EventType.ORDER_REJECTED.name().equals(eventType) || EventType.ORDER_DELAY_REJECTED.name().equals(eventType) || EventType.MANUAL_INTERVENTION_REQUIRED.name().equals(eventType)) {
+            // The order is over, so its assignment stops authorising the rider. This branch used to clean Redis and
+            // reset the rider but leave order_assignments ASSIGNED: an order failed by the abandoned-delivery sweeper
+            // or cancelled after assignment kept authorising its rider, and manual assignment then refused that rider
+            // (DRIVER_ALREADY_ASSIGNED). Read by order id only, under the row lock, and independent of Redis; an
+            // assignment already released (the rider aborted, or a duplicate event) is left as it is.
+            UUID releasedDriver = transactionTemplate.execute(status -> assignmentRepository.findLockedByOrderId(orderId)
+                    .filter(assignment -> assignment.release(java.time.Instant.now()))
+                    .map(assignment -> {
+                        assignmentRepository.save(assignment);
+                        return assignment.getDriverId();
+                    })
+                    .orElse(null));
             if (driverId == null || driverId.isEmpty()) {
                 driverId = redisTemplate.opsForValue().get(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId);
             }
@@ -83,11 +97,28 @@ private final StringRedisTemplate redisTemplate;
             } else if (driverId != null && !driverId.isEmpty()) {
                 redisTemplate.delete(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + driverId);
             }
+            // Every Redis key naming the rider can have expired (24 h TTL, eviction); the assignment just released is
+            // the durable record of who held the order.
+            boolean redisNamedARider = driverId != null && !driverId.isEmpty()
+                    && !driverId.equals(com.fooddelivery.common.enums.OrderStatus.CANCELLED.name()) && !driverId.equals("locked");
+            if (!redisNamedARider && releasedDriver != null) {
+                driverId = releasedDriver.toString();
+            }
             redisTemplate.opsForZSet().remove(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_PING_TIMEOUTS, orderId.toString());
             // PREVENT any in-flight ping from being successfully accepted later
             redisTemplate.opsForValue().set(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DRIVER_LOCK + orderId, com.fooddelivery.common.enums.OrderStatus.CANCELLED.name(), java.time.Duration.ofHours(24));
             if (driverId != null && !driverId.isEmpty() && !driverId.equals(com.fooddelivery.common.enums.OrderStatus.CANCELLED.name()) && !driverId.equals("locked")) {
                 redisTemplate.opsForValue().set("order:driver:stranded:" + orderId, driverId, java.time.Duration.ofHours(24));
+                // The rider's active-order projection goes with the order, but only while it still names this order:
+                // the same rider may already hold a newer one.
+                try {
+                    redisTemplate.execute(new org.springframework.data.redis.core.script.DefaultRedisScript<>(
+                                    com.fooddelivery.delivery.service.OrderAssignmentService.DELETE_ACTIVE_ORDER_IF_MATCHES, Long.class),
+                            List.of(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_ACTIVE_ORDER + driverId),
+                            orderId.toString());
+                } catch (Exception e) {
+                    log.error("Failed to clear the active-order key of driver {} for order {}", driverId, orderId, e);
+                }
                 try {
                     logisticsDispatchService.releaseDriverLock(driverId);
                 } catch (Exception e) {

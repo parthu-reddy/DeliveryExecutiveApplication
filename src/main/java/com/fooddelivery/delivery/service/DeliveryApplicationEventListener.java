@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 public class DeliveryApplicationEventListener {
     private final EventBinder binder;
     private final DeliveryApplicationService applications;
-    @KafkaListener(topics=KafkaConstants.TOPIC_DELIVERY_PARTNER_EVENTS,groupId=KafkaConstants.GROUP_FOOD_DELIVERY+"-delivery-application-checks")
+    @KafkaListener(topics=KafkaConstants.TOPIC_DELIVERY_PARTNER_EVENTS,groupId=KafkaConstants.GROUP_DELIVERY_SERVICE+"-delivery-application-checks")
     @RetryableTopic(attempts="5",backoff=@Backoff(delay=1000,multiplier=2),autoCreateTopics="true",dltStrategy=DltStrategy.FAIL_ON_ERROR,exclude=EventBindingException.class,traversingCauses="true")
     public void onEvent(@Payload String payload,@Header("eventType") String type) {
         binder.bindIf(EventType.DELIVERY_APPLICATION_STATUS_CHANGED,type,payload,DeliveryApplicationStatusChangedEvent.class)

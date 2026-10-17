@@ -1,6 +1,4 @@
 spring:
-  main:
-    allow-bean-definition-overriding: true
   jpa:
     # Never bind a database connection to the lifetime of an SSE request.
     open-in-view: false
@@ -12,47 +10,11 @@ spring:
     config:
       fail-fast: true
     openfeign:
-      client:
-        config:
-          default:
-            connectTimeout: 2000
-            readTimeout: 3000
       circuitbreaker:
         enabled: true
         alphanumeric-ids: true
 springdoc:
   packages-to-scan: com.fooddelivery.delivery,com.fooddelivery.common.dto.governmentid
-resilience4j:
-  retry:
-    instances:
-      restaurant-service:
-        baseConfig: default
-      customer-service:
-        baseConfig: default
-      wallet-service:
-        baseConfig: default
-      mapsintegration:
-        baseConfig: default
-  circuitbreaker:
-    instances:
-      restaurant-service:
-        baseConfig: default
-      customer-service:
-        baseConfig: default
-      wallet-service:
-        baseConfig: default
-      mapsintegration:
-        baseConfig: default
-  timelimiter:
-    instances:
-      restaurant-service:
-        baseConfig: default
-      customer-service:
-        baseConfig: default
-      wallet-service:
-        baseConfig: default
-      mapsintegration:
-        baseConfig: default
 verification:
   vahan:
     api:
