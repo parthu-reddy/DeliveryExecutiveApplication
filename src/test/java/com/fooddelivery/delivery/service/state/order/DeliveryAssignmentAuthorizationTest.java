@@ -48,9 +48,9 @@ class DeliveryAssignmentAuthorizationTest {
             org.springframework.transaction.support.TransactionCallback<?> cb = i.getArgument(0);
             return cb.doInTransaction(mock(org.springframework.transaction.TransactionStatus.class));
         });
-        strategy = new AtRestaurantStateStrategy(mock(StringRedisTemplate.class), new ObjectMapper(),
+        strategy = new AtRestaurantStateStrategy(mock(StringRedisTemplate.class), new ObjectMapper().registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule()),
                 tx, outbox, mock(IDeliveryExecutiveRepository.class),
-                mock(LogisticsDispatchService.class), assignments);
+                mock(LogisticsDispatchService.class), assignments, java.time.Clock.fixed(java.time.Instant.parse("2026-10-25T09:30:00Z"), java.time.ZoneOffset.UTC));
     }
 
     private OrderAssignment assignment(UUID driverId, OrderAssignment.State state) {

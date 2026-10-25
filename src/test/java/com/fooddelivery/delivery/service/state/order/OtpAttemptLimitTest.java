@@ -85,14 +85,14 @@ class OtpAttemptLimitTest {
     }
 
     private void deliver(String otp) {
-        new DeliveredStateStrategy(redis, new ObjectMapper(), tx(), outbox, executives,
-                mock(LogisticsDispatchService.class), assignments)
+        new DeliveredStateStrategy(redis, new ObjectMapper().registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule()), tx(), outbox, executives,
+                mock(LogisticsDispatchService.class), assignments, java.time.Clock.fixed(java.time.Instant.parse("2026-10-25T09:30:00Z"), java.time.ZoneOffset.UTC))
                 .handleStatusUpdate(driverId, orderId, DeliveryStatus.DELIVERED, null, otp, false);
     }
 
     private void pickUp(String otp) {
-        new OutForDeliveryStateStrategy(redis, new ObjectMapper(), tx(), outbox, executives,
-                mock(LogisticsDispatchService.class), assignments)
+        new OutForDeliveryStateStrategy(redis, new ObjectMapper().registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule()), tx(), outbox, executives,
+                mock(LogisticsDispatchService.class), assignments, java.time.Clock.fixed(java.time.Instant.parse("2026-10-25T09:30:00Z"), java.time.ZoneOffset.UTC))
                 .handleStatusUpdate(driverId, orderId, DeliveryStatus.OUT_FOR_DELIVERY, otp, null, false);
     }
 

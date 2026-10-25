@@ -121,24 +121,79 @@ public abstract class BaseMessagingClass {
         messageVerifier.publishDirect("tracking:order:7a1d5e90-3c22-4b6f-8a11-9d4c2e77b501", payload);
     }
 
-    public void fireOrderStatusUpdated() throws Exception {
-        com.fasterxml.jackson.databind.node.ObjectNode payloadNode = new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode();
-        payloadNode.put("eventType", "ORDER_STATUS_UPDATED");
-        payloadNode.put("orderId", "3f2504e0-4f89-41d3-9a0c-0305e82c3301");
-        payloadNode.put("status", "OUT_FOR_DELIVERY");
-        payloadNode.put("pickupOtp", "123456");
-        payloadNode.put("deliveryOtp", "567890");
+    private static final java.util.UUID ORDER_ID = java.util.UUID.fromString("3f2504e0-4f89-41d3-9a0c-0305e82c3301");
+    private static final java.util.UUID DRIVER_ID = java.util.UUID.fromString("4f4a4e37-6ca5-5598-94f1-43ef1628f631");
+    /** Every milestone below is stamped with this instant, so the contracts can state occurredAt exactly. */
+    private static final java.time.Clock CLOCK =
+            java.time.Clock.fixed(java.time.Instant.parse("2026-10-25T09:30:00Z"), java.time.ZoneOffset.UTC);
 
+    /** ORDER_AT_RESTAURANT as AtRestaurantStateStrategy writes it to the outbox. */
+    public void fireOrderAtRestaurant() throws Exception {
+        publishStep(new com.fooddelivery.delivery.service.state.order.AtRestaurantStateStrategy(
+                org.mockito.Mockito.mock(StringRedisTemplate.class), mapper,
+                org.mockito.Mockito.mock(org.springframework.transaction.support.TransactionTemplate.class),
+                org.mockito.Mockito.mock(com.fooddelivery.common.outbox.repository.OutboxEventRepository.class),
+                org.mockito.Mockito.mock(com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository.class),
+                org.mockito.Mockito.mock(com.fooddelivery.delivery.service.LogisticsDispatchService.class),
+                org.mockito.Mockito.mock(com.fooddelivery.delivery.repository.OrderAssignmentRepository.class), CLOCK),
+                com.fooddelivery.common.enums.DeliveryStatus.AT_RESTAURANT);
+    }
+
+    /** ORDER_STATUS_UPDATED (OUT_FOR_DELIVERY) as OutForDeliveryStateStrategy writes it to the outbox. */
+    public void fireOrderStatusUpdated() throws Exception {
+        publishStep(new com.fooddelivery.delivery.service.state.order.OutForDeliveryStateStrategy(
+                org.mockito.Mockito.mock(StringRedisTemplate.class), mapper,
+                org.mockito.Mockito.mock(org.springframework.transaction.support.TransactionTemplate.class),
+                org.mockito.Mockito.mock(com.fooddelivery.common.outbox.repository.OutboxEventRepository.class),
+                org.mockito.Mockito.mock(com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository.class),
+                org.mockito.Mockito.mock(com.fooddelivery.delivery.service.LogisticsDispatchService.class),
+                org.mockito.Mockito.mock(com.fooddelivery.delivery.repository.OrderAssignmentRepository.class), CLOCK),
+                com.fooddelivery.common.enums.DeliveryStatus.OUT_FOR_DELIVERY);
+    }
+
+    /** ORDER_DELIVERED as DeliveredStateStrategy writes it to the outbox. */
+    public void fireOrderDelivered() throws Exception {
+        publishStep(new com.fooddelivery.delivery.service.state.order.DeliveredStateStrategy(
+                org.mockito.Mockito.mock(StringRedisTemplate.class), mapper,
+                org.mockito.Mockito.mock(org.springframework.transaction.support.TransactionTemplate.class),
+                org.mockito.Mockito.mock(com.fooddelivery.common.outbox.repository.OutboxEventRepository.class),
+                org.mockito.Mockito.mock(com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository.class),
+                org.mockito.Mockito.mock(com.fooddelivery.delivery.service.LogisticsDispatchService.class),
+                org.mockito.Mockito.mock(com.fooddelivery.delivery.repository.OrderAssignmentRepository.class), CLOCK),
+                com.fooddelivery.common.enums.DeliveryStatus.DELIVERED);
+    }
+
+    /** DRIVER_ASSIGNED as OrderAssignmentService builds it when a rider accepts the ping. */
+    public void fireDriverAssigned() throws Exception {
+        var service = new com.fooddelivery.delivery.service.OrderAssignmentService(
+                org.mockito.Mockito.mock(StringRedisTemplate.class),
+                org.mockito.Mockito.mock(org.springframework.transaction.support.TransactionTemplate.class),
+                org.mockito.Mockito.mock(com.fooddelivery.common.outbox.repository.OutboxEventRepository.class),
+                org.mockito.Mockito.mock(com.fooddelivery.delivery.service.OutboxEventHelper.class),
+                org.mockito.Mockito.mock(com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository.class),
+                org.mockito.Mockito.mock(com.fooddelivery.delivery.service.LogisticsDispatchService.class),
+                org.mockito.Mockito.mock(com.fooddelivery.delivery.repository.OrderAssignmentRepository.class), mapper,
+                org.mockito.Mockito.mock(com.fooddelivery.delivery.client.OrderServiceClient.class), CLOCK);
+        publish(com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED,
+                service.assignedEvent(ORDER_ID, DRIVER_ID, "Ravi Kumar"));
+    }
+
+    private void publishStep(com.fooddelivery.delivery.service.state.order.AbstractDeliveryOrderState strategy,
+                             com.fooddelivery.common.enums.DeliveryStatus status) throws Exception {
+        publish(strategy.getEventType(), strategy.outboxPayload(DRIVER_ID, ORDER_ID, status, "123456", "567890"));
+    }
+
+    /** One outbox row, serialized by the Boot ObjectMapper as production does, through the real OutboxProcessor. */
+    private void publish(com.fooddelivery.common.constants.EventType eventType, Object event) throws Exception {
         com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent =
                 com.fooddelivery.common.outbox.entity.OutboxEventEntity.builder()
                         .id(java.util.UUID.randomUUID())
                         .aggregateType(com.fooddelivery.common.constants.AggregateType.ORDER)
-                        .aggregateId("3f2504e0-4f89-41d3-9a0c-0305e82c3301")
-                        .eventType(com.fooddelivery.common.constants.EventType.ORDER_STATUS_UPDATED)
-                        .payload(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(payloadNode))
+                        .aggregateId(ORDER_ID.toString())
+                        .eventType(eventType)
+                        .payload(mapper.writeValueAsString(event))
                         .createdAt(java.time.Instant.now())
                         .build();
-
         com.fooddelivery.common.outbox.repository.OutboxEventRepository repo =
                 org.mockito.Mockito.mock(com.fooddelivery.common.outbox.repository.OutboxEventRepository.class);
         org.mockito.Mockito.when(repo.findTop100ByStatusInOrderByCreatedAtAsc(org.mockito.ArgumentMatchers.anyList()))

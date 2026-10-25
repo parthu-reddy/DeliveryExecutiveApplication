@@ -28,10 +28,25 @@ public class OrderAssignmentService {
             assignmentRepository;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final com.fooddelivery.delivery.client.OrderServiceClient orderServiceClient;
+    /** DRIVER_ASSIGNED is stamped with this clock in the transaction that records the assignment (DelayPenalties Phase 1). */
+    private final java.time.Clock clock;
 
     @org.springframework.beans.factory.annotation.Value(
             "${app.rider.biometric-verification.enabled:true}")
     private boolean biometricVerificationEnabled = true;
+
+    /**
+     * DRIVER_ASSIGNED for a rider who accepted the ping. Public so the producer contract (BaseMessagingClass) publishes
+     * exactly this event rather than a hand-built copy.
+     */
+    public com.fooddelivery.common.event.DriverAssignedEvent assignedEvent(UUID orderId, UUID driverId, String driverName) {
+        return com.fooddelivery.common.event.DriverAssignedEvent.builder()
+                .orderId(orderId.toString())
+                .driverId(driverId.toString())
+                .driverName(driverName)
+                .occurredAt(clock.instant())
+                .build();
+    }
 
     public String getPendingPing(UUID driverId) {
         return redisTemplate
@@ -133,11 +148,7 @@ public class OrderAssignmentService {
                                                         new IllegalArgumentException(
                                                                 "Driver not found: " + driverId));
                         com.fooddelivery.common.event.DriverAssignedEvent event =
-                                com.fooddelivery.common.event.DriverAssignedEvent.builder()
-                                        .orderId(orderId.toString())
-                                        .driverId(driverId.toString())
-                                        .driverName(executive.getFullName())
-                                        .build();
+                                assignedEvent(orderId, driverId, executive.getFullName());
                         com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent =
                                 outboxEventHelper.createOutboxEvent(
                                         com.fooddelivery.common.constants.AggregateType.ORDER,
@@ -667,6 +678,7 @@ public class OrderAssignmentService {
                         .reason(command.reason())
                         .assignmentSource("MANUAL_INTERVENTION")
                         .fromDriverId(previousDriverId == null ? null : previousDriverId.toString())
+                        .occurredAt(clock.instant())
                         .build();
         com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent =
                 outboxEventHelper.createOutboxEvent(

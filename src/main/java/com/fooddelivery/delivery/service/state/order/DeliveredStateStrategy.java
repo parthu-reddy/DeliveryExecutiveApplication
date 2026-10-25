@@ -27,8 +27,9 @@ public class DeliveredStateStrategy extends AbstractDeliveryOrderState {
                  com.fooddelivery.common.outbox.repository.OutboxEventRepository outboxEventRepository,
                  com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository repository,
                  com.fooddelivery.delivery.service.LogisticsDispatchService logisticsDispatchService,
-                 com.fooddelivery.delivery.repository.OrderAssignmentRepository assignmentRepository) {
-        super(redisTemplate, objectMapper, transactionTemplate, outboxEventRepository, repository, logisticsDispatchService, assignmentRepository);
+                 com.fooddelivery.delivery.repository.OrderAssignmentRepository assignmentRepository,
+                 java.time.Clock clock) {
+        super(redisTemplate, objectMapper, transactionTemplate, outboxEventRepository, repository, logisticsDispatchService, assignmentRepository, clock);
     }
 
 
@@ -38,7 +39,7 @@ public class DeliveredStateStrategy extends AbstractDeliveryOrderState {
     }
 
     @Override
-    protected com.fooddelivery.common.constants.EventType getEventType() {
+    public com.fooddelivery.common.constants.EventType getEventType() {
         return EventType.ORDER_DELIVERED;
     }
 

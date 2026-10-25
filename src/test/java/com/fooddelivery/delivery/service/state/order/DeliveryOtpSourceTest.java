@@ -78,13 +78,13 @@ class DeliveryOtpSourceTest {
     }
 
     private DeliveredStateStrategy delivered() {
-        return new DeliveredStateStrategy(redis, new ObjectMapper(), tx(), outbox,
-                executives, mock(LogisticsDispatchService.class), assignments);
+        return new DeliveredStateStrategy(redis, new ObjectMapper().registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule()), tx(), outbox,
+                executives, mock(LogisticsDispatchService.class), assignments, java.time.Clock.fixed(java.time.Instant.parse("2026-10-25T09:30:00Z"), java.time.ZoneOffset.UTC));
     }
 
     private OutForDeliveryStateStrategy outForDelivery() {
-        return new OutForDeliveryStateStrategy(redis, new ObjectMapper(), tx(), outbox,
-                executives, mock(LogisticsDispatchService.class), assignments);
+        return new OutForDeliveryStateStrategy(redis, new ObjectMapper().registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule()), tx(), outbox,
+                executives, mock(LogisticsDispatchService.class), assignments, java.time.Clock.fixed(java.time.Instant.parse("2026-10-25T09:30:00Z"), java.time.ZoneOffset.UTC));
     }
 
     @Test

@@ -1,0 +1,27 @@
+package contracts.messaging
+
+/*
+ * order-events / ORDER_AT_RESTAURANT as AtRestaurantStateStrategy writes it: the rider tapped Arrived at the outlet.
+ * occurredAt is the delivery service's clock (fixed at 2026-10-25T09:30:00Z in BaseMessagingClass). order-service and the
+ * kitchen feed consume it.
+ */
+org.springframework.cloud.contract.spec.Contract.make {
+    description("the rider reached the outlet, with the time it happened")
+    label("order_at_restaurant")
+    input {
+        triggeredBy('fireOrderAtRestaurant()')
+    }
+    outputMessage {
+        sentTo('order-events')
+        headers {
+            header('eventId', $(producer(regex('[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}')), consumer('7d2e3f4a-5b6c-4d7e-8f90-a1b2c3d4e5f6')))
+            header('eventType', 'ORDER_AT_RESTAURANT')
+            header('aggregateType', 'ORDER')
+        }
+        body([
+            orderId: '3f2504e0-4f89-41d3-9a0c-0305e82c3301',
+            driverId: '4f4a4e37-6ca5-5598-94f1-43ef1628f631',
+            occurredAt: '2026-10-25T09:30:00Z'
+        ])
+    }
+}

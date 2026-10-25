@@ -54,7 +54,7 @@ class ForceAssignRollbackTest {
     private static final String CITY = "BLR";
     private static final String OPERATION = "admin-manual:assign:operation-0001";
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
     private StringRedisTemplate redis;
     private ValueOperations<String, String> values;
     private IDeliveryExecutiveRepository repository;
@@ -119,7 +119,7 @@ class ForceAssignRollbackTest {
                 mock(LogisticsDispatchService.class),
                 assignments,
                 objectMapper,
-                customer);
+                customer, java.time.Clock.fixed(java.time.Instant.parse("2026-10-25T09:30:00Z"), java.time.ZoneOffset.UTC));
     }
 
     @Test

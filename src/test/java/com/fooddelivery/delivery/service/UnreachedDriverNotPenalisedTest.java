@@ -79,7 +79,7 @@ class UnreachedDriverNotPenalisedTest {
                 mock(LogisticsDispatchService.class),
                 mock(OrderAssignmentRepository.class),
                 new ObjectMapper(),
-                mock(OrderServiceClient.class));
+                mock(OrderServiceClient.class), java.time.Clock.fixed(java.time.Instant.parse("2026-10-25T09:30:00Z"), java.time.ZoneOffset.UTC));
     }
 
     @Test
@@ -125,7 +125,7 @@ class UnreachedDriverNotPenalisedTest {
                 mock(LogisticsDispatchService.class),
                 mock(OrderAssignmentRepository.class),
                 new ObjectMapper(),
-                mock(OrderServiceClient.class));
+                mock(OrderServiceClient.class), java.time.Clock.fixed(java.time.Instant.parse("2026-10-25T09:30:00Z"), java.time.ZoneOffset.UTC));
 
         svc.timeoutOrderPing(ORDER);
 
@@ -154,7 +154,7 @@ class UnreachedDriverNotPenalisedTest {
                 dispatch,
                 mock(OrderAssignmentRepository.class),
                 new ObjectMapper(),
-                mock(OrderServiceClient.class));
+                mock(OrderServiceClient.class), java.time.Clock.fixed(java.time.Instant.parse("2026-10-25T09:30:00Z"), java.time.ZoneOffset.UTC));
 
         svc.timeoutOrderPing(ORDER);
 

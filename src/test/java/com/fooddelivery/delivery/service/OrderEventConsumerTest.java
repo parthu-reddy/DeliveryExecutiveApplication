@@ -31,7 +31,7 @@ class OrderEventConsumerTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        objectMapper = new ObjectMapper().configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        objectMapper = new ObjectMapper().registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule()).configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         
         when(mockAcceptedStrategy.getEventTypes()).thenReturn(java.util.Collections.singletonList(com.fooddelivery.common.constants.EventType.ORDER_ACCEPTED.name()));
 
@@ -61,7 +61,7 @@ class OrderEventConsumerTest {
                 + "\"restaurantId\":\"223e4567-e89b-12d3-a456-426614174000\",\"paymentMethod\":\"CARD\","
                 + "\"restaurantLat\":12.9,\"restaurantLng\":77.6,\"deliveryLat\":12.95,\"deliveryLng\":77.65,"
                 + "\"pickupOtp\":\"123456\",\"deliveryOtp\":\"654321\","
-                + "\"dispatchCityId\":\"BLR\",\"fleetSearchRadiusKm\":5.0}";
+                + "\"dispatchCityId\":\"BLR\",\"fleetSearchRadiusKm\":5.0,\"occurredAt\":\"2026-10-25T09:30:00Z\"}";
         
         orderEventConsumer.consumeOrderEvent(payload, headersWithEventId());
         

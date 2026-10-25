@@ -29,6 +29,8 @@ protected final StringRedisTemplate redisTemplate;
     protected final IDeliveryExecutiveRepository repository;
     protected final LogisticsDispatchService logisticsDispatchService;
     protected final OrderAssignmentRepository assignmentRepository;
+    /** The rider's step is stamped with this clock when the delivery service accepts it (DelayPenalties Phase 1). */
+    protected final java.time.Clock clock;
 
 
     /**
@@ -112,38 +114,48 @@ protected final StringRedisTemplate redisTemplate;
         redisTemplate.delete(failuresKey);
     }
 
-    protected void saveOutboxEvent(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp) {
-        Object event = null;
+    /**
+     * The event this step publishes. Public so the producer contract (BaseMessagingClass) publishes exactly what this
+     * service writes to the outbox, not a hand-built copy.
+     *
+     * <p>Every milestone carries {@code occurredAt} from {@link #clock}: OrderService stores it as the time the step
+     * happened, whatever Kafka does to the message afterwards. OUT_FOR_DELIVERY is an {@code OrderStatusUpdatedEvent}, the
+     * class every consumer binds ORDER_STATUS_UPDATED to; it no longer carries the pickup OTP, which no consumer read.
+     */
+    public Object outboxPayload(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp) {
+        java.time.Instant occurredAt = clock.instant();
         switch (getEventType()) {
             case ORDER_AT_RESTAURANT:
-                event = com.fooddelivery.common.event.DriverAtRestaurantEvent.builder()
+                return com.fooddelivery.common.event.DriverAtRestaurantEvent.builder()
                         .orderId(orderId.toString())
                         .driverId(driverId.toString())
+                        .occurredAt(occurredAt)
                         .build();
-                break;
             case ORDER_STATUS_UPDATED:
-                event = com.fooddelivery.common.event.OutForDeliveryEvent.builder()
+                return com.fooddelivery.common.event.OrderStatusUpdatedEvent.builder()
                         .orderId(orderId.toString())
                         .status(status.name())
-                        .pickupOtp(pickupOtp)
+                        .occurredAt(occurredAt)
                         .build();
-                break;
             case ORDER_DELIVERED:
-                event = com.fooddelivery.common.event.DeliveredEvent.builder()
+                return com.fooddelivery.common.event.DeliveredEvent.builder()
                         .orderId(orderId.toString())
                         .status(status.name())
                         .deliveryOtp(deliveryOtp)
+                        .occurredAt(occurredAt)
                         .build();
-                break;
             case DELIVERY_FAILED:
-                event = com.fooddelivery.common.event.DeliveryFailedEvent.builder()
+                return com.fooddelivery.common.event.DeliveryFailedEvent.builder()
                         .orderId(orderId.toString())
                         .reason(status.name())
                         .build();
-                break;
             default:
                 throw new IllegalStateException("Unknown event type: " + getEventType());
         }
+    }
+
+    protected void saveOutboxEvent(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp) {
+        Object event = outboxPayload(driverId, orderId, status, pickupOtp, deliveryOtp);
         String payload;
         try {
             payload = objectMapper.writeValueAsString(event);
@@ -174,5 +186,5 @@ protected final StringRedisTemplate redisTemplate;
                 .ifPresent(assignmentRepository::save);
     }
 
-    protected abstract com.fooddelivery.common.constants.EventType getEventType();
+    public abstract com.fooddelivery.common.constants.EventType getEventType();
 }
