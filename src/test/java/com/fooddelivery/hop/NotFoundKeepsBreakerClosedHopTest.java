@@ -2,15 +2,18 @@ package com.fooddelivery.hop;
 
 import com.fooddelivery.delivery.client.OrderServiceClient;
 import com.fooddelivery.delivery.client.OrderServiceClientFallback;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.contract.wiremock.AutoConfigureWireMock;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
 import java.util.UUID;
 
@@ -19,6 +22,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.reset;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -30,7 +34,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 @SpringBootTest(classes = NotFoundKeepsBreakerClosedHopTest.HopConfig.class, webEnvironment = SpringBootTest.WebEnvironment.NONE,
         properties = {
-            "spring.cloud.discovery.client.simple.instances.order-service[0].uri=http://localhost:${wiremock.server.port}",
             "eureka.client.enabled=false",
             "spring.autoconfigure.exclude="
                     + "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,"
@@ -42,8 +45,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
                     + "org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration,"
                     + "org.springframework.boot.autoconfigure.cache.CacheAutoConfiguration"
         })
-@AutoConfigureWireMock(port = 0)
 class NotFoundKeepsBreakerClosedHopTest {
+
+    /**
+     * The fake order-service binds port 0, so the OS picks its port at bind time. @AutoConfigureWireMock(port = 0) picked a
+     * "free" port first and bound it during context refresh; under build_verify's -T 1C another JVM took it in between.
+     */
+    @RegisterExtension
+    static final WireMockExtension ORDER_SERVICE = WireMockExtension.newInstance()
+            .options(wireMockConfig().dynamicPort()).configureStaticDsl(true).build();
+
+    @DynamicPropertySource
+    static void orderServiceUri(DynamicPropertyRegistry registry) {
+        registry.add("spring.cloud.discovery.client.simple.instances.order-service[0].uri", ORDER_SERVICE::baseUrl);
+    }
 
     private static final String BREAKER = "OrderServiceClientgetOrderDispatchDetailsUUID";
     private static final String DETAILS = "/api/v1/internal/orders/.*/dispatch-details";
