@@ -134,4 +134,54 @@ class AssignmentRecordsDispatchFactsTest {
         assertEquals("999999", a.getPickupOtp(),
                 "a redispatch with no payload must not erase the OTPs the first dispatch recorded");
     }
+
+    @Test
+    void theOutletAndTheDoorAreCopiedForTheArrivalCheck() {
+        dispatchPayload("{\"pickupOtp\":\"111111\",\"restaurantLat\":12.971598,\"restaurantLng\":77.594562,"
+                + "\"deliveryLat\":12.935242,\"deliveryLng\":77.6244}");
+
+        service.recordAssignment(orderId, driverId, service.resolveDispatchDetails(orderId));
+
+        OrderAssignment a = recorded();
+        assertEquals(12.971598, a.getPickupLat());
+        assertEquals(77.594562, a.getPickupLng());
+        assertEquals(12.935242, a.getDropLat());
+        assertEquals(77.6244, a.getDropLng());
+    }
+
+    @Test
+    void theReadyTimeRecordedBeforeAnyoneHeldTheOrderIsCopied() {
+        java.time.Instant readyAt = java.time.Instant.parse("2026-10-25T09:10:00Z");
+        when(assignments.readyAtOf(orderId)).thenReturn(Optional.of(readyAt));
+        dispatchPayload(null);
+
+        service.recordAssignment(orderId, driverId, service.resolveDispatchDetails(orderId));
+
+        assertEquals(readyAt, recorded().getReadyAt());
+    }
+
+    @Test
+    void aNewRiderDoesNotInheritTheFormerRidersArrivals() {
+        OrderAssignment existing = OrderAssignment.builder()
+                .orderId(orderId).driverId(UUID.randomUUID()).state(OrderAssignment.State.ASSIGNED)
+                .deliveryStatus(com.fooddelivery.common.enums.DeliveryStatus.AT_RESTAURANT)
+                .readyAt(java.time.Instant.parse("2026-10-25T09:10:00Z"))
+                .overdueNotifiedAt(java.time.Instant.parse("2026-10-25T09:20:00Z"))
+                .expectedAtRestaurantAt(java.time.Instant.parse("2026-10-25T09:05:00Z"))
+                .build();
+        existing.recordArrival(com.fooddelivery.common.enums.DeliveryStatus.AT_RESTAURANT,
+                java.time.Instant.parse("2026-10-25T09:15:00Z"), true);
+        when(assignments.findByOrderId(orderId)).thenReturn(Optional.of(existing));
+        dispatchPayload(null);
+
+        service.recordAssignment(orderId, driverId, service.resolveDispatchDetails(orderId));
+
+        OrderAssignment a = recorded();
+        assertNull(a.getDeliveryStatus());
+        assertNull(a.getAtRestaurantAt());
+        assertNull(a.getAtRestaurantVerified());
+        assertNull(a.getOverdueNotifiedAt());
+        assertNull(a.getExpectedAtRestaurantAt());
+        assertEquals(java.time.Instant.parse("2026-10-25T09:10:00Z"), a.getReadyAt(), "the food's ready time is the order's");
+    }
 }

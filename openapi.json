@@ -9,6 +9,41 @@
     "description" : "Generated server url"
   } ],
   "paths" : {
+    "/api/delivery/drivers/{driverId}/orders/{orderId}/ready-contested" : {
+      "post" : {
+        "tags" : [ "delivery-executive-controller" ],
+        "operationId" : "contestReady",
+        "parameters" : [ {
+          "name" : "driverId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "orderId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/delivery-onboarding/application" : {
       "get" : {
         "tags" : [ "delivery-application-controller" ],
@@ -1737,7 +1772,7 @@
         "properties" : {
           "status" : {
             "type" : "string",
-            "enum" : [ "PENDING", "SEARCHING_FOR_DRIVER", "MANUAL_INTERVENTION_REQUIRED", "ASSIGNED", "AT_RESTAURANT", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED", "FAILED" ]
+            "enum" : [ "PENDING", "SEARCHING_FOR_DRIVER", "MANUAL_INTERVENTION_REQUIRED", "ASSIGNED", "AT_RESTAURANT", "OUT_FOR_DELIVERY", "AT_DROP", "DELIVERED", "CANCELLED", "FAILED" ]
           },
           "pickupOtp" : {
             "maxLength" : 10,

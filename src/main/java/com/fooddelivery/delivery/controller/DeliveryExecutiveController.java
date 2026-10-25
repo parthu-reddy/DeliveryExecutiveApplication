@@ -230,6 +230,14 @@ public void setAvailable(final Boolean available) {
         return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Order assignment aborted. Looking for a new driver.").build());
     }
 
+    /** "Food not ready yet": a verified rider at the outlet contests the restaurant's Ready, once (DelayPenalties D14). */
+    @PostMapping("/drivers/{driverId}/orders/{orderId}/ready-contested")
+    @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.name")
+    public ResponseEntity<ApiResponse<Void>> contestReady(@PathVariable("driverId") UUID driverId, @PathVariable("orderId") UUID orderId) {
+        orderExecutionService.contestReady(driverId, orderId);
+        return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Reported: the food is not ready yet.").build());
+    }
+
     @PostMapping("/drivers/{driverId}/orders/{orderId}/status")
     @PreAuthorize("hasRole('DELIVERY') and #driverId.toString() == authentication.name")
     public ResponseEntity<ApiResponse<Void>> updateOrderStatus(@PathVariable UUID driverId, @PathVariable UUID orderId, @Valid @RequestBody UpdateOrderStatusRequest request) {

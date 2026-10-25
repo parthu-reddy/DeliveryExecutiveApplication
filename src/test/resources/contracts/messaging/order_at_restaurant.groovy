@@ -3,7 +3,7 @@ package contracts.messaging
 /*
  * order-events / ORDER_AT_RESTAURANT as AtRestaurantStateStrategy writes it: the rider tapped Arrived at the outlet.
  * occurredAt is the delivery service's clock (fixed at 2026-10-25T09:30:00Z in BaseMessagingClass). order-service and the
- * kitchen feed consume it.
+ * kitchen feed consume it. The rider's live position is 33 m from the outlet, so the arrival is verified (DelayPenalties Phase 2).
  */
 org.springframework.cloud.contract.spec.Contract.make {
     description("the rider reached the outlet, with the time it happened")
@@ -21,7 +21,9 @@ org.springframework.cloud.contract.spec.Contract.make {
         body([
             orderId: '3f2504e0-4f89-41d3-9a0c-0305e82c3301',
             driverId: '4f4a4e37-6ca5-5598-94f1-43ef1628f631',
-            occurredAt: '2026-10-25T09:30:00Z'
+            occurredAt: '2026-10-25T09:30:00Z',
+            verified: true,
+            distanceMetres: 33
         ])
     }
 }

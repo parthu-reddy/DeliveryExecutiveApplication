@@ -99,7 +99,31 @@ CREATE TABLE order_assignments (
     released_at TIMESTAMPTZ,
     payment_method VARCHAR(16),
     delivery_status VARCHAR(32),
+    -- DelayPenalties Phase 2: where the rider is going (copied at assignment), when the food was ready, and the current
+    -- rider's geo-checked arrivals. Arrivals belong to the rider and are cleared on reassignment.
+    pickup_lat DOUBLE PRECISION,
+    pickup_lng DOUBLE PRECISION,
+    drop_lat DOUBLE PRECISION,
+    drop_lng DOUBLE PRECISION,
+    ready_at TIMESTAMPTZ,
+    at_restaurant_at TIMESTAMPTZ,
+    at_restaurant_verified BOOLEAN,
+    at_drop_at TIMESTAMPTZ,
+    at_drop_verified BOOLEAN,
+    ready_contested_at TIMESTAMPTZ,
+    expected_at_restaurant_at TIMESTAMPTZ,
+    overdue_notified_at TIMESTAMPTZ,
     version INTEGER NOT NULL DEFAULT 0,
     CONSTRAINT chk_order_assignment_payment_method_prepaid CHECK (payment_method IS NULL OR payment_method IN ('CARD','UPI','WALLET'))
 );
 CREATE INDEX idx_order_assignments_driver ON order_assignments(driver_id);
+-- OverdueRiderSweeper: live assignments whose food is ready and whose rider has not reached the outlet.
+CREATE INDEX idx_order_assignments_overdue ON order_assignments(ready_at) WHERE state = 'ASSIGNED' AND at_restaurant_at IS NULL;
+
+-- When the restaurant marked each order ready, kept whether or not a rider holds it yet: dispatch is often delayed until
+-- the food is nearly ready, so ORDER_READY regularly arrives before the assignment row exists. recordAssignment copies it
+-- onto the assignment (DelayPenalties Phase 2, D21).
+CREATE TABLE order_readiness (
+    order_id UUID PRIMARY KEY,
+    ready_at TIMESTAMPTZ NOT NULL
+);

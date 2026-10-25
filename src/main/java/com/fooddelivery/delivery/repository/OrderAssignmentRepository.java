@@ -35,4 +35,17 @@ public interface OrderAssignmentRepository extends JpaRepository<OrderAssignment
      * guard this replaces short-circuited on a missing record and allowed the update through.
      */
     Optional<OrderAssignment> findByOrderIdAndDriverId(UUID orderId, UUID driverId);
+
+    /**
+     * Live assignments whose food was ready by {@code readyBy} and whose rider has neither reached the outlet nor picked
+     * up: OverdueRiderSweeper's candidates. A rider who picked up without tapping Arrived has moved past ASSIGNED.
+     */
+    @Query("SELECT a FROM OrderAssignment a WHERE a.state = com.fooddelivery.delivery.entity.OrderAssignment.State.ASSIGNED"
+            + " AND a.atRestaurantAt IS NULL AND a.readyAt IS NOT NULL AND a.readyAt <= :readyBy"
+            + " AND (a.deliveryStatus IS NULL OR a.deliveryStatus = com.fooddelivery.common.enums.DeliveryStatus.ASSIGNED)")
+    java.util.List<OrderAssignment> findOverdueCandidates(@Param("readyBy") java.time.Instant readyBy);
+
+    /** When the restaurant marked the order ready, if ORDER_READY has arrived (order_readiness); copied at assignment. */
+    @Query("SELECT r.readyAt FROM OrderReadiness r WHERE r.orderId = :orderId")
+    Optional<java.time.Instant> readyAtOf(@Param("orderId") UUID orderId);
 }

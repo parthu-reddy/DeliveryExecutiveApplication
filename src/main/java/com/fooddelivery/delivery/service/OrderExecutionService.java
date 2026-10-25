@@ -24,8 +24,21 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
     private final com.fooddelivery.delivery.service.state.order.DeliveryOrderStateFactory deliveryOrderStateFactory;
     private final com.fooddelivery.delivery.repository.OrderAssignmentRepository assignmentRepository;
     private final ObjectMapper objectMapper;
+    /** ORDER_DRIVER_REJECTED and READY_CONTESTED are stamped with this clock (DelayPenalties Phase 2). */
+    private final java.time.Clock clock;
 
+    /** The rider tapped Abort. */
     public void abortOrder(UUID driverId, UUID orderId) {
+        releaseRider(driverId, orderId, com.fooddelivery.common.enums.RiderReleaseReason.RIDER_ABORT);
+    }
+
+    /**
+     * Ends this rider's hold on the order and sends it back to dispatch: the rider is free again, the order goes out on
+     * ORDER_DRIVER_REJECTED (OrderDriverRejectedStrategy redispatches it) and this rider is not pinged for it again. The one
+     * path for a rider who gave the order up and for one OverdueRiderSweeper took it from (D13); {@code reason} tells them
+     * apart on the wire.
+     */
+    public void releaseRider(UUID driverId, UUID orderId, com.fooddelivery.common.enums.RiderReleaseReason reason) {
         // The assignment row, not the Redis lock. This path already failed closed on a missing lock,
         // but it has to agree with handleStatusUpdate about what "assigned" means or a driver can be
         // authorised to deliver an order they are not authorised to abort.
@@ -47,10 +60,12 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
                     com.fooddelivery.common.event.OrderDriverRejectedEvent event = com.fooddelivery.common.event.OrderDriverRejectedEvent.builder()
                             .orderId(orderId.toString())
                             .driverId(driverId.toString())
+                            .reason(reason)
+                            .occurredAt(clock.instant())
                             .build();
                     com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent = outboxEventHelper.createOutboxEvent(com.fooddelivery.common.constants.AggregateType.ORDER, orderId.toString(), com.fooddelivery.common.constants.EventType.ORDER_DRIVER_REJECTED, event);
                     outboxEventRepository.save(outboxEvent);
-                    assignment.release(java.time.Instant.now());
+                    assignment.release(clock.instant());
                     assignmentRepository.save(assignment);
                 });
                 break; // exit loop on success
@@ -88,7 +103,45 @@ private final org.springframework.data.redis.core.StringRedisTemplate redisTempl
             log.error("Failed to release driver lock for driver {} on abort, will be retried by availability poller", driverId, e);
         }
         // 3. Trigger dispatch loop again to find a new driver
-        log.info("Driver {} aborted order {}. Re-triggering candidate search...", driverId, orderId);
+        log.info("RIDER_RELEASED driverId={} orderId={} reason={}. Re-triggering candidate search...", driverId, orderId, reason);
+    }
+
+    /**
+     * "Food not ready yet" (DelayPenalties D14, scenario B4): the rider is at the outlet, their arrival was geo-verified, the
+     * restaurant has marked the order ready, and the rider has not picked it up. Accepted once per rider; READY_CONTESTED is
+     * published in the same transaction that records it.
+     */
+    public void contestReady(UUID driverId, UUID orderId) {
+        com.fooddelivery.delivery.entity.OrderAssignment assignment =
+                assignmentRepository.findByOrderId(orderId).orElse(null);
+        if (assignment == null || !assignment.authorises(driverId)) {
+            throw new org.springframework.security.access.AccessDeniedException("This order is not assigned to you.");
+        }
+        if (assignment.getDeliveryStatus() != DeliveryStatus.AT_RESTAURANT) {
+            throw new IllegalStateException("Only a rider waiting at the outlet can say the food is not ready.");
+        }
+        if (!Boolean.TRUE.equals(assignment.getAtRestaurantVerified())) {
+            throw new IllegalStateException("Your arrival at the outlet could not be confirmed by location.");
+        }
+        if (assignment.getReadyAt() == null) {
+            throw new IllegalStateException("The restaurant has not marked this order ready.");
+        }
+        if (assignment.getReadyContestedAt() != null) {
+            throw new IllegalStateException("You have already reported that the food is not ready.");
+        }
+        java.time.Instant at = clock.instant();
+        transactionTemplate.executeWithoutResult(status -> {
+            assignment.setReadyContestedAt(at);
+            assignmentRepository.save(assignment);
+            com.fooddelivery.common.event.ReadyContestedEvent event = com.fooddelivery.common.event.ReadyContestedEvent.builder()
+                    .orderId(orderId.toString())
+                    .driverId(driverId.toString())
+                    .occurredAt(at)
+                    .build();
+            outboxEventRepository.save(outboxEventHelper.createOutboxEvent(com.fooddelivery.common.constants.AggregateType.ORDER,
+                    orderId.toString(), com.fooddelivery.common.constants.EventType.READY_CONTESTED, event));
+        });
+        log.info("READY_CONTESTED driverId={} orderId={} readyAt={}", driverId, orderId, assignment.getReadyAt());
     }
 
     public void updateOrderStatus(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp, Boolean goOfflineAfter) {

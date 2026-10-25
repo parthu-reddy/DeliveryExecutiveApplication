@@ -3,7 +3,8 @@ package contracts.messaging
 /*
  * order-events / DRIVER_ASSIGNED as OrderAssignmentService.assignedEvent builds it when a rider accepts the ping.
  * occurredAt is the delivery service's clock (fixed at 2026-10-25T09:30:00Z in BaseMessagingClass). order-service,
- * restaurant-service and the kitchen feed consume it.
+ * restaurant-service and the kitchen feed consume it. riderLat/riderLng are where the rider was when the assignment committed;
+ * order-service routes from there to the outlet for the expected arrival (DelayPenalties Phase 2).
  */
 org.springframework.cloud.contract.spec.Contract.make {
     description("a rider accepted the order, with the time it happened")
@@ -22,6 +23,8 @@ org.springframework.cloud.contract.spec.Contract.make {
             orderId: '3f2504e0-4f89-41d3-9a0c-0305e82c3301',
             driverId: '4f4a4e37-6ca5-5598-94f1-43ef1628f631',
             driverName: 'Ravi Kumar',
+            riderLat: 12.9612,
+            riderLng: 77.5801,
             occurredAt: '2026-10-25T09:30:00Z'
         ])
     }

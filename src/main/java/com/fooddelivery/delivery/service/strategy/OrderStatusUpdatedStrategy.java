@@ -16,6 +16,8 @@ public class OrderStatusUpdatedStrategy implements DeliveryEventStrategy<com.foo
 private final StringRedisTemplate redisTemplate;
     private final LogisticsDispatchService logisticsDispatchService;
     private final ObjectMapper objectMapper;
+    private final com.fooddelivery.delivery.repository.OrderReadinessRepository readinessRepository;
+    private final com.fooddelivery.delivery.repository.OrderAssignmentRepository assignmentRepository;
 
     @Override
     public Class<com.fooddelivery.common.event.OrderScopedEvent> eventClass() {
@@ -29,6 +31,9 @@ private final StringRedisTemplate redisTemplate;
         // IMPLY their status, and only ORDER_STATUS_UPDATED carries one on the wire.
         java.util.UUID orderUuid = event.orderUuid();
         String orderId = orderUuid != null ? orderUuid.toString() : null;
+        if (event instanceof com.fooddelivery.common.event.OrderReadyEvent ready && orderUuid != null) {
+            recordReadyAt(orderUuid, ready.getOccurredAt());
+        }
         String status = null;
         if (EventType.ORDER_STATUS_UPDATED.name().equals(eventType)) {
             status = event instanceof com.fooddelivery.common.event.OrderStatusUpdatedEvent updated
@@ -101,6 +106,28 @@ private final StringRedisTemplate redisTemplate;
         } else {
             log.warn("Ignoring {} for order {}: no usable status on the event.", eventType, orderId);
         }
+    }
+
+    /**
+     * When the restaurant marked the food ready, from the event (the restaurant's clock), into the database: the overdue
+     * sweeper measures a rider from it (D21) and must not read it from the Redis restaurant-status key, which has a TTL and
+     * holds no time. Kept in order_readiness for an order nobody holds yet, and on the assignment when someone does. The
+     * first time wins, so a replay changes nothing.
+     */
+    void recordReadyAt(java.util.UUID orderId, java.time.Instant readyAt) {
+        if (readyAt == null) {
+            return;
+        }
+        if (readinessRepository.findById(orderId).isEmpty()) {
+            readinessRepository.save(new com.fooddelivery.delivery.entity.OrderReadiness(orderId, readyAt));
+        }
+        assignmentRepository.findByOrderId(orderId)
+                .filter(assignment -> assignment.getReadyAt() == null)
+                .ifPresent(assignment -> {
+                    assignment.setReadyAt(readyAt);
+                    assignmentRepository.save(assignment);
+                });
+        log.info("ORDER_READY_AT_RECORDED orderId={} readyAt={}", orderId, readyAt);
     }
 
     @Override

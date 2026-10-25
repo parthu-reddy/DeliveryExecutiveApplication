@@ -37,15 +37,44 @@ public class OrderAssignmentService {
 
     /**
      * DRIVER_ASSIGNED for a rider who accepted the ping. Public so the producer contract (BaseMessagingClass) publishes
-     * exactly this event rather than a hand-built copy.
+     * exactly this event rather than a hand-built copy. {@code riderAt} is the rider's position when the assignment
+     * committed ({@link #riderPosition}), null when there was no fresh one; OrderService routes from it to the outlet for
+     * the expected arrival time (DelayPenalties Phase 2, T3e).
      */
-    public com.fooddelivery.common.event.DriverAssignedEvent assignedEvent(UUID orderId, UUID driverId, String driverName) {
+    public com.fooddelivery.common.event.DriverAssignedEvent assignedEvent(
+            UUID orderId, UUID driverId, String driverName, org.springframework.data.geo.Point riderAt) {
         return com.fooddelivery.common.event.DriverAssignedEvent.builder()
                 .orderId(orderId.toString())
                 .driverId(driverId.toString())
                 .driverName(driverName)
+                .riderLat(riderAt == null ? null : riderAt.getY())
+                .riderLng(riderAt == null ? null : riderAt.getX())
                 .occurredAt(clock.instant())
                 .build();
+    }
+
+    /**
+     * The rider's last accepted fix in their city's dispatch index, if their last ping is at most {@link
+     * RiderLiveness#MAX_SIGNAL_AGE_MS} old; otherwise null. Fixes reach the index only through RiderLocationGuard. Best
+     * effort: Redis being down gives null, and the assignment goes ahead without an expected arrival time.
+     */
+    public org.springframework.data.geo.Point riderPosition(UUID driverId, String cityId) {
+        if (cityId == null) {
+            return null;
+        }
+        try {
+            Double lastPing = redisTemplate.opsForZSet().score(RiderLiveness.LAST_PING_KEY, driverId.toString());
+            if (lastPing == null || lastPing < clock.millis() - RiderLiveness.MAX_SIGNAL_AGE_MS) {
+                return null;
+            }
+            java.util.List<org.springframework.data.geo.Point> positions =
+                    redisTemplate.opsForGeo().position("drivers:geo:" + cityId, driverId.toString());
+            return positions == null || positions.isEmpty() ? null : positions.get(0);
+        } catch (Exception unavailable) {
+            log.warn("RIDER_POSITION_UNAVAILABLE driverId={} cityId={} errorType={}", driverId, cityId,
+                    unavailable.getClass().getSimpleName());
+            return null;
+        }
     }
 
     public String getPendingPing(UUID driverId) {
@@ -148,7 +177,8 @@ public class OrderAssignmentService {
                                                         new IllegalArgumentException(
                                                                 "Driver not found: " + driverId));
                         com.fooddelivery.common.event.DriverAssignedEvent event =
-                                assignedEvent(orderId, driverId, executive.getFullName());
+                                assignedEvent(orderId, driverId, executive.getFullName(),
+                                        riderPosition(driverId, executive.getCityId()));
                         com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent =
                                 outboxEventHelper.createOutboxEvent(
                                         com.fooddelivery.common.constants.AggregateType.ORDER,
@@ -320,6 +350,8 @@ public class OrderAssignmentService {
                                     com.fooddelivery.common.event.OrderDriverRejectedEvent.builder()
                                             .orderId(orderId.toString())
                                             .driverId(driverId.toString())
+                                            .reason(com.fooddelivery.common.enums.RiderReleaseReason.PING_DECLINED)
+                                            .occurredAt(clock.instant())
                                             .build();
                             com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent =
                                     outboxEventHelper.createOutboxEvent(
@@ -470,6 +502,8 @@ public class OrderAssignmentService {
                                 com.fooddelivery.common.event.OrderDriverRejectedEvent.builder()
                                         .orderId(orderIdStr)
                                         .driverId(null)
+                                        .reason(com.fooddelivery.common.enums.RiderReleaseReason.PING_TIMEOUT)
+                                        .occurredAt(clock.instant())
                                         .build();
                         com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent =
                                 outboxEventHelper.createOutboxEvent(
@@ -668,6 +702,8 @@ public class OrderAssignmentService {
                 .acceptOrder(target);
         repository.save(target);
 
+        // E5: an admin may force-assign a far rider; the expected arrival is routed from that rider's own position.
+        org.springframework.data.geo.Point targetAt = riderPosition(target.getId(), dispatch.dispatchCityId());
         com.fooddelivery.common.event.DriverAssignedEvent event =
                 com.fooddelivery.common.event.DriverAssignedEvent.builder()
                         .orderId(command.orderId().toString())
@@ -678,6 +714,8 @@ public class OrderAssignmentService {
                         .reason(command.reason())
                         .assignmentSource("MANUAL_INTERVENTION")
                         .fromDriverId(previousDriverId == null ? null : previousDriverId.toString())
+                        .riderLat(targetAt == null ? null : targetAt.getY())
+                        .riderLng(targetAt == null ? null : targetAt.getX())
                         .occurredAt(clock.instant())
                         .build();
         com.fooddelivery.common.outbox.entity.OutboxEventEntity outboxEvent =
@@ -773,6 +811,9 @@ public class OrderAssignmentService {
         assignmentDetails.put("pickupOtp", emptyToNull(details.get("pickupOtp")));
         assignmentDetails.put("deliveryOtp", emptyToNull(details.get("deliveryOtp")));
         assignmentDetails.put("paymentMethod", emptyToNull(details.get("paymentMethod")));
+        assignmentDetails.put("dropLat", emptyToNull(details.get("deliveryLat")));
+        assignmentDetails.put("dropLng", emptyToNull(details.get("deliveryLng")));
+        putTargetsFromPayload(command.orderId(), assignmentDetails);
         return new ManualDispatchContext(
                 assignmentDetails, dispatchCityId, UUID.fromString(details.get("customerId")));
     }
@@ -1067,6 +1108,7 @@ public class OrderAssignmentService {
                 result.put("pickupOtp", emptyToNull(root.path("pickupOtp").asText(null)));
                 result.put("deliveryOtp", emptyToNull(root.path("deliveryOtp").asText(null)));
                 result.put("paymentMethod", emptyToNull(root.path("paymentMethod").asText(null)));
+                putTargets(root, result);
                 return result;
             } catch (Exception e) {
                 log.error(
@@ -1086,6 +1128,9 @@ public class OrderAssignmentService {
                 result.put("pickupOtp", emptyToNull(details.get("pickupOtp")));
                 result.put("deliveryOtp", emptyToNull(details.get("deliveryOtp")));
                 result.put("paymentMethod", emptyToNull(details.get("paymentMethod")));
+                // The order knows the door, not the outlet: an outlet arrival on this path is recorded unverified.
+                result.put("dropLat", emptyToNull(details.get("deliveryLat")));
+                result.put("dropLng", emptyToNull(details.get("deliveryLng")));
                 log.info(
                         "Successfully fetched OTP fallback from customer-service for order {}:"
                             + " pickupOtpPresent={}, deliveryOtpPresent={}",
@@ -1107,6 +1152,46 @@ public class OrderAssignmentService {
                     e);
         }
         return result;
+    }
+
+    /**
+     * The outlet and the door as the dispatch payload (the cached OrderAcceptedEvent) states them. Copied onto the
+     * assignment once, at assignment; the arrival check reads them from there (DelayPenalties Phase 2).
+     */
+    private static void putTargets(com.fasterxml.jackson.databind.JsonNode root, java.util.Map<String, String> into) {
+        into.put("pickupLat", number(root, "restaurantLat"));
+        into.put("pickupLng", number(root, "restaurantLng"));
+        into.put("dropLat", number(root, "deliveryLat"));
+        into.put("dropLng", number(root, "deliveryLng"));
+    }
+
+    private static String number(com.fasterxml.jackson.databind.JsonNode root, String field) {
+        com.fasterxml.jackson.databind.JsonNode value = root.path(field);
+        return value.isNumber() ? value.asText() : null;
+    }
+
+    /** The manual path reads the order from OrderService; the outlet is only in the dispatch payload, when it still exists. */
+    private void putTargetsFromPayload(UUID orderId, java.util.Map<String, String> into) {
+        try {
+            String payload = redisTemplate.opsForValue().get(RedisKeyConstants.PREFIX_ORDER_DISPATCH_PAYLOAD + orderId);
+            if (payload != null) {
+                putTargets(objectMapper.readTree(payload), into);
+            }
+        } catch (Exception unreadable) {
+            log.warn("DISPATCH_TARGETS_UNAVAILABLE orderId={} errorType={}", orderId, unreadable.getClass().getSimpleName());
+        }
+    }
+
+    private static Double coordinate(java.util.Map<String, String> details, String key) {
+        String value = details.get(key);
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Double.valueOf(value);
+        } catch (NumberFormatException unreadable) {
+            return null;
+        }
     }
 
     /**
@@ -1159,8 +1244,21 @@ public class OrderAssignmentService {
         assignment.setAssignedAt(java.time.Instant.now());
         assignment.setReleasedAt(null);
         if (riderChanged) {
-            // A replacement rider has not confirmed any handover state from the former rider.
-            assignment.setDeliveryStatus(null);
+            // A replacement rider has not confirmed any handover state from the former rider, and the former rider's
+            // arrivals, contest and overdue notice are not theirs (DelayPenalties D8).
+            assignment.clearRiderSteps();
+        }
+        if (coordinate(dispatchDetails, "pickupLat") != null && coordinate(dispatchDetails, "pickupLng") != null) {
+            assignment.setPickupLat(coordinate(dispatchDetails, "pickupLat"));
+            assignment.setPickupLng(coordinate(dispatchDetails, "pickupLng"));
+        }
+        if (coordinate(dispatchDetails, "dropLat") != null && coordinate(dispatchDetails, "dropLng") != null) {
+            assignment.setDropLat(coordinate(dispatchDetails, "dropLat"));
+            assignment.setDropLng(coordinate(dispatchDetails, "dropLng"));
+        }
+        if (assignment.getReadyAt() == null) {
+            // ORDER_READY usually arrives before anyone holds the order (D21).
+            assignmentRepository.readyAtOf(orderId).ifPresent(assignment::setReadyAt);
         }
         if (pickupOtp != null) {
             assignment.setPickupOtp(pickupOtp);

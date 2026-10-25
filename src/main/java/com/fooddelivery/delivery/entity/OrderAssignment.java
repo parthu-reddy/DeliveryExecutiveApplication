@@ -76,12 +76,84 @@ public class OrderAssignment {
     @Column(name = "delivery_status")
     private com.fooddelivery.common.enums.DeliveryStatus deliveryStatus;
 
+    /*
+     * Where the rider is going, copied at assignment from the dispatch payload (the OrderAcceptedEvent DeliveryExecutive
+     * cached when it dispatched). The arrival check reads them from here, never from Redis: that payload has a 24-hour
+     * TTL and is deleted when the delivery ends, and Redis is not what a decision is read from (DelayPenalties Phase 2).
+     */
+    @Column(name = "pickup_lat")
+    private Double pickupLat;
+    @Column(name = "pickup_lng")
+    private Double pickupLng;
+    @Column(name = "drop_lat")
+    private Double dropLat;
+    @Column(name = "drop_lng")
+    private Double dropLng;
+
+    /** When the restaurant marked the food ready (OrderReadyEvent.occurredAt). Belongs to the order, not the rider. */
+    @Column(name = "ready_at")
+    private Instant readyAt;
+
+    /*
+     * The current rider's arrivals, on this service's clock, in the transaction that published them. They belong to the
+     * rider, so a reassignment clears them (recordAssignment). Verified means a fresh live position within the radius.
+     */
+    @Column(name = "at_restaurant_at")
+    private Instant atRestaurantAt;
+    @Column(name = "at_restaurant_verified")
+    private Boolean atRestaurantVerified;
+    @Column(name = "at_drop_at")
+    private Instant atDropAt;
+    @Column(name = "at_drop_verified")
+    private Boolean atDropVerified;
+
+    /** The rider tapped "Food not ready yet" (READY_CONTESTED); accepted once per rider. */
+    @Column(name = "ready_contested_at")
+    private Instant readyContestedAt;
+
+    /**
+     * The rider's expected arrival at the outlet (T3e), as OrderService computed it from the route at assignment. Copied
+     * here by OverdueRiderSweeper the first time OrderService has it; it is written once there, so it never changes.
+     */
+    @Column(name = "expected_at_restaurant_at")
+    private Instant expectedAtRestaurantAt;
+
+    /** OverdueRiderSweeper told the rider they are late for the outlet; it tells them once. */
+    @Column(name = "overdue_notified_at")
+    private Instant overdueNotifiedAt;
+
     /** Records a confirmed step; a step behind the one already recorded is ignored. */
     public void recordDeliveryStatus(com.fooddelivery.common.enums.DeliveryStatus confirmed) {
         if (confirmed == null) return;
         if (deliveryStatus == null || confirmed.getSequence() > deliveryStatus.getSequence()) {
             deliveryStatus = confirmed;
         }
+    }
+
+    /**
+     * Records the current rider's arrival at the outlet or at the door. The first tap wins: a repeated tap keeps the first
+     * time and its verification. Any other step records nothing.
+     */
+    public void recordArrival(com.fooddelivery.common.enums.DeliveryStatus step, Instant at, boolean verified) {
+        if (step == com.fooddelivery.common.enums.DeliveryStatus.AT_RESTAURANT && atRestaurantAt == null) {
+            atRestaurantAt = at;
+            atRestaurantVerified = verified;
+        } else if (step == com.fooddelivery.common.enums.DeliveryStatus.AT_DROP && atDropAt == null) {
+            atDropAt = at;
+            atDropVerified = verified;
+        }
+    }
+
+    /** A new rider holds the order: what the previous one did at the outlet and the door is not theirs. */
+    public void clearRiderSteps() {
+        deliveryStatus = null;
+        atRestaurantAt = null;
+        atRestaurantVerified = null;
+        atDropAt = null;
+        atDropVerified = null;
+        readyContestedAt = null;
+        expectedAtRestaurantAt = null;
+        overdueNotifiedAt = null;
     }
 
     /**

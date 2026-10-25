@@ -130,13 +130,28 @@ public abstract class BaseMessagingClass {
     /** ORDER_AT_RESTAURANT as AtRestaurantStateStrategy writes it to the outbox. */
     public void fireOrderAtRestaurant() throws Exception {
         publishStep(new com.fooddelivery.delivery.service.state.order.AtRestaurantStateStrategy(
-                org.mockito.Mockito.mock(StringRedisTemplate.class), mapper,
+                riderAt(OUTLET_LAT + 0.0003, OUTLET_LNG), mapper,
                 org.mockito.Mockito.mock(org.springframework.transaction.support.TransactionTemplate.class),
                 org.mockito.Mockito.mock(com.fooddelivery.common.outbox.repository.OutboxEventRepository.class),
                 org.mockito.Mockito.mock(com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository.class),
                 org.mockito.Mockito.mock(com.fooddelivery.delivery.service.LogisticsDispatchService.class),
                 org.mockito.Mockito.mock(com.fooddelivery.delivery.repository.OrderAssignmentRepository.class), CLOCK),
                 com.fooddelivery.common.enums.DeliveryStatus.AT_RESTAURANT);
+    }
+
+    /**
+     * ORDER_AT_DROP as AtDropStateStrategy writes it to the outbox: the rider's live position is about 600 m from the pin,
+     * so the tap is recorded unverified, with its distance (D16).
+     */
+    public void fireOrderAtDrop() throws Exception {
+        publishStep(new com.fooddelivery.delivery.service.state.order.AtDropStateStrategy(
+                riderAt(DROP_LAT + 0.0054, DROP_LNG), mapper,
+                org.mockito.Mockito.mock(org.springframework.transaction.support.TransactionTemplate.class),
+                org.mockito.Mockito.mock(com.fooddelivery.common.outbox.repository.OutboxEventRepository.class),
+                org.mockito.Mockito.mock(com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository.class),
+                org.mockito.Mockito.mock(com.fooddelivery.delivery.service.LogisticsDispatchService.class),
+                org.mockito.Mockito.mock(com.fooddelivery.delivery.repository.OrderAssignmentRepository.class), CLOCK),
+                com.fooddelivery.common.enums.DeliveryStatus.AT_DROP);
     }
 
     /** ORDER_STATUS_UPDATED (OUT_FOR_DELIVERY) as OutForDeliveryStateStrategy writes it to the outbox. */
@@ -175,12 +190,31 @@ public abstract class BaseMessagingClass {
                 org.mockito.Mockito.mock(com.fooddelivery.delivery.repository.OrderAssignmentRepository.class), mapper,
                 org.mockito.Mockito.mock(com.fooddelivery.delivery.client.OrderServiceClient.class), CLOCK);
         publish(com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED,
-                service.assignedEvent(ORDER_ID, DRIVER_ID, "Ravi Kumar"));
+                service.assignedEvent(ORDER_ID, DRIVER_ID, "Ravi Kumar", new org.springframework.data.geo.Point(77.5801, 12.9612)));
     }
 
+    private static final double OUTLET_LAT = 12.971598, OUTLET_LNG = 77.594562, DROP_LAT = 12.935242, DROP_LNG = 77.624400;
+
+    /** A Redis whose live position for ORDER_ID is this rider at (lat, lng), seen 5 s before CLOCK: fresh. */
+    private StringRedisTemplate riderAt(double lat, double lng) throws Exception {
+        StringRedisTemplate redis = org.mockito.Mockito.mock(StringRedisTemplate.class);
+        @SuppressWarnings("unchecked")
+        org.springframework.data.redis.core.ValueOperations<String, String> values =
+                org.mockito.Mockito.mock(org.springframework.data.redis.core.ValueOperations.class);
+        org.mockito.Mockito.when(redis.opsForValue()).thenReturn(values);
+        org.mockito.Mockito.when(values.get(com.fooddelivery.common.dto.maps.LiveRiderLocation.redisKey(ORDER_ID.toString())))
+                .thenReturn(mapper.writeValueAsString(new com.fooddelivery.common.dto.maps.LiveRiderLocation(
+                        DRIVER_ID.toString(), ORDER_ID.toString(), "BLR", lat, lng, CLOCK.millis() - 5_000)));
+        return redis;
+    }
+
+    /** The step as the strategy computes it for this assignment -- time, geo check and event -- published as written. */
     private void publishStep(com.fooddelivery.delivery.service.state.order.AbstractDeliveryOrderState strategy,
                              com.fooddelivery.common.enums.DeliveryStatus status) throws Exception {
-        publish(strategy.getEventType(), strategy.outboxPayload(DRIVER_ID, ORDER_ID, status, "123456", "567890"));
+        com.fooddelivery.delivery.entity.OrderAssignment assignment = com.fooddelivery.delivery.entity.OrderAssignment.builder()
+                .orderId(ORDER_ID).driverId(DRIVER_ID).state(com.fooddelivery.delivery.entity.OrderAssignment.State.ASSIGNED)
+                .pickupLat(OUTLET_LAT).pickupLng(OUTLET_LNG).dropLat(DROP_LAT).dropLng(DROP_LNG).build();
+        publish(strategy.getEventType(), strategy.step(assignment, DRIVER_ID, status, "567890").event());
     }
 
     /** One outbox row, serialized by the Boot ObjectMapper as production does, through the real OutboxProcessor. */

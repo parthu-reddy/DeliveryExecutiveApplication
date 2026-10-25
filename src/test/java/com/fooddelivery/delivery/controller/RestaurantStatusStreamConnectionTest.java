@@ -142,7 +142,9 @@ class RestaurantStatusStreamConnectionTest {
     // Registered only through withUserConfiguration. Not @Configuration: this package is component-
     // scanned by OpenApiGenerationTest, which then found a second DeliveryExecutiveController bean.
     static class StreamConfiguration {
-        @Bean PersistenceManagedTypes managedTypes() { return PersistenceManagedTypes.of(OrderAssignment.class.getName()); }
+        @Bean PersistenceManagedTypes managedTypes() { return PersistenceManagedTypes.of(OrderAssignment.class.getName(),
+                // OrderAssignmentRepository.readyAtOf queries it, so the repository cannot be built without it.
+                com.fooddelivery.delivery.entity.OrderReadiness.class.getName()); }
         @Bean OrderAssignmentRepository assignments(EntityManagerFactory factory) {
             return new JpaRepositoryFactory(SharedEntityManagerCreator.createSharedEntityManager(factory)).getRepository(OrderAssignmentRepository.class);
         }

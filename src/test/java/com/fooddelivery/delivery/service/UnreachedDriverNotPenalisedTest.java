@@ -111,7 +111,9 @@ class UnreachedDriverNotPenalisedTest {
         org.mockito.ArgumentCaptor<com.fooddelivery.common.outbox.entity.OutboxEventEntity> captor =
                 org.mockito.ArgumentCaptor.forClass(com.fooddelivery.common.outbox.entity.OutboxEventEntity.class);
         OutboxEventRepository outbox = mock(OutboxEventRepository.class);
-        OutboxEventHelper helper = new OutboxEventHelper(new ObjectMapper());
+        // The event now carries occurredAt (an Instant), which a bare ObjectMapper cannot write.
+        ObjectMapper json = new ObjectMapper().findAndRegisterModules();
+        OutboxEventHelper helper = new OutboxEventHelper(json);
         TransactionTemplate tx = mock(TransactionTemplate.class);
         org.mockito.Mockito.doAnswer(inv -> {
             java.util.function.Consumer<org.springframework.transaction.TransactionStatus> body = inv.getArgument(0);
@@ -130,7 +132,7 @@ class UnreachedDriverNotPenalisedTest {
         svc.timeoutOrderPing(ORDER);
 
         verify(outbox).save(captor.capture());
-        com.fooddelivery.common.event.OrderDriverRejectedEvent published = new ObjectMapper()
+        com.fooddelivery.common.event.OrderDriverRejectedEvent published = json
                 .readValue(captor.getValue().getPayload(),
                         com.fooddelivery.common.event.OrderDriverRejectedEvent.class);
         org.assertj.core.api.Assertions.assertThat(published.getDriverId())

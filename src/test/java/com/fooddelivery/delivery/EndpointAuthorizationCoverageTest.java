@@ -88,7 +88,10 @@ class EndpointAuthorizationCoverageTest {
             "DeliveryExecutiveController#updateOrderStatus",
             // The handler denies unless order_assignments authorises this driver (added in Phase 2 --
             // this endpoint was genuinely unbound and the scan is what found it).
-            "DeliveryExecutiveController#streamRestaurantStatus"
+            "DeliveryExecutiveController#streamRestaurantStatus",
+            // OrderExecutionService.contestReady denies unless order_assignments authorises this driver
+            // for the order (DelayPenalties Phase 2).
+            "DeliveryExecutiveController#contestReady"
 );
 
     @Test

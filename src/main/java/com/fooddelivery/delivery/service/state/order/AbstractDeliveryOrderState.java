@@ -32,6 +32,10 @@ protected final StringRedisTemplate redisTemplate;
     /** The rider's step is stamped with this clock when the delivery service accepts it (DelayPenalties Phase 1). */
     protected final java.time.Clock clock;
 
+    /** D10. A field, not a constructor argument, so the six strategies' constructors stay as they are. */
+    @org.springframework.beans.factory.annotation.Value("${delivery.arrival.verified-radius-metres:150}")
+    protected double arrivalRadiusMetres = ArrivalVerifier.DEFAULT_RADIUS_METRES;
+
 
     /**
      * Fails closed on the assignment.
@@ -55,16 +59,41 @@ protected final StringRedisTemplate redisTemplate;
             throw new AccessDeniedException("This order is not assigned to you.");
         }
         validate(assignment, pickupOtp, deliveryOtp);
+        // Read before the transaction: the arrival check is a Redis read and never fails the step.
+        Step step = step(assignment, driverId, status, deliveryOtp);
         transactionTemplate.execute(txStatus -> {
             // Same transaction as the event: /orders/active overlays this, so the rider never sees
             // a step behind one the delivery service has already accepted.
             assignment.recordDeliveryStatus(status);
+            if (step.arrival() != null) {
+                // An unverified arrival is recorded like a verified one; only the flag differs (DelayPenalties D10).
+                assignment.recordArrival(status, step.occurredAt(), step.arrival().verified());
+            }
             assignmentRepository.save(assignment);
-            saveOutboxEvent(driverId, orderId, status, pickupOtp, deliveryOtp);
+            saveOutboxEvent(orderId, step.event());
             updateExecutiveState(driverId, goOfflineAfter);
             return null;
         });
         postProcess(driverId, orderId, goOfflineAfter);
+    }
+
+    /**
+     * What one confirmed step writes: its time on {@link #clock}, the arrival check (null for a step that is not an
+     * arrival) and the event. The assignment and the outbox row are written from the same value, so the delivery service's
+     * record agrees with what it published.
+     */
+    public record Step(java.time.Instant occurredAt, ArrivalVerifier.Result arrival, Object event) {
+    }
+
+    /**
+     * Public so the producer contract (BaseMessagingClass) publishes exactly what this service writes to the outbox,
+     * arrival check included, rather than a hand-built copy.
+     */
+    public Step step(OrderAssignment assignment, UUID driverId, DeliveryStatus status, String deliveryOtp) {
+        java.time.Instant occurredAt = clock.instant();
+        ArrivalVerifier.Result arrival = new ArrivalVerifier(redisTemplate, objectMapper, clock, arrivalRadiusMetres)
+                .check(assignment, driverId, status);
+        return new Step(occurredAt, arrival, outboxPayload(driverId, assignment.getOrderId(), status, deliveryOtp, occurredAt, arrival));
     }
 
     protected void validate(OrderAssignment assignment, String pickupOtp, String deliveryOtp) {
@@ -115,21 +144,31 @@ protected final StringRedisTemplate redisTemplate;
     }
 
     /**
-     * The event this step publishes. Public so the producer contract (BaseMessagingClass) publishes exactly what this
-     * service writes to the outbox, not a hand-built copy.
+     * The event this step publishes.
      *
      * <p>Every milestone carries {@code occurredAt} from {@link #clock}: OrderService stores it as the time the step
      * happened, whatever Kafka does to the message afterwards. OUT_FOR_DELIVERY is an {@code OrderStatusUpdatedEvent}, the
-     * class every consumer binds ORDER_STATUS_UPDATED to; it no longer carries the pickup OTP, which no consumer read.
+     * class every consumer binds ORDER_STATUS_UPDATED to; it no longer carries the pickup OTP, which no consumer read. The
+     * two arrivals carry the geo check's outcome.
      */
-    public Object outboxPayload(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp) {
-        java.time.Instant occurredAt = clock.instant();
+    private Object outboxPayload(UUID driverId, UUID orderId, DeliveryStatus status, String deliveryOtp,
+                                 java.time.Instant occurredAt, ArrivalVerifier.Result arrival) {
         switch (getEventType()) {
             case ORDER_AT_RESTAURANT:
                 return com.fooddelivery.common.event.DriverAtRestaurantEvent.builder()
                         .orderId(orderId.toString())
                         .driverId(driverId.toString())
                         .occurredAt(occurredAt)
+                        .verified(arrival.verified())
+                        .distanceMetres(arrival.distanceMetres())
+                        .build();
+            case ORDER_AT_DROP:
+                return com.fooddelivery.common.event.DriverAtDropEvent.builder()
+                        .orderId(orderId.toString())
+                        .driverId(driverId.toString())
+                        .occurredAt(occurredAt)
+                        .verified(arrival.verified())
+                        .distanceMetres(arrival.distanceMetres())
                         .build();
             case ORDER_STATUS_UPDATED:
                 return com.fooddelivery.common.event.OrderStatusUpdatedEvent.builder()
@@ -154,8 +193,7 @@ protected final StringRedisTemplate redisTemplate;
         }
     }
 
-    protected void saveOutboxEvent(UUID driverId, UUID orderId, DeliveryStatus status, String pickupOtp, String deliveryOtp) {
-        Object event = outboxPayload(driverId, orderId, status, pickupOtp, deliveryOtp);
+    protected void saveOutboxEvent(UUID orderId, Object event) {
         String payload;
         try {
             payload = objectMapper.writeValueAsString(event);
@@ -163,8 +201,8 @@ protected final StringRedisTemplate redisTemplate;
             throw new RuntimeException("Failed to serialize status update payload", e);
         }
         OutboxEventEntity outboxEvent = OutboxEventEntity.builder().id(UUID.randomUUID()).aggregateType(com.fooddelivery.common.constants.AggregateType.ORDER).aggregateId(orderId.toString()).eventType(getEventType()).payload(payload).createdAt(Instant.now()).status(OutboxStatus.UNPROCESSED).build();
-        log.info("DELIVERY_EVENT_ENQUEUED orderId={} driverId={} eventType={} eventId={}",
-                orderId, driverId, getEventType().name(), outboxEvent.getId());
+        log.info("DELIVERY_EVENT_ENQUEUED orderId={} eventType={} eventId={}",
+                orderId, getEventType().name(), outboxEvent.getId());
         outboxEventRepository.save(outboxEvent);
     }
 
