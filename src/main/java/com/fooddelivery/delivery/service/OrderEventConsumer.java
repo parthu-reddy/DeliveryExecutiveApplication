@@ -7,6 +7,7 @@ import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.annotation.DltHandler;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Service;
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.UUID;
 import com.fooddelivery.delivery.entity.DeliveryExecutive;
@@ -58,10 +59,14 @@ private final ObjectMapper objectMapper;
     private final IIdempotencyKeyRepository idempotencyKeyRepository;
     private final TransactionTemplate transactionTemplate;
     private final MeterRegistry meterRegistry;
+    private Counter dineInSkipped;
 
 
     @jakarta.annotation.PostConstruct
     public void init() {
+        dineInSkipped = Counter.builder("delivery.order.event.skipped").tag("reason", "dine_in")
+                .description("Order events acked unhandled because the order is DINE_IN: no rider, no dispatch")
+                .register(meterRegistry);
         for (com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy<?> strategy : strategies) {
             for (String eventType : strategy.getEventTypes()) {
                 this.strategyMap.computeIfAbsent(eventType, k -> new java.util.ArrayList<>()).add(strategy);
@@ -125,6 +130,13 @@ private final ObjectMapper objectMapper;
                                 .orElseThrow(() -> new IllegalStateException(
                                         "bindIf returned empty for " + eventType
                                             + " despite an exact event-type match"));
+                        if (isDineIn(typedEvent)) {
+                            // A DINE_IN order is served at its table: nothing here may dispatch, assign or wait for it.
+                            dineInSkipped.increment();
+                            log.info("DELIVERY_EVENT_IGNORED eventId={} eventType={} orderId={} reason=dine-in",
+                                    eventId, eventType, typedEvent.orderUuid());
+                            return null;
+                        }
                         log.info("DELIVERY_EVENT_HANDLING eventId={} eventType={} orderId={} strategyCount={}",
                                 eventId, eventType, typedEvent.orderUuid(), matchedStrategies.size());
                         for (com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy<?> strategy : matchedStrategies) {
@@ -146,6 +158,10 @@ private final ObjectMapper objectMapper;
                     eventId, e.getClass().getSimpleName(), e.getMessage(), e);
             throw e;
         }
+    }
+
+    private static boolean isDineIn(com.fooddelivery.common.event.OrderScopedEvent event) {
+        return event instanceof com.fooddelivery.common.event.FulfilmentScopedEvent f && f.getFulfilmentType() == com.fooddelivery.common.enums.FulfilmentType.DINE_IN;
     }
 
     @DltHandler
