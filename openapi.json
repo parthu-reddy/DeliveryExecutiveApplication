@@ -9,41 +9,6 @@
     "description" : "Generated server url"
   } ],
   "paths" : {
-    "/api/delivery/drivers/{driverId}/orders/{orderId}/ready-contested" : {
-      "post" : {
-        "tags" : [ "delivery-executive-controller" ],
-        "operationId" : "contestReady",
-        "parameters" : [ {
-          "name" : "driverId",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        }, {
-          "name" : "orderId",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseVoid"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/delivery-onboarding/application" : {
       "get" : {
         "tags" : [ "delivery-application-controller" ],
@@ -546,6 +511,41 @@
       "post" : {
         "tags" : [ "delivery-executive-controller" ],
         "operationId" : "rejectOrder",
+        "parameters" : [ {
+          "name" : "driverId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "orderId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/delivery/drivers/{driverId}/orders/{orderId}/ready-contested" : {
+      "post" : {
+        "tags" : [ "delivery-executive-controller" ],
+        "operationId" : "contestReady",
         "parameters" : [ {
           "name" : "driverId",
           "in" : "path",
@@ -1880,7 +1880,7 @@
             "type" : "integer",
             "format" : "int32"
           },
-          "numberOfElements" : {
+          "size" : {
             "type" : "integer",
             "format" : "int32"
           },
@@ -1888,9 +1888,8 @@
             "type" : "integer",
             "format" : "int32"
           },
-          "size" : {
-            "type" : "integer",
-            "format" : "int32"
+          "sort" : {
+            "$ref" : "#/components/schemas/SortObject"
           },
           "content" : {
             "type" : "array",
@@ -1904,8 +1903,9 @@
           "last" : {
             "type" : "boolean"
           },
-          "sort" : {
-            "$ref" : "#/components/schemas/SortObject"
+          "numberOfElements" : {
+            "type" : "integer",
+            "format" : "int32"
           },
           "pageable" : {
             "$ref" : "#/components/schemas/PageableObject"
@@ -1919,12 +1919,15 @@
         "required" : [ "offset", "pageNumber", "pageSize", "paged", "unpaged" ],
         "type" : "object",
         "properties" : {
+          "sort" : {
+            "$ref" : "#/components/schemas/SortObject"
+          },
           "offset" : {
             "type" : "integer",
             "format" : "int64"
           },
-          "sort" : {
-            "$ref" : "#/components/schemas/SortObject"
+          "unpaged" : {
+            "type" : "boolean"
           },
           "paged" : {
             "type" : "boolean"
@@ -1936,9 +1939,6 @@
           "pageSize" : {
             "type" : "integer",
             "format" : "int32"
-          },
-          "unpaged" : {
-            "type" : "boolean"
           }
         }
       },
@@ -1996,7 +1996,7 @@
             "type" : "integer",
             "format" : "int32"
           },
-          "numberOfElements" : {
+          "size" : {
             "type" : "integer",
             "format" : "int32"
           },
@@ -2004,9 +2004,8 @@
             "type" : "integer",
             "format" : "int32"
           },
-          "size" : {
-            "type" : "integer",
-            "format" : "int32"
+          "sort" : {
+            "$ref" : "#/components/schemas/SortObject"
           },
           "content" : {
             "type" : "array",
@@ -2020,8 +2019,9 @@
           "last" : {
             "type" : "boolean"
           },
-          "sort" : {
-            "$ref" : "#/components/schemas/SortObject"
+          "numberOfElements" : {
+            "type" : "integer",
+            "format" : "int32"
           },
           "pageable" : {
             "$ref" : "#/components/schemas/PageableObject"
@@ -2083,7 +2083,7 @@
       "SliceDeliveryApplicationQueueDto" : {
         "type" : "object",
         "properties" : {
-          "numberOfElements" : {
+          "size" : {
             "type" : "integer",
             "format" : "int32"
           },
@@ -2091,9 +2091,8 @@
             "type" : "integer",
             "format" : "int32"
           },
-          "size" : {
-            "type" : "integer",
-            "format" : "int32"
+          "sort" : {
+            "$ref" : "#/components/schemas/SortObject"
           },
           "content" : {
             "type" : "array",
@@ -2107,8 +2106,9 @@
           "last" : {
             "type" : "boolean"
           },
-          "sort" : {
-            "$ref" : "#/components/schemas/SortObject"
+          "numberOfElements" : {
+            "type" : "integer",
+            "format" : "int32"
           },
           "pageable" : {
             "$ref" : "#/components/schemas/PageableObject"
@@ -2160,7 +2160,7 @@
           },
           "action" : {
             "type" : "string",
-            "enum" : [ "ORGANISATION_CREATED", "ORGANISATION_RENAMED", "ORGANISATION_SUSPENDED", "ORGANISATION_REINSTATED", "ORGANISATION_CLOSED", "MEMBER_INVITED", "INVITATION_ACCEPTED", "INVITATION_DECLINED", "INVITATION_REVOKED", "INVITATION_EXPIRED", "MEMBER_ROLE_CHANGED", "MEMBER_REMOVED", "OWNERSHIP_TRANSFERRED", "APPLICATION_DRAFT_CREATED", "APPLICATION_SUBMITTED", "APPLICATION_IN_REVIEW", "APPLICATION_APPROVED", "APPLICATION_REJECTED", "APPLICATION_SUSPENDED", "APPLICATION_REINSTATED", "KYC_DOCUMENT_VIEWED", "ADMIN_STEP_UP", "TOPUP_REQUESTED", "TOPUP_SETTLED", "TOPUP_FAILED", "CREATIVE_APPROVED", "CREATIVE_REJECTED", "CAMPAIGN_ACTIVATED", "CAMPAIGN_PAUSED", "KITCHEN_STAFF_ADDED", "KITCHEN_STAFF_UPDATED", "KITCHEN_STAFF_REMOVED", "KITCHEN_STAFF_BOUND", "KITCHEN_STAFF_LEFT", "KITCHEN_CHEF_FORCED_OFFLINE", "DELAY_PENALTY_WAIVED", "DELAY_PENALTY_DISPUTED", "DELAY_DISPUTE_UPHELD", "DELAY_PENALTY_PAUSE_CREATED", "DINING_TABLE_CREATED", "DINING_TABLE_UPDATED", "DINING_TABLE_DEACTIVATED", "DINING_TABLE_REACTIVATED", "DINING_SESSION_OPENED", "DINING_SESSION_HANDED_OFF", "DINING_SESSION_CLOSED", "DINING_CONSENT_REQUESTED", "DINING_CONSENT_VERIFIED", "DINING_CONSENT_FAILED", "DINING_ORDER_PLACED", "DINING_LINE_SERVED", "DINING_LINE_UNSERVED", "DINING_LINE_VOID_REQUESTED", "DINING_LINE_VOID_APPROVED" ]
+            "enum" : [ "ORGANISATION_CREATED", "ORGANISATION_RENAMED", "ORGANISATION_SUSPENDED", "ORGANISATION_REINSTATED", "ORGANISATION_CLOSED", "MEMBER_INVITED", "INVITATION_ACCEPTED", "INVITATION_DECLINED", "INVITATION_REVOKED", "INVITATION_EXPIRED", "MEMBER_ROLE_CHANGED", "MEMBER_REMOVED", "OWNERSHIP_TRANSFERRED", "APPLICATION_DRAFT_CREATED", "APPLICATION_SUBMITTED", "APPLICATION_IN_REVIEW", "APPLICATION_APPROVED", "APPLICATION_REJECTED", "APPLICATION_SUSPENDED", "APPLICATION_REINSTATED", "KYC_DOCUMENT_VIEWED", "ADMIN_STEP_UP", "TOPUP_REQUESTED", "TOPUP_SETTLED", "TOPUP_FAILED", "CREATIVE_APPROVED", "CREATIVE_REJECTED", "CAMPAIGN_ACTIVATED", "CAMPAIGN_PAUSED", "KITCHEN_STAFF_ADDED", "KITCHEN_STAFF_UPDATED", "KITCHEN_STAFF_REMOVED", "KITCHEN_STAFF_BOUND", "KITCHEN_STAFF_LEFT", "KITCHEN_CHEF_FORCED_OFFLINE", "DELAY_PENALTY_WAIVED", "DELAY_PENALTY_DISPUTED", "DELAY_DISPUTE_UPHELD", "DELAY_PENALTY_PAUSE_CREATED", "DINING_TABLE_CREATED", "DINING_TABLE_UPDATED", "DINING_TABLE_DEACTIVATED", "DINING_TABLE_REACTIVATED", "DINING_SESSION_OPENED", "DINING_SESSION_HANDED_OFF", "DINING_SESSION_CLOSED", "DINING_GUEST_LINKED", "DINING_GUEST_REFUSED", "DINING_ORDER_PLACED", "DINING_ORDER_COLLECTED", "DINING_ORDER_SETTLE_AT_RESTAURANT", "DINING_LINE_SERVED", "DINING_LINE_UNSERVED", "DINING_LINE_VOID_REQUESTED", "DINING_LINE_VOID_APPROVED" ]
           },
           "subjectType" : {
             "type" : "string"
@@ -2190,7 +2190,7 @@
       "SliceAuditEvent" : {
         "type" : "object",
         "properties" : {
-          "numberOfElements" : {
+          "size" : {
             "type" : "integer",
             "format" : "int32"
           },
@@ -2198,9 +2198,8 @@
             "type" : "integer",
             "format" : "int32"
           },
-          "size" : {
-            "type" : "integer",
-            "format" : "int32"
+          "sort" : {
+            "$ref" : "#/components/schemas/SortObject"
           },
           "content" : {
             "type" : "array",
@@ -2214,8 +2213,9 @@
           "last" : {
             "type" : "boolean"
           },
-          "sort" : {
-            "$ref" : "#/components/schemas/SortObject"
+          "numberOfElements" : {
+            "type" : "integer",
+            "format" : "int32"
           },
           "pageable" : {
             "$ref" : "#/components/schemas/PageableObject"

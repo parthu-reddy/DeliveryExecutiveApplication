@@ -56,7 +56,7 @@ class DineInOrderEventSkipTest {
         consumer.consumeOrderEvent("{\"orderId\":\"3f2504e0-4f89-41d3-9a0c-0305e82c3301\","
                 + "\"restaurantId\":\"9c8b7a65-1e2d-4f30-b5a6-7c8d9e0f1a23\",\"restaurantLat\":12.9716,\"restaurantLng\":77.5946,"
                 + "\"estimatedCompletionTime\":1792921800000,\"estimatedPrepTimeMinutes\":20,\"fulfilmentType\":\"DINE_IN\","
-                + "\"tableLabel\":\"T4\",\"customerName\":\"Ada\",\"paymentMethod\":\"UPI\",\"occurredAt\":\"2026-10-25T09:30:00Z\"}",
+                + "\"tableLabel\":\"T4\",\"customerName\":\"Ada\",\"paymentMethod\":\"UPI\",\"settlement\":\"APP\",\"occurredAt\":\"2026-10-25T09:30:00Z\"}",
                 Map.of("eventId", "6e7f8a9b-0c1d-4e2f-8a3b-4c5d6e7f8a9b", "eventType", "ORDER_ACCEPTED", "aggregateType", "ORDER"));
 
         verify(accepted, never()).dispatch(any(), anyString());
