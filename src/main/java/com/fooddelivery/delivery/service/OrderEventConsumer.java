@@ -59,14 +59,21 @@ private final ObjectMapper objectMapper;
     private final IIdempotencyKeyRepository idempotencyKeyRepository;
     private final TransactionTemplate transactionTemplate;
     private final MeterRegistry meterRegistry;
-    private Counter dineInSkipped;
+    /** One counter per fulfilment type that needs no rider, tagged with the type lower-cased (DiningPickupBooking Phase 2). */
+    private final java.util.Map<com.fooddelivery.common.enums.FulfilmentType, Counter> noRiderSkipped =
+            new java.util.EnumMap<>(com.fooddelivery.common.enums.FulfilmentType.class);
 
 
     @jakarta.annotation.PostConstruct
     public void init() {
-        dineInSkipped = Counter.builder("delivery.order.event.skipped").tag("reason", "dine_in")
-                .description("Order events acked unhandled because the order is DINE_IN: no rider, no dispatch")
-                .register(meterRegistry);
+        for (com.fooddelivery.common.enums.FulfilmentType type : com.fooddelivery.common.enums.FulfilmentType.values()) {
+            if (needsNoRider(type)) {
+                noRiderSkipped.put(type, Counter.builder("delivery.order.event.skipped")
+                        .tag("reason", type.name().toLowerCase(java.util.Locale.ROOT))
+                        .description("Order events acked unhandled because the order needs no rider (dine-in or pickup): no dispatch")
+                        .register(meterRegistry));
+            }
+        }
         for (com.fooddelivery.delivery.service.strategy.DeliveryEventStrategy<?> strategy : strategies) {
             for (String eventType : strategy.getEventTypes()) {
                 this.strategyMap.computeIfAbsent(eventType, k -> new java.util.ArrayList<>()).add(strategy);
@@ -130,11 +137,13 @@ private final ObjectMapper objectMapper;
                                 .orElseThrow(() -> new IllegalStateException(
                                         "bindIf returned empty for " + eventType
                                             + " despite an exact event-type match"));
-                        if (isDineIn(typedEvent)) {
-                            // A DINE_IN order is served at its table: nothing here may dispatch, assign or wait for it.
-                            dineInSkipped.increment();
-                            log.info("DELIVERY_EVENT_IGNORED eventId={} eventType={} orderId={} reason=dine-in",
-                                    eventId, eventType, typedEvent.orderUuid());
+                        if (typedEvent instanceof com.fooddelivery.common.event.FulfilmentScopedEvent scoped
+                                && needsNoRider(scoped.getFulfilmentType())) {
+                            // A DINE_IN order is served at its table and a PICKUP one collected at the counter: nothing
+                            // here may dispatch, assign or wait for either.
+                            noRiderSkipped.get(scoped.getFulfilmentType()).increment();
+                            log.info("DELIVERY_EVENT_IGNORED eventId={} eventType={} orderId={} reason={}", eventId, eventType,
+                                    typedEvent.orderUuid(), scoped.getFulfilmentType().name().toLowerCase(java.util.Locale.ROOT).replace('_', '-'));
                             return null;
                         }
                         log.info("DELIVERY_EVENT_HANDLING eventId={} eventType={} orderId={} strategyCount={}",
@@ -160,8 +169,12 @@ private final ObjectMapper objectMapper;
         }
     }
 
-    private static boolean isDineIn(com.fooddelivery.common.event.OrderScopedEvent event) {
-        return event instanceof com.fooddelivery.common.event.FulfilmentScopedEvent f && f.getFulfilmentType() == com.fooddelivery.common.enums.FulfilmentType.DINE_IN;
+    /** Only a delivery order is the rider's; the switch has no default so a new fulfilment type must answer here. */
+    static boolean needsNoRider(com.fooddelivery.common.enums.FulfilmentType type) {
+        return switch (type) {
+            case DELIVERY -> false;
+            case DINE_IN, PICKUP -> true;
+        };
     }
 
     @DltHandler

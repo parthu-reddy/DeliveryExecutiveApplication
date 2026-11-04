@@ -18,6 +18,7 @@ class OrderEventConsumerTest {
 
     private ObjectMapper objectMapper;
     private OrderEventConsumer orderEventConsumer;
+    private final io.micrometer.core.instrument.simple.SimpleMeterRegistry meters = new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
     
     @Mock
     private com.fooddelivery.common.repository.IIdempotencyKeyRepository idempotencyKeyRepository;
@@ -43,7 +44,7 @@ class OrderEventConsumerTest {
             new DeliveryEventStrategy[]{mockAcceptedStrategy},
             idempotencyKeyRepository,
             transactionTemplate,
-            new io.micrometer.core.instrument.simple.SimpleMeterRegistry()
+            meters
         );
         orderEventConsumer.init();
         
@@ -77,6 +78,27 @@ class OrderEventConsumerTest {
         orderEventConsumer.consumeOrderEvent(message, headersWithEventId());
 
         verify(mockAcceptedStrategy, never()).dispatch(any(), anyString());
+    }
+
+    /** DiningPickupBooking S17: a PICKUP order is collected at the counter, so nothing here dispatches it; it is counted. */
+    @Test
+    void pickupSkippedAndCounted() throws Exception {
+        String payload = "{\"orderId\":\"3f2504e0-4f89-41d3-9a0c-0305e82c3301\","
+                + "\"restaurantId\":\"9c8b7a65-1e2d-4f30-b5a6-7c8d9e0f1a23\",\"restaurantLat\":12.9716,\"restaurantLng\":77.5946,"
+                + "\"estimatedCompletionTime\":1792921800000,\"estimatedPrepTimeMinutes\":20,\"fulfilmentType\":\"PICKUP\","
+                + "\"customerName\":\"Ada\",\"paymentMethod\":\"UPI\",\"occurredAt\":\"2026-11-03T09:30:00Z\"}";
+        java.util.Map<String, Object> headers = headersWithEventId();
+        headers.put("eventType", "ORDER_ACCEPTED");
+
+        orderEventConsumer.consumeOrderEvent(payload, headers);
+
+        verify(mockAcceptedStrategy, never()).dispatch(any(), anyString());
+        org.assertj.core.api.Assertions.assertThat(meters.get("delivery.order.event.skipped").tag("reason", "pickup").counter().count())
+                .isEqualTo(1.0);
+        org.assertj.core.api.Assertions.assertThat(meters.get("delivery.order.event.skipped").tag("reason", "dine_in").counter().count())
+                .isZero();
+        org.assertj.core.api.Assertions.assertThat(meters.find("delivery.order.event.skipped").tag("reason", "delivery").counter())
+                .isNull();
     }
 
     /** The consumer requires an eventId header (I-5); OutboxProcessor always sets one. */
