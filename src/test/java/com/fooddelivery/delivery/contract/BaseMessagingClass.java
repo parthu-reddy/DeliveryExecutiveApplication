@@ -20,11 +20,14 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootTest(classes = BaseMessagingClass.TestConfig.class, webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {"spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration,org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration"})
+@SpringBootTest(classes = BaseMessagingClass.TestConfig.class, webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {"spring.kafka.admin.auto-create=true", "spring.kafka.admin.operation-timeout=60s", "spring.kafka.admin.fail-fast=true", "spring.kafka.admin.properties.request.timeout.ms=60000", "spring.kafka.admin.properties.default.api.timeout.ms=60000", "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration,org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration"})
 @org.springframework.test.context.ActiveProfiles("contract-test")
 @AutoConfigureMessageVerifier
 @org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.BEFORE_CLASS)
-@EmbeddedKafka(adminTimeout = 60, partitions = 1, topics = {"platform.logistics.dispatch", "order-events", "delivery-partner-events"})
+// Topics come from KafkaAdmin (embeddedKafkaTopics) under the spring.kafka.admin deadline set above, with broker
+// auto-creation off so an undeclared topic fails. @EmbeddedKafka(topics) waits a fixed 10 s: spring-kafka-test 3.2.0's
+// EmbeddedKafkaContextCustomizer ignores adminTimeout (BV-T2/BV-T3, 2026-11-12).
+@EmbeddedKafka(partitions = 1, brokerProperties = "auto.create.topics.enable=false")
 public abstract class BaseMessagingClass {
 
     @MockBean
@@ -34,6 +37,14 @@ public abstract class BaseMessagingClass {
     @org.springframework.boot.SpringBootConfiguration
     @org.springframework.boot.autoconfigure.EnableAutoConfiguration
     static class TestConfig {
+        /** Every topic this context listens on or publishes to; KafkaAdmin creates them before the listeners start. */
+        @org.springframework.context.annotation.Bean
+        org.springframework.kafka.core.KafkaAdmin.NewTopics embeddedKafkaTopics() {
+            return new org.springframework.kafka.core.KafkaAdmin.NewTopics(java.util.stream.Stream.of("platform.logistics.dispatch", "order-events", "delivery-partner-events")
+                    .map(name -> org.springframework.kafka.config.TopicBuilder.name(name).partitions(1).replicas(1).build())
+                    .toArray(org.apache.kafka.clients.admin.NewTopic[]::new));
+        }
+
         @Bean
         public KafkaMessageVerifier kafkaMessageVerifier() {
             return new KafkaMessageVerifier();
