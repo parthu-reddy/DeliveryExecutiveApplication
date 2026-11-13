@@ -220,15 +220,22 @@ public class OpenApiGenerationTest {
     }
 
     // openapi.json at the module root is what the UI client and the validators are generated from. Red here
-    // when the controllers no longer produce it, so it cannot go stale unnoticed. Parsed trees are compared
-    // because springdoc's key order is not stable between runs.
+    // when the controllers no longer produce it, so it cannot go stale unnoticed. The bytes must match, not only
+    // the parsed JSON: CommonLibrary's OpenApiStableKeyOrder writes every key in one fixed order, and a spec
+    // that is the same JSON in other bytes would make the UI's generate:api rewrite openapi.json and the
+    // generated client for no API change, which stales every record built on them (2026-11-13).
     private static void assertCommittedSpecCurrent(String openApiJson) throws java.io.IOException {
         com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
         com.fasterxml.jackson.databind.JsonNode generated = mapper.readTree(openApiJson);
         com.fasterxml.jackson.databind.JsonNode committed = mapper.readTree(
                 java.nio.file.Files.readString(java.nio.file.Paths.get("openapi.json")));
-        if (generated.equals(committed)) {
+        if (openApiJson.equals(java.nio.file.Files.readString(java.nio.file.Paths.get("openapi.json")))) {
             return;
+        }
+        if (generated.equals(committed)) {
+            org.junit.jupiter.api.Assertions.fail("openapi.json is the same JSON as the generated spec but in"
+                    + " other bytes (key order or layout). Copy target/openapi.json over it. If it comes back"
+                    + " different on the next run, CommonLibrary's OpenApiStableKeyOrder is no longer in effect.");
         }
         java.util.List<String> changed = new java.util.ArrayList<>();
         for (String section : new String[] {"/paths", "/components/schemas"}) {
