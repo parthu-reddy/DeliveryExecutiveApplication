@@ -56,6 +56,7 @@ class TerminalStateStrategyTest {
     @Mock LogisticsDispatchService logisticsDispatchService;
     @Mock TransactionTemplate transactionTemplate;
     @Mock OrderAssignmentRepository assignmentRepository;
+    @Mock com.fooddelivery.delivery.service.DispatchOfferWithdrawal offerWithdrawal;
     @InjectMocks TerminalStateStrategy strategy;
 
     private final UUID orderId = UUID.randomUUID();
@@ -88,7 +89,7 @@ class TerminalStateStrategyTest {
 
     /** Every type the strategy declares, minus the two that are not the end of an order. */
     static Stream<String> terminalTypes() {
-        return new TerminalStateStrategy(null, null, null, null, null).getEventTypes().stream()
+        return new TerminalStateStrategy(null, null, null, null, null, null).getEventTypes().stream()
                 .filter(type -> !NOT_TERMINAL.contains(type));
     }
 
@@ -105,6 +106,22 @@ class TerminalStateStrategyTest {
         OrderScopedEvent event = mock(OrderScopedEvent.class);
         when(event.orderUuid()).thenReturn(orderId);
         return event;
+    }
+
+    /** FR-2: a cancelled order's open offer must leave every candidate's screen, not wait for their next poll. */
+    @Test
+    void aCancelledOrderWithdrawsItsOpenOfferFromEveryCandidate() throws Exception {
+        String candidateA = UUID.randomUUID().toString();
+        String candidateB = UUID.randomUUID().toString();
+        when(redisTemplate.opsForSet().members(
+                com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_PING_PENDING + orderId))
+                .thenReturn(new java.util.LinkedHashSet<>(List.of(candidateA, candidateB)));
+        when(assignmentRepository.findLockedByOrderId(orderId)).thenReturn(Optional.empty());
+
+        strategy.handle(event(), "ORDER_CANCELLED_BY_RESTAURANT");
+
+        verify(offerWithdrawal).withdraw(candidateA, orderId);
+        verify(offerWithdrawal).withdraw(candidateB, orderId);
     }
 
     @Test

@@ -70,7 +70,8 @@ class RejectRollbackReReservesTest {
                 dispatch,
                 mock(OrderAssignmentRepository.class),
                 new ObjectMapper(),
-                mock(OrderServiceClient.class), java.time.Clock.fixed(java.time.Instant.parse("2026-10-25T09:30:00Z"), java.time.ZoneOffset.UTC));
+                mock(OrderServiceClient.class), java.time.Clock.fixed(java.time.Instant.parse("2026-10-25T09:30:00Z"), java.time.ZoneOffset.UTC),
+                mock(DispatchOfferWithdrawal.class));
     }
 
     @Test

@@ -30,6 +30,8 @@ public class OrderAssignmentService {
     private final com.fooddelivery.delivery.client.OrderServiceClient orderServiceClient;
     /** DRIVER_ASSIGNED is stamped with this clock in the transaction that records the assignment (DelayPenalties Phase 1). */
     private final java.time.Clock clock;
+    /** Tells the candidates who did not get the order that their offer is gone (FR-2). */
+    private final DispatchOfferWithdrawal offerWithdrawal;
 
     @org.springframework.beans.factory.annotation.Value(
             "${app.rider.biometric-verification.enabled:true}")
@@ -252,6 +254,7 @@ public class OrderAssignmentService {
             try {
                 redisTemplate.delete(RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + pingedDriver);
                 if (!pingedDriver.equals(driverId.toString())) {
+                    offerWithdrawal.withdraw(pingedDriver, orderId);
                     logisticsDispatchService.releaseDriverLock(pingedDriver);
                 }
             } catch (Exception cleanupError) {
@@ -1010,6 +1013,7 @@ public class OrderAssignmentService {
                     redisTemplate.delete(
                             RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + pendingDriverId);
                     if (!command.driverId().toString().equals(pendingDriverId)) {
+                        offerWithdrawal.withdraw(pendingDriverId, command.orderId());
                         releasePendingDriverAfterCommittedForce(pendingDriverId, command.orderId());
                     }
                 }

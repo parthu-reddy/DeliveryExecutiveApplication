@@ -62,6 +62,8 @@ class ForceAssignRollbackTest {
     private OutboxEventRepository outbox;
     private OrderServiceClient customer;
     private OrderAssignmentService service;
+    private SetOperations<String, String> sets;
+    private DispatchOfferWithdrawal withdrawal;
 
     @AfterEach
     void clearTransactionSynchronization() {
@@ -78,7 +80,9 @@ class ForceAssignRollbackTest {
         ZSetOperations<String, String> zset = mock(ZSetOperations.class);
         GeoOperations<String, String> geo = mock(GeoOperations.class);
         when(redis.opsForValue()).thenReturn(values);
-        when(redis.opsForSet()).thenReturn(mock(SetOperations.class));
+        sets = mock(SetOperations.class);
+        when(redis.opsForSet()).thenReturn(sets);
+        withdrawal = mock(DispatchOfferWithdrawal.class);
         when(redis.opsForZSet()).thenReturn(zset);
         when(redis.opsForGeo()).thenReturn(geo);
         when(redis.opsForHash()).thenReturn(mock(HashOperations.class));
@@ -119,7 +123,8 @@ class ForceAssignRollbackTest {
                 mock(LogisticsDispatchService.class),
                 assignments,
                 objectMapper,
-                customer, java.time.Clock.fixed(java.time.Instant.parse("2026-10-25T09:30:00Z"), java.time.ZoneOffset.UTC));
+                customer, java.time.Clock.fixed(java.time.Instant.parse("2026-10-25T09:30:00Z"), java.time.ZoneOffset.UTC),
+                withdrawal);
     }
 
     @Test
@@ -163,6 +168,20 @@ class ForceAssignRollbackTest {
                 eq(ORDER.toString()), any(Duration.class));
         verify(values).set(eq(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_DISPATCH_LOCK + ORDER),
                 eq("CANCELLED"), any(Duration.class));
+    }
+
+    /** FR-2: riders still holding an open offer for a force-assigned order must see it withdrawn. */
+    @Test
+    void forceAssignmentWithdrawsTheOpenOfferFromTheOtherCandidatesOnly() {
+        String other = "4f4a4e37-6ca5-5598-94f1-43ef1628f699";
+        when(repository.findLockedById(DRIVER)).thenReturn(Optional.of(readyDriver(DRIVER)));
+        when(sets.members(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_ORDER_PING_PENDING + ORDER))
+                .thenReturn(new java.util.LinkedHashSet<>(List.of(DRIVER.toString(), other)));
+
+        assertThat(service.forceAssignOrder(command()).applied()).isTrue();
+
+        verify(withdrawal).withdraw(other, ORDER);
+        verify(withdrawal, never()).withdraw(eq(DRIVER.toString()), any());
     }
 
     @Test

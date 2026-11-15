@@ -199,7 +199,8 @@ public abstract class BaseMessagingClass {
                 org.mockito.Mockito.mock(com.fooddelivery.delivery.repository.IDeliveryExecutiveRepository.class),
                 org.mockito.Mockito.mock(com.fooddelivery.delivery.service.LogisticsDispatchService.class),
                 org.mockito.Mockito.mock(com.fooddelivery.delivery.repository.OrderAssignmentRepository.class), mapper,
-                org.mockito.Mockito.mock(com.fooddelivery.delivery.client.OrderServiceClient.class), CLOCK);
+                org.mockito.Mockito.mock(com.fooddelivery.delivery.client.OrderServiceClient.class), CLOCK,
+                org.mockito.Mockito.mock(com.fooddelivery.delivery.service.DispatchOfferWithdrawal.class));
         publish(com.fooddelivery.common.constants.EventType.DRIVER_ASSIGNED,
                 service.assignedEvent(ORDER_ID, DRIVER_ID, "Ravi Kumar", new org.springframework.data.geo.Point(77.5801, 12.9612)));
     }

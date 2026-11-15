@@ -23,6 +23,8 @@ private final StringRedisTemplate redisTemplate;
     private final LogisticsDispatchService logisticsDispatchService;
     private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
     private final OrderAssignmentRepository assignmentRepository;
+    /** An open offer for an order that is now over must leave every candidate's screen (FR-2). */
+    private final com.fooddelivery.delivery.service.DispatchOfferWithdrawal offerWithdrawal;
 
     @Override
     public Class<com.fooddelivery.common.event.OrderScopedEvent> eventClass() {
@@ -89,6 +91,7 @@ private final StringRedisTemplate redisTemplate;
             if (allPendingDrivers != null && !allPendingDrivers.isEmpty()) {
                 for (String pendingDriverId : allPendingDrivers) {
                     redisTemplate.delete(com.fooddelivery.common.constants.RedisKeyConstants.PREFIX_DRIVER_PENDING_PING + pendingDriverId);
+                    offerWithdrawal.withdraw(pendingDriverId, orderId);
                 }
                 // If we didn't get a driverId from the event or lock, use one from the pending set
                 if (driverId == null || driverId.isEmpty()) {

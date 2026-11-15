@@ -51,7 +51,8 @@ class AssignmentRecordsDispatchFactsTest {
         service = new OrderAssignmentService(redis, mock(TransactionTemplate.class),
                 mock(OutboxEventRepository.class), mock(OutboxEventHelper.class),
                 mock(IDeliveryExecutiveRepository.class), mock(LogisticsDispatchService.class),
-                assignments, new ObjectMapper(), mock(OrderServiceClient.class), java.time.Clock.fixed(java.time.Instant.parse("2026-10-25T09:30:00Z"), java.time.ZoneOffset.UTC));
+                assignments, new ObjectMapper(), mock(OrderServiceClient.class), java.time.Clock.fixed(java.time.Instant.parse("2026-10-25T09:30:00Z"), java.time.ZoneOffset.UTC),
+                mock(DispatchOfferWithdrawal.class));
     }
 
     private void dispatchPayload(String json) {
